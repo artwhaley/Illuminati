@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\9c702c0589c28b5c56875ee4d8d64873\pdfium-download-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\9c702c0589c28b5c56875ee4d8d64873\pdfium-download-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\9c702c0589c28b5c56875ee4d8d64873\pdfium-download-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\9c702c0589c28b5c56875ee4d8d64873\pdfium-download-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\9c702c0589c28b5c56875ee4d8d64873\pdfium-download-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\9c702c0589c28b5c56875ee4d8d64873\pdfium-download-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\9c702c0589c28b5c56875ee4d8d64873\pdfium-download-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\9c702c0589c28b5c56875ee4d8d64873\pdfium-download-test.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\bc22a5116908aeb3c4de67f96cb8490e\pdfium-download-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\da1e064a58a8e5c1946982e9ec3d7655\pdfium-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\artwh\Downloads\Illuminati\papertek\windows\pdfium-download\CMakeFiles\pdfium-download" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{07F12E9B-BF71-35B1-8656-5F36DA8530A2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

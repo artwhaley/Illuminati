@@ -1,0 +1,14 @@
+# Target labels
+ pdfium-download
+# Source files and their labels
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/pdfium-download
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/da1e064a58a8e5c1946982e9ec3d7655/pdfium-download.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/bc22a5116908aeb3c4de67f96cb8490e/pdfium-download-complete.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/9c702c0589c28b5c56875ee4d8d64873/pdfium-download-build.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/9c702c0589c28b5c56875ee4d8d64873/pdfium-download-configure.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/9c702c0589c28b5c56875ee4d8d64873/pdfium-download-download.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/9c702c0589c28b5c56875ee4d8d64873/pdfium-download-install.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/9c702c0589c28b5c56875ee4d8d64873/pdfium-download-mkdir.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/9c702c0589c28b5c56875ee4d8d64873/pdfium-download-patch.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/9c702c0589c28b5c56875ee4d8d64873/pdfium-download-test.rule
+C:/Users/artwh/Downloads/Illuminati/papertek/windows/pdfium-download/CMakeFiles/9c702c0589c28b5c56875ee4d8d64873/pdfium-download-update.rule

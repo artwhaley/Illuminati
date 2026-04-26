@@ -1,0 +1,27 @@
+Chan,Dimmer,Circuit,Position,Unit #,Fixture Type,Wattage,Color,Gobo,Function,Focus,Notes
+1,D101,C-101,1st Electric,1,Source Four 36°,575w,R02,,,Area 1 DS,
+2,D102,C-102,1st Electric,2,Source Four 36°,575w,R02,,,Area 2 DS,
+3,D103,C-103,1st Electric,3,Source Four 36°,575w,R02,,,Area 3 DS,
+4,D104,C-104,1st Electric,4,Source Four 26°,575w,R51,,,Area 1 US,
+5,D105,C-105,1st Electric,5,Source Four 26°,575w,R51,,,Area 2 US,
+6,D106,C-106,1st Electric,6,Source Four 26°,575w,R51,,,Area 3 US,
+7,D107,C-107,1st Electric,7,Source Four PAR,575w,Open,R77801,,Special DS C,Breakup texture
+8,D108,C-108,1st Electric,8,Source Four PAR,575w,L201,,,Color wash DS,
+11,D201,C-201,2nd Electric,1,Source Four 36°,575w,R02,,,Area 4 DS,
+12,D202,C-202,2nd Electric,2,Source Four 36°,575w,R02,,,Area 5 DS,
+13,D203,C-203,2nd Electric,3,Source Four 26°,575w,R51,,,Area 4 US,
+14,D204,C-204,2nd Electric,4,Source Four 26°,575w,R51,,,Area 5 US,
+15,D205,C-205,2nd Electric,5,Source Four PAR,575w,L201,,,Color wash US,
+21,D301,C-301,Balcony Rail,1,Source Four 50°,575w,Open,,,BR Area 1,Long throw
+22,D302,C-302,Balcony Rail,2,Source Four 50°,575w,Open,,,BR Area 2,Long throw
+23,D303,C-303,Balcony Rail,3,Source Four 50°,575w,Open,,,BR Area 3,Long throw
+24,D304,C-304,Balcony Rail,4,Source Four 50°,575w,N/C,,,Special BR,
+31,D401,C-401,Box Boom SR,1,Source Four 19°,575w,R60,,,Box Boom SR Hi,
+32,D402,C-402,Box Boom SR,2,Source Four 19°,575w,R60,,,Box Boom SR Lo,
+33,D403,C-403,Box Boom SL,1,Source Four 19°,575w,L200,,,Box Boom SL Hi,
+34,D404,C-404,Box Boom SL,2,Source Four 19°,575w,L200,,,Box Boom SL Lo,
+41,D501,C-501,FOH Truss,1,Source Four 36°,575w,Open,,,FOH Area 1,
+42,D502,C-502,FOH Truss,2,Source Four 36°,575w,Open,,,FOH Area 2,
+43,D503,C-503,FOH Truss,3,Source Four 36°,575w,Open,,,FOH Area 3,
+51,D601,C-601,Shin Buster SR,1,6x9 Fresnel,500w,R02,,,Shin SR,Practical stand
+52,D602,C-602,Shin Buster SL,1,6x9 Fresnel,500w,R02,,,Shin SL,Practical stand
