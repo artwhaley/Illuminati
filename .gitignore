@@ -1,0 +1,10 @@
+# Build artifacts
+papertek/build/
+papertek/windows/pdfium-download/
+
+# Test fixture databases (generated at runtime)
+papertek/test/fixtures/*.papertek
+
+# Flutter/Dart
+papertek/.dart_tool/
+papertek/.packages
