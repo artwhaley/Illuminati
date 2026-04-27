@@ -12,13 +12,19 @@ class Fixtures extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get fixtureTypeId => integer().nullable().references(FixtureTypes, #id)();
   TextColumn get fixtureType => text().nullable()();
-  // Soft-link to lighting_positions.name — NOT NULL
-  TextColumn get position => text()();
+  // Soft-link to lighting_positions.name — nullable; null = "Unspecified"
+  TextColumn get position => text().nullable()();
   IntColumn get unitNumber => integer().nullable()();
   TextColumn get wattage => text().nullable()();
   TextColumn get function => text().nullable()();
   TextColumn get focus => text().nullable()();
   IntColumn get flagged => integer().withDefault(const Constant(0))();
+  // Display order — float so midpoint insertion never requires shifting other rows.
+  RealColumn get sortOrder => real().withDefault(const Constant(0.0))();
+  // v11 additions
+  TextColumn get accessories => text().nullable()();
+  IntColumn get hung => integer().withDefault(const Constant(0))();
+  IntColumn get focused => integer().withDefault(const Constant(0))();
 }
 
 class FixtureParts extends Table {

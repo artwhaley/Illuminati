@@ -6,6 +6,7 @@ import '../repositories/position_repository.dart';
 import '../repositories/role_contact_repository.dart';
 import '../repositories/fixture_type_repository.dart';
 import '../repositories/venue_repository.dart';
+import '../repositories/fixture_repository.dart';
 import '../services/show_file_service.dart';
 import '../services/import/import_service.dart';
 
@@ -116,5 +117,17 @@ final circuitsProvider = StreamProvider.autoDispose<List<Circuit>>((ref) {
   final repo = ref.watch(venueRepoProvider);
   if (repo == null) return Stream.value([]);
   return repo.watchCircuits();
+});
+
+final fixtureRepoProvider = Provider.autoDispose<FixtureRepository?>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db != null ? FixtureRepository(db) : null;
+});
+
+final fixtureRowsProvider =
+    StreamProvider.autoDispose<List<FixtureRow>>((ref) {
+  final repo = ref.watch(fixtureRepoProvider);
+  if (repo == null) return Stream.value([]);
+  return repo.watchRows();
 });
 

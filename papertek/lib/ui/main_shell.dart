@@ -8,6 +8,7 @@ import '../services/import/csv_import_parser.dart';
 import '../services/import/lightwright_column_detector.dart';
 import 'import/column_mapping_screen.dart';
 import 'show_tab.dart';
+import 'spreadsheet/spreadsheet_tab.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -151,7 +152,7 @@ class _MainShellState extends ConsumerState<MainShell> {
               index: _selectedIndex,
               children: [
                 const ShowTab(),
-                _stub('Spreadsheet'),
+                const SpreadsheetTab(),
                 _stub('Work Notes'),
                 _stub('Maintenance'),
                 _stub('Reports'),

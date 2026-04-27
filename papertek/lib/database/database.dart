@@ -55,7 +55,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase openFile(String path) =>
       AppDatabase(NativeDatabase(File(path)));
 
-  static const currentSchemaVersion = 8;
+  static const currentSchemaVersion = 11;
 
   static Future<AppDatabase> openDefault(String showName) async {
     final dir = await getApplicationDocumentsDirectory();
@@ -64,7 +64,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -119,6 +119,20 @@ class AppDatabase extends _$AppDatabase {
             await _tryAddColumn(m, showMeta, showMeta.labelProducer);
             await _tryAddColumn(m, showMeta, showMeta.labelAsstMasterElectrician);
             await _tryAddColumn(m, showMeta, showMeta.labelStageManager);
+          }
+          if (from < 9) {
+            // Make fixtures.position nullable (recreates table, data preserved).
+            await m.alterTable(TableMigration(fixtures));
+          }
+          if (from < 10) {
+            await m.addColumn(fixtures, fixtures.sortOrder);
+            await customStatement(
+                'UPDATE fixtures SET sort_order = CAST(id AS REAL)');
+          }
+          if (from < 11) {
+            await m.addColumn(fixtures, fixtures.accessories);
+            await m.addColumn(fixtures, fixtures.hung);
+            await m.addColumn(fixtures, fixtures.focused);
           }
         },
         beforeOpen: (details) async {

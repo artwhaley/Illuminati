@@ -4084,9 +4084,9 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
   late final GeneratedColumn<String> position = GeneratedColumn<String>(
     'position',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _unitNumberMeta = const VerificationMeta(
     'unitNumber',
@@ -4142,6 +4142,51 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<double> sortOrder = GeneratedColumn<double>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  static const VerificationMeta _accessoriesMeta = const VerificationMeta(
+    'accessories',
+  );
+  @override
+  late final GeneratedColumn<String> accessories = GeneratedColumn<String>(
+    'accessories',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hungMeta = const VerificationMeta('hung');
+  @override
+  late final GeneratedColumn<int> hung = GeneratedColumn<int>(
+    'hung',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _focusedMeta = const VerificationMeta(
+    'focused',
+  );
+  @override
+  late final GeneratedColumn<int> focused = GeneratedColumn<int>(
+    'focused',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4153,6 +4198,10 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     function,
     focus,
     flagged,
+    sortOrder,
+    accessories,
+    hung,
+    focused,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4192,8 +4241,6 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         _positionMeta,
         position.isAcceptableOrUnknown(data['position']!, _positionMeta),
       );
-    } else if (isInserting) {
-      context.missing(_positionMeta);
     }
     if (data.containsKey('unit_number')) {
       context.handle(
@@ -4225,6 +4272,33 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         flagged.isAcceptableOrUnknown(data['flagged']!, _flaggedMeta),
       );
     }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('accessories')) {
+      context.handle(
+        _accessoriesMeta,
+        accessories.isAcceptableOrUnknown(
+          data['accessories']!,
+          _accessoriesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hung')) {
+      context.handle(
+        _hungMeta,
+        hung.isAcceptableOrUnknown(data['hung']!, _hungMeta),
+      );
+    }
+    if (data.containsKey('focused')) {
+      context.handle(
+        _focusedMeta,
+        focused.isAcceptableOrUnknown(data['focused']!, _focusedMeta),
+      );
+    }
     return context;
   }
 
@@ -4249,7 +4323,7 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
       position: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}position'],
-      )!,
+      ),
       unitNumber: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}unit_number'],
@@ -4270,6 +4344,22 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         DriftSqlType.int,
         data['${effectivePrefix}flagged'],
       )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      accessories: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}accessories'],
+      ),
+      hung: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}hung'],
+      )!,
+      focused: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}focused'],
+      )!,
     );
   }
 
@@ -4283,22 +4373,30 @@ class Fixture extends DataClass implements Insertable<Fixture> {
   final int id;
   final int? fixtureTypeId;
   final String? fixtureType;
-  final String position;
+  final String? position;
   final int? unitNumber;
   final String? wattage;
   final String? function;
   final String? focus;
   final int flagged;
+  final double sortOrder;
+  final String? accessories;
+  final int hung;
+  final int focused;
   const Fixture({
     required this.id,
     this.fixtureTypeId,
     this.fixtureType,
-    required this.position,
+    this.position,
     this.unitNumber,
     this.wattage,
     this.function,
     this.focus,
     required this.flagged,
+    required this.sortOrder,
+    this.accessories,
+    required this.hung,
+    required this.focused,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4310,7 +4408,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     if (!nullToAbsent || fixtureType != null) {
       map['fixture_type'] = Variable<String>(fixtureType);
     }
-    map['position'] = Variable<String>(position);
+    if (!nullToAbsent || position != null) {
+      map['position'] = Variable<String>(position);
+    }
     if (!nullToAbsent || unitNumber != null) {
       map['unit_number'] = Variable<int>(unitNumber);
     }
@@ -4324,6 +4424,12 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       map['focus'] = Variable<String>(focus);
     }
     map['flagged'] = Variable<int>(flagged);
+    map['sort_order'] = Variable<double>(sortOrder);
+    if (!nullToAbsent || accessories != null) {
+      map['accessories'] = Variable<String>(accessories);
+    }
+    map['hung'] = Variable<int>(hung);
+    map['focused'] = Variable<int>(focused);
     return map;
   }
 
@@ -4336,7 +4442,9 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       fixtureType: fixtureType == null && nullToAbsent
           ? const Value.absent()
           : Value(fixtureType),
-      position: Value(position),
+      position: position == null && nullToAbsent
+          ? const Value.absent()
+          : Value(position),
       unitNumber: unitNumber == null && nullToAbsent
           ? const Value.absent()
           : Value(unitNumber),
@@ -4350,6 +4458,12 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           ? const Value.absent()
           : Value(focus),
       flagged: Value(flagged),
+      sortOrder: Value(sortOrder),
+      accessories: accessories == null && nullToAbsent
+          ? const Value.absent()
+          : Value(accessories),
+      hung: Value(hung),
+      focused: Value(focused),
     );
   }
 
@@ -4362,12 +4476,16 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       id: serializer.fromJson<int>(json['id']),
       fixtureTypeId: serializer.fromJson<int?>(json['fixtureTypeId']),
       fixtureType: serializer.fromJson<String?>(json['fixtureType']),
-      position: serializer.fromJson<String>(json['position']),
+      position: serializer.fromJson<String?>(json['position']),
       unitNumber: serializer.fromJson<int?>(json['unitNumber']),
       wattage: serializer.fromJson<String?>(json['wattage']),
       function: serializer.fromJson<String?>(json['function']),
       focus: serializer.fromJson<String?>(json['focus']),
       flagged: serializer.fromJson<int>(json['flagged']),
+      sortOrder: serializer.fromJson<double>(json['sortOrder']),
+      accessories: serializer.fromJson<String?>(json['accessories']),
+      hung: serializer.fromJson<int>(json['hung']),
+      focused: serializer.fromJson<int>(json['focused']),
     );
   }
   @override
@@ -4377,12 +4495,16 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       'id': serializer.toJson<int>(id),
       'fixtureTypeId': serializer.toJson<int?>(fixtureTypeId),
       'fixtureType': serializer.toJson<String?>(fixtureType),
-      'position': serializer.toJson<String>(position),
+      'position': serializer.toJson<String?>(position),
       'unitNumber': serializer.toJson<int?>(unitNumber),
       'wattage': serializer.toJson<String?>(wattage),
       'function': serializer.toJson<String?>(function),
       'focus': serializer.toJson<String?>(focus),
       'flagged': serializer.toJson<int>(flagged),
+      'sortOrder': serializer.toJson<double>(sortOrder),
+      'accessories': serializer.toJson<String?>(accessories),
+      'hung': serializer.toJson<int>(hung),
+      'focused': serializer.toJson<int>(focused),
     };
   }
 
@@ -4390,24 +4512,32 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     int? id,
     Value<int?> fixtureTypeId = const Value.absent(),
     Value<String?> fixtureType = const Value.absent(),
-    String? position,
+    Value<String?> position = const Value.absent(),
     Value<int?> unitNumber = const Value.absent(),
     Value<String?> wattage = const Value.absent(),
     Value<String?> function = const Value.absent(),
     Value<String?> focus = const Value.absent(),
     int? flagged,
+    double? sortOrder,
+    Value<String?> accessories = const Value.absent(),
+    int? hung,
+    int? focused,
   }) => Fixture(
     id: id ?? this.id,
     fixtureTypeId: fixtureTypeId.present
         ? fixtureTypeId.value
         : this.fixtureTypeId,
     fixtureType: fixtureType.present ? fixtureType.value : this.fixtureType,
-    position: position ?? this.position,
+    position: position.present ? position.value : this.position,
     unitNumber: unitNumber.present ? unitNumber.value : this.unitNumber,
     wattage: wattage.present ? wattage.value : this.wattage,
     function: function.present ? function.value : this.function,
     focus: focus.present ? focus.value : this.focus,
     flagged: flagged ?? this.flagged,
+    sortOrder: sortOrder ?? this.sortOrder,
+    accessories: accessories.present ? accessories.value : this.accessories,
+    hung: hung ?? this.hung,
+    focused: focused ?? this.focused,
   );
   Fixture copyWithCompanion(FixturesCompanion data) {
     return Fixture(
@@ -4426,6 +4556,12 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       function: data.function.present ? data.function.value : this.function,
       focus: data.focus.present ? data.focus.value : this.focus,
       flagged: data.flagged.present ? data.flagged.value : this.flagged,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      accessories: data.accessories.present
+          ? data.accessories.value
+          : this.accessories,
+      hung: data.hung.present ? data.hung.value : this.hung,
+      focused: data.focused.present ? data.focused.value : this.focused,
     );
   }
 
@@ -4440,7 +4576,11 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           ..write('wattage: $wattage, ')
           ..write('function: $function, ')
           ..write('focus: $focus, ')
-          ..write('flagged: $flagged')
+          ..write('flagged: $flagged, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('accessories: $accessories, ')
+          ..write('hung: $hung, ')
+          ..write('focused: $focused')
           ..write(')'))
         .toString();
   }
@@ -4456,6 +4596,10 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     function,
     focus,
     flagged,
+    sortOrder,
+    accessories,
+    hung,
+    focused,
   );
   @override
   bool operator ==(Object other) =>
@@ -4469,19 +4613,27 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           other.wattage == this.wattage &&
           other.function == this.function &&
           other.focus == this.focus &&
-          other.flagged == this.flagged);
+          other.flagged == this.flagged &&
+          other.sortOrder == this.sortOrder &&
+          other.accessories == this.accessories &&
+          other.hung == this.hung &&
+          other.focused == this.focused);
 }
 
 class FixturesCompanion extends UpdateCompanion<Fixture> {
   final Value<int> id;
   final Value<int?> fixtureTypeId;
   final Value<String?> fixtureType;
-  final Value<String> position;
+  final Value<String?> position;
   final Value<int?> unitNumber;
   final Value<String?> wattage;
   final Value<String?> function;
   final Value<String?> focus;
   final Value<int> flagged;
+  final Value<double> sortOrder;
+  final Value<String?> accessories;
+  final Value<int> hung;
+  final Value<int> focused;
   const FixturesCompanion({
     this.id = const Value.absent(),
     this.fixtureTypeId = const Value.absent(),
@@ -4492,18 +4644,26 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.function = const Value.absent(),
     this.focus = const Value.absent(),
     this.flagged = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.accessories = const Value.absent(),
+    this.hung = const Value.absent(),
+    this.focused = const Value.absent(),
   });
   FixturesCompanion.insert({
     this.id = const Value.absent(),
     this.fixtureTypeId = const Value.absent(),
     this.fixtureType = const Value.absent(),
-    required String position,
+    this.position = const Value.absent(),
     this.unitNumber = const Value.absent(),
     this.wattage = const Value.absent(),
     this.function = const Value.absent(),
     this.focus = const Value.absent(),
     this.flagged = const Value.absent(),
-  }) : position = Value(position);
+    this.sortOrder = const Value.absent(),
+    this.accessories = const Value.absent(),
+    this.hung = const Value.absent(),
+    this.focused = const Value.absent(),
+  });
   static Insertable<Fixture> custom({
     Expression<int>? id,
     Expression<int>? fixtureTypeId,
@@ -4514,6 +4674,10 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Expression<String>? function,
     Expression<String>? focus,
     Expression<int>? flagged,
+    Expression<double>? sortOrder,
+    Expression<String>? accessories,
+    Expression<int>? hung,
+    Expression<int>? focused,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4525,6 +4689,10 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       if (function != null) 'function': function,
       if (focus != null) 'focus': focus,
       if (flagged != null) 'flagged': flagged,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (accessories != null) 'accessories': accessories,
+      if (hung != null) 'hung': hung,
+      if (focused != null) 'focused': focused,
     });
   }
 
@@ -4532,12 +4700,16 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Value<int>? id,
     Value<int?>? fixtureTypeId,
     Value<String?>? fixtureType,
-    Value<String>? position,
+    Value<String?>? position,
     Value<int?>? unitNumber,
     Value<String?>? wattage,
     Value<String?>? function,
     Value<String?>? focus,
     Value<int>? flagged,
+    Value<double>? sortOrder,
+    Value<String?>? accessories,
+    Value<int>? hung,
+    Value<int>? focused,
   }) {
     return FixturesCompanion(
       id: id ?? this.id,
@@ -4549,6 +4721,10 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       function: function ?? this.function,
       focus: focus ?? this.focus,
       flagged: flagged ?? this.flagged,
+      sortOrder: sortOrder ?? this.sortOrder,
+      accessories: accessories ?? this.accessories,
+      hung: hung ?? this.hung,
+      focused: focused ?? this.focused,
     );
   }
 
@@ -4582,6 +4758,18 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     if (flagged.present) {
       map['flagged'] = Variable<int>(flagged.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<double>(sortOrder.value);
+    }
+    if (accessories.present) {
+      map['accessories'] = Variable<String>(accessories.value);
+    }
+    if (hung.present) {
+      map['hung'] = Variable<int>(hung.value);
+    }
+    if (focused.present) {
+      map['focused'] = Variable<int>(focused.value);
+    }
     return map;
   }
 
@@ -4596,7 +4784,11 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
           ..write('wattage: $wattage, ')
           ..write('function: $function, ')
           ..write('focus: $focus, ')
-          ..write('flagged: $flagged')
+          ..write('flagged: $flagged, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('accessories: $accessories, ')
+          ..write('hung: $hung, ')
+          ..write('focused: $focused')
           ..write(')'))
         .toString();
   }
@@ -11987,24 +12179,32 @@ typedef $$FixturesTableCreateCompanionBuilder =
       Value<int> id,
       Value<int?> fixtureTypeId,
       Value<String?> fixtureType,
-      required String position,
+      Value<String?> position,
       Value<int?> unitNumber,
       Value<String?> wattage,
       Value<String?> function,
       Value<String?> focus,
       Value<int> flagged,
+      Value<double> sortOrder,
+      Value<String?> accessories,
+      Value<int> hung,
+      Value<int> focused,
     });
 typedef $$FixturesTableUpdateCompanionBuilder =
     FixturesCompanion Function({
       Value<int> id,
       Value<int?> fixtureTypeId,
       Value<String?> fixtureType,
-      Value<String> position,
+      Value<String?> position,
       Value<int?> unitNumber,
       Value<String?> wattage,
       Value<String?> function,
       Value<String?> focus,
       Value<int> flagged,
+      Value<double> sortOrder,
+      Value<String?> accessories,
+      Value<int> hung,
+      Value<int> focused,
     });
 
 final class $$FixturesTableReferences
@@ -12214,6 +12414,26 @@ class $$FixturesTableFilterComposer
 
   ColumnFilters<int> get flagged => $composableBuilder(
     column: $table.flagged,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accessories => $composableBuilder(
+    column: $table.accessories,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get hung => $composableBuilder(
+    column: $table.hung,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get focused => $composableBuilder(
+    column: $table.focused,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12465,6 +12685,26 @@ class $$FixturesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accessories => $composableBuilder(
+    column: $table.accessories,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get hung => $composableBuilder(
+    column: $table.hung,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get focused => $composableBuilder(
+    column: $table.focused,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FixtureTypesTableOrderingComposer get fixtureTypeId {
     final $$FixtureTypesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -12525,6 +12765,20 @@ class $$FixturesTableAnnotationComposer
 
   GeneratedColumn<int> get flagged =>
       $composableBuilder(column: $table.flagged, builder: (column) => column);
+
+  GeneratedColumn<double> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<String> get accessories => $composableBuilder(
+    column: $table.accessories,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get hung =>
+      $composableBuilder(column: $table.hung, builder: (column) => column);
+
+  GeneratedColumn<int> get focused =>
+      $composableBuilder(column: $table.focused, builder: (column) => column);
 
   $$FixtureTypesTableAnnotationComposer get fixtureTypeId {
     final $$FixtureTypesTableAnnotationComposer composer = $composerBuilder(
@@ -12766,12 +13020,16 @@ class $$FixturesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int?> fixtureTypeId = const Value.absent(),
                 Value<String?> fixtureType = const Value.absent(),
-                Value<String> position = const Value.absent(),
+                Value<String?> position = const Value.absent(),
                 Value<int?> unitNumber = const Value.absent(),
                 Value<String?> wattage = const Value.absent(),
                 Value<String?> function = const Value.absent(),
                 Value<String?> focus = const Value.absent(),
                 Value<int> flagged = const Value.absent(),
+                Value<double> sortOrder = const Value.absent(),
+                Value<String?> accessories = const Value.absent(),
+                Value<int> hung = const Value.absent(),
+                Value<int> focused = const Value.absent(),
               }) => FixturesCompanion(
                 id: id,
                 fixtureTypeId: fixtureTypeId,
@@ -12782,18 +13040,26 @@ class $$FixturesTableTableManager
                 function: function,
                 focus: focus,
                 flagged: flagged,
+                sortOrder: sortOrder,
+                accessories: accessories,
+                hung: hung,
+                focused: focused,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<int?> fixtureTypeId = const Value.absent(),
                 Value<String?> fixtureType = const Value.absent(),
-                required String position,
+                Value<String?> position = const Value.absent(),
                 Value<int?> unitNumber = const Value.absent(),
                 Value<String?> wattage = const Value.absent(),
                 Value<String?> function = const Value.absent(),
                 Value<String?> focus = const Value.absent(),
                 Value<int> flagged = const Value.absent(),
+                Value<double> sortOrder = const Value.absent(),
+                Value<String?> accessories = const Value.absent(),
+                Value<int> hung = const Value.absent(),
+                Value<int> focused = const Value.absent(),
               }) => FixturesCompanion.insert(
                 id: id,
                 fixtureTypeId: fixtureTypeId,
@@ -12804,6 +13070,10 @@ class $$FixturesTableTableManager
                 function: function,
                 focus: focus,
                 flagged: flagged,
+                sortOrder: sortOrder,
+                accessories: accessories,
+                hung: hung,
+                focused: focused,
               ),
           withReferenceMapper: (p0) => p0
               .map(
