@@ -148,16 +148,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           const Divider(height: 1),
           // ── Tab body ──────────────────────────────────────────────────
           Expanded(
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: [
-                const ShowTab(),
-                const SpreadsheetTab(),
-                _stub('Work Notes'),
-                _stub('Maintenance'),
-                _stub('Reports'),
-              ],
-            ),
+            child: _buildTabBody(),
           ),
         ],
       ),
@@ -191,4 +182,21 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget _stub(String label) => Center(
         child: Text(label, style: Theme.of(context).textTheme.titleMedium),
       );
+
+  Widget _buildTabBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return const ShowTab();
+      case 1:
+        return const SpreadsheetTab();
+      case 2:
+        return _stub('Work Notes');
+      case 3:
+        return _stub('Maintenance');
+      case 4:
+        return _stub('Reports');
+      default:
+        return const SizedBox.shrink();
+    }
+  }
 }

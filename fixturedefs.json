@@ -1,0 +1,85 @@
+{
+  "fixtures": [
+    {
+      "name": "Source 4 26°",
+      "short_name": "S4 - 26°",
+      "manufacturer": "ETC",
+      "weight_kg": 6.4,
+      "total_subparts": 1,
+      "subparts": [
+        {
+          "wattage_default": 575,
+          "wattage_options": [375, 575, 750],
+          "color_slots": 1,
+          "gobo_slots": 1,
+          "accessory_slot": true
+        }
+      ]
+    },
+    {
+      "name": "Source 4 36°",
+      "short_name": "S4 - 36°",
+      "manufacturer": "ETC",
+      "weight_kg": 6.4,
+      "total_subparts": 1,
+      "subparts": [
+        {
+          "channels": 1,
+          "addresses": 1,
+          "wattage_default": 575,
+          "color_slot": true,
+          "gobo_slot": true,
+          "accessory_slot": true
+        }
+      ]
+    },
+    {
+      "name": "Source 4 50°",
+      "short_name": "S4 - 50°",
+      "manufacturer": "ETC",
+      "weight_kg": 6.4,
+      "total_subparts": 1,
+      "subparts": [
+        {
+          "wattage_default": 575,
+          "wattage_options": [375, 575, 750],
+          "color_slots": 1,
+          "gobo_slots": 1,
+          "accessory_slot": true
+        }
+      ]
+    },
+    {
+      "name": "Source 4 Par",
+      "short_name": "S4 Par",
+      "manufacturer": "ETC",
+      "weight_kg": 3.4,
+      "total_subparts": 1,
+      "subparts": [
+        {
+          "wattage_default": 575,
+          "wattage_options": [375, 575, 750],
+          "color_slots": 1,
+          "gobo_slots": 1,
+          "accessory_slot": true
+        }
+      ]
+    },
+    {
+      "name": "6\" Fresnel",
+      "short_name": "6\" Fres",
+      "manufacturer": "Generic",
+      "weight_kg": 4.2,
+      "total_subparts": 1,
+      "subparts": [
+        {
+          "wattage_default": 575,
+          "wattage_options": [375, 575, 750],
+          "color_slots": 1,
+          "gobo_slots": 1,
+          "accessory_slot": true
+        }
+      ]
+    }
+  ]
+}
