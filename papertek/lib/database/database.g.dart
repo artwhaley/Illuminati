@@ -4187,6 +4187,18 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _patchedMeta = const VerificationMeta(
+    'patched',
+  );
+  @override
+  late final GeneratedColumn<int> patched = GeneratedColumn<int>(
+    'patched',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4202,6 +4214,7 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     accessories,
     hung,
     focused,
+    patched,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4299,6 +4312,12 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         focused.isAcceptableOrUnknown(data['focused']!, _focusedMeta),
       );
     }
+    if (data.containsKey('patched')) {
+      context.handle(
+        _patchedMeta,
+        patched.isAcceptableOrUnknown(data['patched']!, _patchedMeta),
+      );
+    }
     return context;
   }
 
@@ -4360,6 +4379,10 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         DriftSqlType.int,
         data['${effectivePrefix}focused'],
       )!,
+      patched: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}patched'],
+      )!,
     );
   }
 
@@ -4383,6 +4406,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
   final String? accessories;
   final int hung;
   final int focused;
+  final int patched;
   const Fixture({
     required this.id,
     this.fixtureTypeId,
@@ -4397,6 +4421,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     this.accessories,
     required this.hung,
     required this.focused,
+    required this.patched,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4430,6 +4455,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     }
     map['hung'] = Variable<int>(hung);
     map['focused'] = Variable<int>(focused);
+    map['patched'] = Variable<int>(patched);
     return map;
   }
 
@@ -4464,6 +4490,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           : Value(accessories),
       hung: Value(hung),
       focused: Value(focused),
+      patched: Value(patched),
     );
   }
 
@@ -4486,6 +4513,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       accessories: serializer.fromJson<String?>(json['accessories']),
       hung: serializer.fromJson<int>(json['hung']),
       focused: serializer.fromJson<int>(json['focused']),
+      patched: serializer.fromJson<int>(json['patched']),
     );
   }
   @override
@@ -4505,6 +4533,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       'accessories': serializer.toJson<String?>(accessories),
       'hung': serializer.toJson<int>(hung),
       'focused': serializer.toJson<int>(focused),
+      'patched': serializer.toJson<int>(patched),
     };
   }
 
@@ -4522,6 +4551,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     Value<String?> accessories = const Value.absent(),
     int? hung,
     int? focused,
+    int? patched,
   }) => Fixture(
     id: id ?? this.id,
     fixtureTypeId: fixtureTypeId.present
@@ -4538,6 +4568,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     accessories: accessories.present ? accessories.value : this.accessories,
     hung: hung ?? this.hung,
     focused: focused ?? this.focused,
+    patched: patched ?? this.patched,
   );
   Fixture copyWithCompanion(FixturesCompanion data) {
     return Fixture(
@@ -4562,6 +4593,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           : this.accessories,
       hung: data.hung.present ? data.hung.value : this.hung,
       focused: data.focused.present ? data.focused.value : this.focused,
+      patched: data.patched.present ? data.patched.value : this.patched,
     );
   }
 
@@ -4580,7 +4612,8 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           ..write('sortOrder: $sortOrder, ')
           ..write('accessories: $accessories, ')
           ..write('hung: $hung, ')
-          ..write('focused: $focused')
+          ..write('focused: $focused, ')
+          ..write('patched: $patched')
           ..write(')'))
         .toString();
   }
@@ -4600,6 +4633,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     accessories,
     hung,
     focused,
+    patched,
   );
   @override
   bool operator ==(Object other) =>
@@ -4617,7 +4651,8 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           other.sortOrder == this.sortOrder &&
           other.accessories == this.accessories &&
           other.hung == this.hung &&
-          other.focused == this.focused);
+          other.focused == this.focused &&
+          other.patched == this.patched);
 }
 
 class FixturesCompanion extends UpdateCompanion<Fixture> {
@@ -4634,6 +4669,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
   final Value<String?> accessories;
   final Value<int> hung;
   final Value<int> focused;
+  final Value<int> patched;
   const FixturesCompanion({
     this.id = const Value.absent(),
     this.fixtureTypeId = const Value.absent(),
@@ -4648,6 +4684,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.accessories = const Value.absent(),
     this.hung = const Value.absent(),
     this.focused = const Value.absent(),
+    this.patched = const Value.absent(),
   });
   FixturesCompanion.insert({
     this.id = const Value.absent(),
@@ -4663,6 +4700,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.accessories = const Value.absent(),
     this.hung = const Value.absent(),
     this.focused = const Value.absent(),
+    this.patched = const Value.absent(),
   });
   static Insertable<Fixture> custom({
     Expression<int>? id,
@@ -4678,6 +4716,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Expression<String>? accessories,
     Expression<int>? hung,
     Expression<int>? focused,
+    Expression<int>? patched,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4693,6 +4732,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       if (accessories != null) 'accessories': accessories,
       if (hung != null) 'hung': hung,
       if (focused != null) 'focused': focused,
+      if (patched != null) 'patched': patched,
     });
   }
 
@@ -4710,6 +4750,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Value<String?>? accessories,
     Value<int>? hung,
     Value<int>? focused,
+    Value<int>? patched,
   }) {
     return FixturesCompanion(
       id: id ?? this.id,
@@ -4725,6 +4766,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       accessories: accessories ?? this.accessories,
       hung: hung ?? this.hung,
       focused: focused ?? this.focused,
+      patched: patched ?? this.patched,
     );
   }
 
@@ -4770,6 +4812,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     if (focused.present) {
       map['focused'] = Variable<int>(focused.value);
     }
+    if (patched.present) {
+      map['patched'] = Variable<int>(patched.value);
+    }
     return map;
   }
 
@@ -4788,7 +4833,8 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
           ..write('sortOrder: $sortOrder, ')
           ..write('accessories: $accessories, ')
           ..write('hung: $hung, ')
-          ..write('focused: $focused')
+          ..write('focused: $focused, ')
+          ..write('patched: $patched')
           ..write(')'))
         .toString();
   }
@@ -4884,6 +4930,17 @@ class $FixturePartsTable extends FixtureParts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _circuitMeta = const VerificationMeta(
+    'circuit',
+  );
+  @override
+  late final GeneratedColumn<String> circuit = GeneratedColumn<String>(
+    'circuit',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _ipAddressMeta = const VerificationMeta(
     'ipAddress',
   );
@@ -4944,6 +5001,7 @@ class $FixturePartsTable extends FixtureParts
     partName,
     channel,
     address,
+    circuit,
     ipAddress,
     macAddress,
     subnet,
@@ -5003,6 +5061,12 @@ class $FixturePartsTable extends FixtureParts
       context.handle(
         _addressMeta,
         address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
+    }
+    if (data.containsKey('circuit')) {
+      context.handle(
+        _circuitMeta,
+        circuit.isAcceptableOrUnknown(data['circuit']!, _circuitMeta),
       );
     }
     if (data.containsKey('ip_address')) {
@@ -5072,6 +5136,10 @@ class $FixturePartsTable extends FixtureParts
         DriftSqlType.string,
         data['${effectivePrefix}address'],
       ),
+      circuit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}circuit'],
+      ),
       ipAddress: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}ip_address'],
@@ -5109,6 +5177,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
   final String? partName;
   final String? channel;
   final String? address;
+  final String? circuit;
   final String? ipAddress;
   final String? macAddress;
   final String? subnet;
@@ -5122,6 +5191,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     this.partName,
     this.channel,
     this.address,
+    this.circuit,
     this.ipAddress,
     this.macAddress,
     this.subnet,
@@ -5145,6 +5215,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     }
     if (!nullToAbsent || address != null) {
       map['address'] = Variable<String>(address);
+    }
+    if (!nullToAbsent || circuit != null) {
+      map['circuit'] = Variable<String>(circuit);
     }
     if (!nullToAbsent || ipAddress != null) {
       map['ip_address'] = Variable<String>(ipAddress);
@@ -5181,6 +5254,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       address: address == null && nullToAbsent
           ? const Value.absent()
           : Value(address),
+      circuit: circuit == null && nullToAbsent
+          ? const Value.absent()
+          : Value(circuit),
       ipAddress: ipAddress == null && nullToAbsent
           ? const Value.absent()
           : Value(ipAddress),
@@ -5210,6 +5286,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       partName: serializer.fromJson<String?>(json['partName']),
       channel: serializer.fromJson<String?>(json['channel']),
       address: serializer.fromJson<String?>(json['address']),
+      circuit: serializer.fromJson<String?>(json['circuit']),
       ipAddress: serializer.fromJson<String?>(json['ipAddress']),
       macAddress: serializer.fromJson<String?>(json['macAddress']),
       subnet: serializer.fromJson<String?>(json['subnet']),
@@ -5228,6 +5305,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       'partName': serializer.toJson<String?>(partName),
       'channel': serializer.toJson<String?>(channel),
       'address': serializer.toJson<String?>(address),
+      'circuit': serializer.toJson<String?>(circuit),
       'ipAddress': serializer.toJson<String?>(ipAddress),
       'macAddress': serializer.toJson<String?>(macAddress),
       'subnet': serializer.toJson<String?>(subnet),
@@ -5244,6 +5322,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     Value<String?> partName = const Value.absent(),
     Value<String?> channel = const Value.absent(),
     Value<String?> address = const Value.absent(),
+    Value<String?> circuit = const Value.absent(),
     Value<String?> ipAddress = const Value.absent(),
     Value<String?> macAddress = const Value.absent(),
     Value<String?> subnet = const Value.absent(),
@@ -5257,6 +5336,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     partName: partName.present ? partName.value : this.partName,
     channel: channel.present ? channel.value : this.channel,
     address: address.present ? address.value : this.address,
+    circuit: circuit.present ? circuit.value : this.circuit,
     ipAddress: ipAddress.present ? ipAddress.value : this.ipAddress,
     macAddress: macAddress.present ? macAddress.value : this.macAddress,
     subnet: subnet.present ? subnet.value : this.subnet,
@@ -5272,6 +5352,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       partName: data.partName.present ? data.partName.value : this.partName,
       channel: data.channel.present ? data.channel.value : this.channel,
       address: data.address.present ? data.address.value : this.address,
+      circuit: data.circuit.present ? data.circuit.value : this.circuit,
       ipAddress: data.ipAddress.present ? data.ipAddress.value : this.ipAddress,
       macAddress: data.macAddress.present
           ? data.macAddress.value
@@ -5294,6 +5375,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
           ..write('partName: $partName, ')
           ..write('channel: $channel, ')
           ..write('address: $address, ')
+          ..write('circuit: $circuit, ')
           ..write('ipAddress: $ipAddress, ')
           ..write('macAddress: $macAddress, ')
           ..write('subnet: $subnet, ')
@@ -5312,6 +5394,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     partName,
     channel,
     address,
+    circuit,
     ipAddress,
     macAddress,
     subnet,
@@ -5329,6 +5412,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
           other.partName == this.partName &&
           other.channel == this.channel &&
           other.address == this.address &&
+          other.circuit == this.circuit &&
           other.ipAddress == this.ipAddress &&
           other.macAddress == this.macAddress &&
           other.subnet == this.subnet &&
@@ -5344,6 +5428,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
   final Value<String?> partName;
   final Value<String?> channel;
   final Value<String?> address;
+  final Value<String?> circuit;
   final Value<String?> ipAddress;
   final Value<String?> macAddress;
   final Value<String?> subnet;
@@ -5357,6 +5442,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     this.partName = const Value.absent(),
     this.channel = const Value.absent(),
     this.address = const Value.absent(),
+    this.circuit = const Value.absent(),
     this.ipAddress = const Value.absent(),
     this.macAddress = const Value.absent(),
     this.subnet = const Value.absent(),
@@ -5371,6 +5457,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     this.partName = const Value.absent(),
     this.channel = const Value.absent(),
     this.address = const Value.absent(),
+    this.circuit = const Value.absent(),
     this.ipAddress = const Value.absent(),
     this.macAddress = const Value.absent(),
     this.subnet = const Value.absent(),
@@ -5386,6 +5473,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     Expression<String>? partName,
     Expression<String>? channel,
     Expression<String>? address,
+    Expression<String>? circuit,
     Expression<String>? ipAddress,
     Expression<String>? macAddress,
     Expression<String>? subnet,
@@ -5400,6 +5488,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
       if (partName != null) 'part_name': partName,
       if (channel != null) 'channel': channel,
       if (address != null) 'address': address,
+      if (circuit != null) 'circuit': circuit,
       if (ipAddress != null) 'ip_address': ipAddress,
       if (macAddress != null) 'mac_address': macAddress,
       if (subnet != null) 'subnet': subnet,
@@ -5416,6 +5505,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     Value<String?>? partName,
     Value<String?>? channel,
     Value<String?>? address,
+    Value<String?>? circuit,
     Value<String?>? ipAddress,
     Value<String?>? macAddress,
     Value<String?>? subnet,
@@ -5430,6 +5520,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
       partName: partName ?? this.partName,
       channel: channel ?? this.channel,
       address: address ?? this.address,
+      circuit: circuit ?? this.circuit,
       ipAddress: ipAddress ?? this.ipAddress,
       macAddress: macAddress ?? this.macAddress,
       subnet: subnet ?? this.subnet,
@@ -5462,6 +5553,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     if (address.present) {
       map['address'] = Variable<String>(address.value);
     }
+    if (circuit.present) {
+      map['circuit'] = Variable<String>(circuit.value);
+    }
     if (ipAddress.present) {
       map['ip_address'] = Variable<String>(ipAddress.value);
     }
@@ -5490,6 +5584,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
           ..write('partName: $partName, ')
           ..write('channel: $channel, ')
           ..write('address: $address, ')
+          ..write('circuit: $circuit, ')
           ..write('ipAddress: $ipAddress, ')
           ..write('macAddress: $macAddress, ')
           ..write('subnet: $subnet, ')
@@ -12189,6 +12284,7 @@ typedef $$FixturesTableCreateCompanionBuilder =
       Value<String?> accessories,
       Value<int> hung,
       Value<int> focused,
+      Value<int> patched,
     });
 typedef $$FixturesTableUpdateCompanionBuilder =
     FixturesCompanion Function({
@@ -12205,6 +12301,7 @@ typedef $$FixturesTableUpdateCompanionBuilder =
       Value<String?> accessories,
       Value<int> hung,
       Value<int> focused,
+      Value<int> patched,
     });
 
 final class $$FixturesTableReferences
@@ -12434,6 +12531,11 @@ class $$FixturesTableFilterComposer
 
   ColumnFilters<int> get focused => $composableBuilder(
     column: $table.focused,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get patched => $composableBuilder(
+    column: $table.patched,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12705,6 +12807,11 @@ class $$FixturesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get patched => $composableBuilder(
+    column: $table.patched,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FixtureTypesTableOrderingComposer get fixtureTypeId {
     final $$FixtureTypesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -12779,6 +12886,9 @@ class $$FixturesTableAnnotationComposer
 
   GeneratedColumn<int> get focused =>
       $composableBuilder(column: $table.focused, builder: (column) => column);
+
+  GeneratedColumn<int> get patched =>
+      $composableBuilder(column: $table.patched, builder: (column) => column);
 
   $$FixtureTypesTableAnnotationComposer get fixtureTypeId {
     final $$FixtureTypesTableAnnotationComposer composer = $composerBuilder(
@@ -13030,6 +13140,7 @@ class $$FixturesTableTableManager
                 Value<String?> accessories = const Value.absent(),
                 Value<int> hung = const Value.absent(),
                 Value<int> focused = const Value.absent(),
+                Value<int> patched = const Value.absent(),
               }) => FixturesCompanion(
                 id: id,
                 fixtureTypeId: fixtureTypeId,
@@ -13044,6 +13155,7 @@ class $$FixturesTableTableManager
                 accessories: accessories,
                 hung: hung,
                 focused: focused,
+                patched: patched,
               ),
           createCompanionCallback:
               ({
@@ -13060,6 +13172,7 @@ class $$FixturesTableTableManager
                 Value<String?> accessories = const Value.absent(),
                 Value<int> hung = const Value.absent(),
                 Value<int> focused = const Value.absent(),
+                Value<int> patched = const Value.absent(),
               }) => FixturesCompanion.insert(
                 id: id,
                 fixtureTypeId: fixtureTypeId,
@@ -13074,6 +13187,7 @@ class $$FixturesTableTableManager
                 accessories: accessories,
                 hung: hung,
                 focused: focused,
+                patched: patched,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -13318,6 +13432,7 @@ typedef $$FixturePartsTableCreateCompanionBuilder =
       Value<String?> partName,
       Value<String?> channel,
       Value<String?> address,
+      Value<String?> circuit,
       Value<String?> ipAddress,
       Value<String?> macAddress,
       Value<String?> subnet,
@@ -13333,6 +13448,7 @@ typedef $$FixturePartsTableUpdateCompanionBuilder =
       Value<String?> partName,
       Value<String?> channel,
       Value<String?> address,
+      Value<String?> circuit,
       Value<String?> ipAddress,
       Value<String?> macAddress,
       Value<String?> subnet,
@@ -13438,6 +13554,11 @@ class $$FixturePartsTableFilterComposer
 
   ColumnFilters<String> get address => $composableBuilder(
     column: $table.address,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get circuit => $composableBuilder(
+    column: $table.circuit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13579,6 +13700,11 @@ class $$FixturePartsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get circuit => $composableBuilder(
+    column: $table.circuit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get ipAddress => $composableBuilder(
     column: $table.ipAddress,
     builder: (column) => ColumnOrderings(column),
@@ -13654,6 +13780,9 @@ class $$FixturePartsTableAnnotationComposer
 
   GeneratedColumn<String> get address =>
       $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<String> get circuit =>
+      $composableBuilder(column: $table.circuit, builder: (column) => column);
 
   GeneratedColumn<String> get ipAddress =>
       $composableBuilder(column: $table.ipAddress, builder: (column) => column);
@@ -13787,6 +13916,7 @@ class $$FixturePartsTableTableManager
                 Value<String?> partName = const Value.absent(),
                 Value<String?> channel = const Value.absent(),
                 Value<String?> address = const Value.absent(),
+                Value<String?> circuit = const Value.absent(),
                 Value<String?> ipAddress = const Value.absent(),
                 Value<String?> macAddress = const Value.absent(),
                 Value<String?> subnet = const Value.absent(),
@@ -13800,6 +13930,7 @@ class $$FixturePartsTableTableManager
                 partName: partName,
                 channel: channel,
                 address: address,
+                circuit: circuit,
                 ipAddress: ipAddress,
                 macAddress: macAddress,
                 subnet: subnet,
@@ -13815,6 +13946,7 @@ class $$FixturePartsTableTableManager
                 Value<String?> partName = const Value.absent(),
                 Value<String?> channel = const Value.absent(),
                 Value<String?> address = const Value.absent(),
+                Value<String?> circuit = const Value.absent(),
                 Value<String?> ipAddress = const Value.absent(),
                 Value<String?> macAddress = const Value.absent(),
                 Value<String?> subnet = const Value.absent(),
@@ -13828,6 +13960,7 @@ class $$FixturePartsTableTableManager
                 partName: partName,
                 channel: channel,
                 address: address,
+                circuit: circuit,
                 ipAddress: ipAddress,
                 macAddress: macAddress,
                 subnet: subnet,

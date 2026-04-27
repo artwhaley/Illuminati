@@ -188,7 +188,7 @@ All venue mutating actions use the **tracked write layer** (Step 1.7) so renames
 
 ## Phase 4: Fixture Grid — The Main Spreadsheet
 
-### Step 4.0 — Fixture type (template) library
+### Step 4.0 — Fixture type (template) library **[DONE]**
 
 - UI to create, edit, and delete `fixture_types` (name, wattage, part_count, `default_parts_json` editor or simplified part builder). Accessible from a logical place (e.g. Show tab section, or Spreadsheet **Types…** / settings).
 - **On every form that saves a `fixture_type`:** show the spec’s required copy, e.g. *"Changes apply to new fixtures only. Existing instruments in this show are not updated when you save this template."* Optional: link to help explaining clone vs. batch edit in the grid.
@@ -211,12 +211,12 @@ Grid work in this phase assumes **Add fixture**, **clone**, **delete**, and cell
 
 - Add Fixture button: opens a dialog, picks fixture type (from fixture_types), picks position (from lighting_positions), sets unit number. Creates fixture + parts from template. `wattage` copied from fixture_type — emits **`insert`** revision(s) per [SPEC](SPEC.md#revision-operations).
 - Clone Fixture: duplicates the selected fixture and its parts/gels/gobos/accessories — treat as **insert** snapshot(s) for the new copy.
-- Delete Fixture: removes fixture and cascading children — one **`delete`** revision with snapshot per cascade policy, not a fake field update.
+- Delete Fixture: removes fixture and cascading children — one **`delete`** revision with snapshot per cascade policy, not a fake field update. **Delete button in both sidebar and right-click context menu on a grid row.**
 - Inline cell editing: double-click a cell, edit, blur to save. Every save: **`update`** revision rows via the **tracked write layer** (Step 1.7).
 
-**Verify:** Add, clone, delete, and edit. In DB Browser: at least one row each with `operation` = `insert`, `update`, and `delete` (clone = `insert`). Data persists after restart.
+**Verify:** Add, clone, delete (from sidebar and right-click), and edit. In DB Browser: at least one row each with `operation` = `insert`, `update`, and `delete` (clone = `insert`). Data persists after restart.
 
-### Step 4.3 — Gels, gobos, accessories in the sidebar
+### Step 4.3 — Gels, gobos, accessories in the sidebar **[DONE]**
 
 - Sidebar properties panel (from UI mockup) shows selected fixture's details.
 - Gel sub-section: add/remove gels. Shows color, size, maker. For single-part fixtures, gel links to fixture only. For multi-part fixtures, allow selecting which part the gel belongs to (sets `fixture_part_id`).
@@ -241,15 +241,6 @@ Grid work in this phase assumes **Add fixture**, **clone**, **delete**, and cell
 - Filter: filter chips per column (e.g. filter by position = "1st Electric").
 
 **Verify:** With 20+ fixtures loaded, search for "VL3500" — only matching rows show. Filter by position — chip appears, grid filters. Clear filter — all rows return. Sort by channel — rows reorder.
-
-### Step 4.6 — Flagging and maintenance from the grid
-
-- Right-click (or toolbar action) on a fixture row: "Flag for Attention" — sets `fixtures.flagged = 1`, highlights row. "Log Maintenance" — opens a quick-entry dialog to add a `maintenance_log` row.
-- Flagged rows show a visual indicator in the grid (e.g. a small icon or row tint).
-- Clearing a flag from the Maintenance tab (marking the maintenance log resolved) updates `fixtures.flagged = 0`.
-- These actions use an **operational maintenance repository**, not the supervisor-tracked revision queue (see [SPEC — Revision scope](SPEC.md#revision-scope)).
-
-**Verify:** Flag a fixture from the grid. Row shows indicator. Go to Maintenance tab — fixture appears in unresolved list. Resolve it from Maintenance tab. Return to grid — flag indicator is gone. DB Browser shows maintenance rows / flag changes, but no supervisor `revisions` rows for operational-only actions.
 
 ---
 
@@ -315,6 +306,15 @@ Grid work in this phase assumes **Add fixture**, **clone**, **delete**, and cell
 - Filter by fixture or position (click a fixture in the grid → "View Notes" takes you here filtered).
 
 **Verify:** Add 3 notes; one linked to a fixture, one linked to a position, one free-standing. All appear in the list. Filter by the fixture — only the linked note shows. Delete one. Persist across restart.
+
+### Step 6.0 — Flagging from the grid
+
+- Right-click (or toolbar action) on a fixture row: "Flag for Attention" — sets `fixtures.flagged = 1`, highlights row. "Log Maintenance" — opens a quick-entry dialog to add a `maintenance_log` row.
+- Flagged rows show a visual indicator in the grid (e.g. a small icon or row tint).
+- Clearing a flag from the Maintenance tab (marking the maintenance log resolved) updates `fixtures.flagged = 0`.
+- These actions use an **operational maintenance repository**, not the supervisor-tracked revision queue (see [SPEC — Revision scope](SPEC.md#revision-scope)).
+
+**Verify:** Flag a fixture from the grid. Row shows indicator. Go to Maintenance tab — fixture appears in unresolved list. Resolve it from Maintenance tab. Return to grid — flag indicator is gone. DB Browser shows maintenance rows / flag changes, but no supervisor `revisions` rows for operational-only actions.
 
 ### Step 6.2 — Maintenance tab
 

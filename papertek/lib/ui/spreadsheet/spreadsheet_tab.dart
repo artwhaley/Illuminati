@@ -62,7 +62,10 @@ const _kDefaultWidths = {
   'notes':       120.0,
 };
 
-const _kReadOnlyCols = {'#', 'dimmer', 'circuit', 'patch', 'hung', 'focused'};
+// Boolean columns use checkboxes in the grid — allowEditing stays false so
+// double-tap doesn't open a text field.  Interaction is handled in buildRow.
+const _kReadOnlyCols  = {'#', 'patch', 'hung', 'focused'};
+const _kBooleanCols   = {'patch', 'hung', 'focused'};
 const _kNumericCols  = {'#', 'chan', 'unit'};
 const _kAlwaysVisible = {'#'};
 
@@ -94,7 +97,7 @@ class _FixtureDataSource extends DataGridSource {
   List<String> _visibleCols = List.of(_kColOrder);
 
   VoidCallback? onSortChanged;
-  final Future<void> Function(FixtureRow fixture, String col, String? value)
+  final Future<void> Function(FixtureRow fixture, String col, String? value, int? partOrder)
       onCellEditCommit;
   final VoidCallback onNativeEditComplete;
   final void Function(FixtureRow fixture, String col) onNativeEditStart;
@@ -424,6 +427,7 @@ class _FixtureDataSource extends DataGridSource {
         fixture,
         colName,
         nextText.isEmpty ? null : nextText,
+        null, // _FixtureDataSource is always single-part
       );
     } finally {
       onNativeEditComplete();
@@ -478,7 +482,18 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
         _isEditingGridCell = true;
       },
     );
-    _minimalSource = _MinimalFixtureSource(onCellEditCommit: _onEdit);
+    _minimalSource = _MinimalFixtureSource(
+      onCellEditCommit: _onEdit,
+      onBooleanSet: (fixture, col, value) async {
+        final repo = ref.read(fixtureRepoProvider);
+        if (repo == null) return;
+        switch (col) {
+          case 'patch':   await repo.setPatched(fixture.id, value: value);
+          case 'hung':    await repo.setHung(fixture.id, value: value);
+          case 'focused': await repo.setFocused(fixture.id, value: value);
+        }
+      },
+    );
     _source.onSortChanged = () {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
@@ -612,12 +627,28 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
 
   // ── Data edit handler ─────────────────────────────────────────────────────
 
-  Future<void> _onEdit(FixtureRow fixture, String col, String? value) async {
+  // partOrder non-null means a child (part-specific) edit on a multi-part fixture.
+  Future<void> _onEdit(
+      FixtureRow fixture, String col, String? value, int? partOrder) async {
     final repo = ref.read(fixtureRepoProvider);
     if (repo == null) return;
+
+    if (partOrder != null) {
+      switch (col) {
+        case 'chan':    return repo.updatePartChannel(fixture.id, partOrder, value);
+        case 'dimmer':  return repo.updatePartAddress(fixture.id, partOrder, value);
+        case 'circuit': return repo.updatePartCircuit(fixture.id, partOrder, value);
+      }
+      return;
+    }
+
     switch (col) {
       case 'chan':
         return repo.updateIntensityChannel(fixture.id, value);
+      case 'dimmer':
+        return repo.updatePartAddress(fixture.id, 0, value);
+      case 'circuit':
+        return repo.updatePartCircuit(fixture.id, 0, value);
       case 'position':
         return repo.updatePosition(fixture.id, value);
       case 'unit':
@@ -644,6 +675,75 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   }
 
   // ── Add / Clone ───────────────────────────────────────────────────────────
+
+  Future<void> _deleteFixture(FixtureRow fixture) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete fixture?'),
+        content: Text(
+          'Delete ${fixture.fixtureType ?? 'fixture'} in '
+          '${fixture.position ?? 'unknown position'} (unit ${fixture.unitNumber ?? '?'})? '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final repo = ref.read(fixtureRepoProvider);
+    if (repo == null) return;
+    await repo.deleteFixture(fixture.id);
+    _minimalSource.setSelectedCell(null, null);
+    _sidebarSelection.value = null;
+  }
+
+  Future<void> _showFixtureContextMenu(
+      Offset globalPosition, FixtureRow fixture) async {
+    final theme = Theme.of(context);
+    final result = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        globalPosition.dx,
+        globalPosition.dy,
+        globalPosition.dx + 1,
+        globalPosition.dy + 1,
+      ),
+      items: [
+        PopupMenuItem(
+          value: 'clone',
+          child: Row(children: [
+            const Icon(Icons.copy_outlined, size: 16),
+            const SizedBox(width: 8),
+            const Text('Clone Fixture'),
+          ]),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(children: [
+            Icon(Icons.delete_outline, size: 16, color: theme.colorScheme.error),
+            const SizedBox(width: 8),
+            Text('Delete Fixture',
+                style: TextStyle(color: theme.colorScheme.error)),
+          ]),
+        ),
+      ],
+    );
+    if (!mounted) return;
+    if (result == 'clone') await _cloneFixture();
+    if (result == 'delete') await _deleteFixture(fixture);
+  }
 
   Future<void> _addFixture() async {
     final repo = ref.read(fixtureRepoProvider);
@@ -773,8 +873,9 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                     canClone: sel != null,
                     onAdd: _addFixture,
                     onClone: _cloneFixture,
+                    onDelete: () { if (sel != null) _deleteFixture(sel); },
                     onEdit: (col, val) =>
-                        sel != null ? _onEdit(sel, col, val) : Future.value(),
+                        sel != null ? _onEdit(sel, col, val, null) : Future.value(),
                   );
                 },
               ),
@@ -869,6 +970,14 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                               onCurrentCellActivated: (_, current) {
                                 _syncMinimalSelectionFromRowCol(current);
                               },
+                              onCellSecondaryTap: (details) {
+                                _syncMinimalSelectionFromRowCol(details.rowColumnIndex);
+                                final rowIdx = details.rowColumnIndex.rowIndex - 1;
+                                if (rowIdx < 0 || rowIdx >= _minimalSource.rows.length) return;
+                                final fixture = _minimalSource.fixtureForRow(_minimalSource.rows[rowIdx]);
+                                if (fixture == null) return;
+                                _showFixtureContextMenu(details.globalPosition, fixture);
+                              },
                             ),
                           );
                         },
@@ -898,8 +1007,9 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
               canClone: sel != null,
               onAdd: _addFixture,
               onClone: _cloneFixture,
+              onDelete: () { if (sel != null) _deleteFixture(sel); },
               onEdit: (col, val) =>
-                  sel != null ? _onEdit(sel, col, val) : Future.value(),
+                  sel != null ? _onEdit(sel, col, val, null) : Future.value(),
             );
           },
         ),
@@ -968,6 +1078,15 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                           );
                           _sidebarSelection.value = fixture;
                         },
+                        onCellSecondaryTap: (details) {
+                          final rowIdx = details.rowColumnIndex.rowIndex - 1;
+                          if (rowIdx < 0 || rowIdx >= _minimalSource.rows.length) return;
+                          final fixture = _minimalSource.fixtureForRow(_minimalSource.rows[rowIdx]);
+                          if (fixture == null) return;
+                          _minimalSource.setSelectedCell(fixture.id, details.column.columnName);
+                          _sidebarSelection.value = fixture;
+                          _showFixtureContextMenu(details.globalPosition, fixture);
+                        },
                       ),
                     );
                   },
@@ -1003,7 +1122,8 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   void _syncMinimalSelectionFromRowCol(RowColumnIndex rci) {
     final rowIdx = rci.rowIndex - 1;
     if (rowIdx < 0 || rowIdx >= _minimalSource.rows.length) return;
-    final fixture = _minimalSource.fixtureForRow(_minimalSource.rows[rowIdx]);
+    final row = _minimalSource.rows[rowIdx];
+    final fixture = _minimalSource.fixtureForRow(row);
     if (fixture == null) return;
 
     String? colName;
@@ -1018,17 +1138,28 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
 }
 
 class _MinimalFixtureSource extends DataGridSource {
-  _MinimalFixtureSource({required this.onCellEditCommit});
+  _MinimalFixtureSource({
+    required this.onCellEditCommit,
+    required this.onBooleanSet,
+  });
 
-  final Future<void> Function(FixtureRow fixture, String col, String? value)
+  final Future<void> Function(FixtureRow fixture, String col, String? value, int? partOrder)
       onCellEditCommit;
+  /// Called when a checkbox cell changes. [col] is 'patch', 'hung', or 'focused'.
+  final Future<void> Function(FixtureRow fixture, String col, bool value)
+      onBooleanSet;
 
   List<FixtureRow> _allFixtures = [];
   List<FixtureRow> _filteredFixtures = [];
 
   final Map<DataGridRow, FixtureRow> _rowToFixture = {};
+  // null = parent/single row; non-null = child row for that part order
+  final Map<DataGridRow, int?> _rowToPartOrder = {};
   List<DataGridRow> _rows = [];
   List<String> _visibleCols = List.of(_kColOrder);
+
+  bool isChildRow(DataGridRow row) => _rowToPartOrder[row] != null;
+  int? partOrderForRow(DataGridRow row) => _rowToPartOrder[row];
 
   TextEditingController? _editingController;
   String? _newCellValue;
@@ -1166,8 +1297,12 @@ class _MinimalFixtureSource extends DataGridSource {
 
     _filteredFixtures = list.toList();
     _rowToFixture.clear();
-    _rows = _filteredFixtures.map((f) {
-      final row = DataGridRow(cells: [
+    _rowToPartOrder.clear();
+    _rows = [];
+
+    for (final f in _filteredFixtures) {
+      // ── Parent / single row ──────────────────────────────────────────────
+      final parentRow = DataGridRow(cells: [
         DataGridCell<int>(columnName: '#', value: f.id),
         DataGridCell<String>(columnName: 'chan', value: f.channel ?? ''),
         DataGridCell<String>(columnName: 'dimmer', value: f.dimmer ?? ''),
@@ -1187,9 +1322,39 @@ class _MinimalFixtureSource extends DataGridSource {
         DataGridCell<String>(columnName: 'circuit', value: f.circuit ?? ''),
         const DataGridCell<String>(columnName: 'notes', value: ''),
       ]);
-      _rowToFixture[row] = f;
-      return row;
-    }).toList();
+      _rowToFixture[parentRow] = f;
+      _rowToPartOrder[parentRow] = null;
+      _rows.add(parentRow);
+
+      // ── Child rows: always shown for multi-part fixtures ─────────────────
+      if (f.isMultiPart) {
+        for (final part in f.parts) {
+          final childRow = DataGridRow(cells: [
+            DataGridCell<int>(columnName: '#', value: part.partOrder + 1),
+            DataGridCell<String>(columnName: 'chan', value: part.channel ?? ''),
+            DataGridCell<String>(columnName: 'dimmer', value: part.address ?? ''),
+            const DataGridCell<String>(columnName: 'position', value: ''),
+            const DataGridCell<String>(columnName: 'unit', value: ''),
+            const DataGridCell<String>(columnName: 'type', value: ''),
+            const DataGridCell<String>(columnName: 'function', value: ''),
+            const DataGridCell<String>(columnName: 'focus', value: ''),
+            const DataGridCell<String>(columnName: 'accessories', value: ''),
+            DataGridCell<String>(columnName: 'ip', value: part.ipAddress ?? ''),
+            DataGridCell<String>(columnName: 'subnet', value: part.subnet ?? ''),
+            DataGridCell<String>(columnName: 'mac', value: part.macAddress ?? ''),
+            DataGridCell<String>(columnName: 'ipv6', value: part.ipv6 ?? ''),
+            const DataGridCell<String>(columnName: 'hung', value: ''),
+            const DataGridCell<String>(columnName: 'patch', value: ''),
+            const DataGridCell<String>(columnName: 'focused', value: ''),
+            const DataGridCell<String>(columnName: 'circuit', value: ''),
+            const DataGridCell<String>(columnName: 'notes', value: ''),
+          ]);
+          _rowToFixture[childRow] = f;
+          _rowToPartOrder[childRow] = part.partOrder;
+          _rows.add(childRow);
+        }
+      }
+    }
   }
 
   @override
@@ -1198,27 +1363,81 @@ class _MinimalFixtureSource extends DataGridSource {
   @override
   DataGridRowAdapter buildRow(DataGridRow row) {
     final fixture = _rowToFixture[row];
+    if (fixture == null) return DataGridRowAdapter(color: Colors.transparent, cells: []);
     final index = _rows.indexOf(row);
-    final selected = fixture != null && fixture.id == _selectedFixtureId;
-    final bg = selected ? _bgSel : (index.isEven ? Colors.transparent : _bgAlt);
+    final partOrder = _rowToPartOrder[row];
+    final isChild = partOrder != null;
+    final selected = fixture.id == _selectedFixtureId;
 
+    // ── Child row ────────────────────────────────────────────────────────────
+    if (isChild) {
+      final bgChild = (_theme?.colorScheme.surfaceContainerHighest ??
+              const Color(0xFF2A2D34))
+          .withValues(alpha: 0.35);
+      final byName = {
+        for (final cell in row.getCells()) cell.columnName: cell.value?.toString() ?? '',
+      };
+      return DataGridRowAdapter(
+        color: bgChild,
+        cells: _visibleCols.map((name) {
+          String text;
+          Color color;
+          if (name == '#') {
+            text = '  ·${partOrder + 1}';
+            color = _textMuted;
+          } else if (name == 'chan') {
+            text = byName['chan'] ?? '';
+            color = _accent;
+          } else if (name == 'dimmer') {
+            text = byName['dimmer'] ?? '';
+            color = _textMuted;
+          } else {
+            text = byName[name] ?? '';
+            color = _textMuted;
+          }
+          return Container(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 16, right: 8),
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.jetBrainsMono(fontSize: 13, color: color),
+            ),
+          );
+        }).toList(),
+      );
+    }
+
+    // ── Parent / single row ──────────────────────────────────────────────────
+    final isMulti = fixture.isMultiPart;
+    final bg = selected ? _bgSel : (index.isEven ? Colors.transparent : _bgAlt);
     final byName = {
       for (final cell in row.getCells()) cell.columnName: cell.value?.toString() ?? '',
     };
+
     return DataGridRowAdapter(
       color: bg,
       cells: _visibleCols.map((name) {
         final isSelectedCell = selected && name == _selectedColName;
         var color = _textMain;
         var bold = false;
+        // Multi-part parent rows show fixture-level data only; part-level columns are blank.
+        String text = (isMulti && const {'chan', 'dimmer', 'circuit', 'ip', 'subnet', 'mac', 'ipv6'}.contains(name))
+            ? ''
+            : (byName[name] ?? '');
+
         switch (name) {
           case '#':
             color = selected ? _textMain : _textMuted;
             bold = selected;
             break;
           case 'chan':
-            color = _accent;
-            bold = true;
+            if (!isMulti) {
+              color = _accent;
+              bold = true;
+            } else {
+              color = _textMuted;
+            }
             break;
           case 'dimmer':
           case 'circuit':
@@ -1241,7 +1460,7 @@ class _MinimalFixtureSource extends DataGridSource {
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            byName[name] ?? '',
+            text,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.jetBrainsMono(
               fontSize: 13,
@@ -1261,25 +1480,39 @@ class _MinimalFixtureSource extends DataGridSource {
     GridColumn column,
     CellSubmit submitCell,
   ) {
-    final col = column.columnName;
-    if (_kReadOnlyCols.contains(col)) return null;
     final fixture = _rowToFixture[row];
     if (fixture == null) return null;
+    final col = column.columnName;
+    final partOrder = _rowToPartOrder[row];
 
-    final initial = switch (col) {
-      'chan' => fixture.channel ?? '',
-      'position' => fixture.position ?? '',
-      'unit' => fixture.unitNumber?.toString() ?? '',
-      'type' => fixture.fixtureType ?? '',
-      'function' => fixture.function ?? '',
-      'focus' => fixture.focus ?? '',
-      'accessories' => fixture.accessories ?? '',
-      'ip' => fixture.ipAddress ?? '',
-      'subnet' => fixture.subnet ?? '',
-      'mac' => fixture.macAddress ?? '',
-      'ipv6' => fixture.ipv6 ?? '',
-      _ => '',
-    };
+    String initial;
+    if (partOrder != null) {
+      final part = fixture.parts.where((p) => p.partOrder == partOrder).firstOrNull;
+      if (col == 'chan') {
+        initial = part?.channel ?? '';
+      } else if (col == 'dimmer') {
+        initial = part?.address ?? '';
+      } else {
+        return null;
+      }
+    } else {
+      if (_kReadOnlyCols.contains(col)) return null;
+      initial = switch (col) {
+        'chan'         => fixture.channel ?? '',
+        'dimmer'       => fixture.dimmer ?? '',
+        'position'     => fixture.position ?? '',
+        'unit'         => fixture.unitNumber?.toString() ?? '',
+        'type'         => fixture.fixtureType ?? '',
+        'function'     => fixture.function ?? '',
+        'focus'        => fixture.focus ?? '',
+        'accessories'  => fixture.accessories ?? '',
+        'ip'           => fixture.ipAddress ?? '',
+        'subnet'       => fixture.subnet ?? '',
+        'mac'          => fixture.macAddress ?? '',
+        'ipv6'         => fixture.ipv6 ?? '',
+        _              => '',
+      };
+    }
 
     _editingController?.dispose();
     _editingController = TextEditingController(text: initial);
@@ -1292,7 +1525,7 @@ class _MinimalFixtureSource extends DataGridSource {
         controller: _editingController,
         autofocus: true,
         textInputAction: TextInputAction.done,
-        onChanged: (value) => _newCellValue = value,
+        onChanged: (v) => _newCellValue = v,
         onSubmitted: (_) => submitCell(),
       ),
     );
@@ -1307,57 +1540,35 @@ class _MinimalFixtureSource extends DataGridSource {
     final fixture = _rowToFixture[dataGridRow];
     if (fixture == null) return;
     final col = column.columnName;
-    if (_kReadOnlyCols.contains(col)) return;
+    final partOrder = _rowToPartOrder[dataGridRow];
 
     final nextText = (_newCellValue ?? _editingController?.text ?? '').trim();
     _editingController?.dispose();
     _editingController = null;
     _newCellValue = null;
 
+    final val = nextText.isEmpty ? null : nextText;
+
+    if (partOrder != null) {
+      if (col == 'chan')   await onCellEditCommit(fixture, 'chan',   val, partOrder);
+      if (col == 'dimmer') await onCellEditCommit(fixture, 'dimmer', val, partOrder);
+      return;
+    }
+
+    if (_kReadOnlyCols.contains(col)) return;
     switch (col) {
-      case 'chan':
-        await onCellEditCommit(fixture, 'chan', nextText.isEmpty ? null : nextText);
-        break;
-      case 'position':
-        await onCellEditCommit(fixture, 'position', nextText.isEmpty ? null : nextText);
-        break;
-      case 'unit':
-        await onCellEditCommit(fixture, 'unit', nextText.isEmpty ? null : nextText);
-        break;
-      case 'type':
-        await onCellEditCommit(fixture, 'type', nextText.isEmpty ? null : nextText);
-        break;
-      case 'function':
-        await onCellEditCommit(
-          fixture,
-          'function',
-          nextText.isEmpty ? null : nextText,
-        );
-        break;
-      case 'focus':
-        await onCellEditCommit(fixture, 'focus', nextText.isEmpty ? null : nextText);
-        break;
-      case 'accessories':
-        await onCellEditCommit(
-          fixture,
-          'accessories',
-          nextText.isEmpty ? null : nextText,
-        );
-        break;
-      case 'ip':
-        await onCellEditCommit(fixture, 'ip', nextText.isEmpty ? null : nextText);
-        break;
-      case 'subnet':
-        await onCellEditCommit(fixture, 'subnet', nextText.isEmpty ? null : nextText);
-        break;
-      case 'mac':
-        await onCellEditCommit(fixture, 'mac', nextText.isEmpty ? null : nextText);
-        break;
-      case 'ipv6':
-        await onCellEditCommit(fixture, 'ipv6', nextText.isEmpty ? null : nextText);
-        break;
-      default:
-        return;
+      case 'chan':        await onCellEditCommit(fixture, col, val, null);
+      case 'dimmer':     await onCellEditCommit(fixture, col, val, null);
+      case 'position':   await onCellEditCommit(fixture, col, val, null);
+      case 'unit':       await onCellEditCommit(fixture, col, val, null);
+      case 'type':       await onCellEditCommit(fixture, col, val, null);
+      case 'function':   await onCellEditCommit(fixture, col, val, null);
+      case 'focus':      await onCellEditCommit(fixture, col, val, null);
+      case 'accessories':await onCellEditCommit(fixture, col, val, null);
+      case 'ip':         await onCellEditCommit(fixture, col, val, null);
+      case 'subnet':     await onCellEditCommit(fixture, col, val, null);
+      case 'mac':        await onCellEditCommit(fixture, col, val, null);
+      case 'ipv6':       await onCellEditCommit(fixture, col, val, null);
     }
   }
 }
@@ -1430,6 +1641,7 @@ class _Sidebar extends StatelessWidget {
     required this.canClone,
     required this.onAdd,
     required this.onClone,
+    required this.onDelete,
     required this.onEdit,
   });
 
@@ -1438,6 +1650,7 @@ class _Sidebar extends StatelessWidget {
   final bool canClone;
   final VoidCallback onAdd;
   final VoidCallback onClone;
+  final VoidCallback onDelete;
   final Future<void> Function(String col, String? value) onEdit;
 
   @override
@@ -1468,6 +1681,21 @@ class _Sidebar extends StatelessWidget {
                   icon: const Icon(Icons.copy_outlined, size: 16),
                   label: const Text('Clone Fixture'),
                   style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
+                ),
+                const SizedBox(height: 6),
+                OutlinedButton.icon(
+                  onPressed: selected != null ? onDelete : null,
+                  icon: Icon(Icons.delete_outline, size: 16,
+                      color: selected != null ? theme.colorScheme.error : null),
+                  label: const Text('Delete Fixture'),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: theme.colorScheme.error,
+                    side: BorderSide(
+                        color: selected != null
+                            ? theme.colorScheme.error.withValues(alpha: 0.5)
+                            : theme.colorScheme.outlineVariant),
+                  ),
                 ),
               ],
             ),
@@ -1817,7 +2045,6 @@ class _Toolbar extends StatelessWidget {
   final String? filterLabel;
   final VoidCallback onQuickFilter;
   final VoidCallback onClearFilter;
-  // Receives the button's BuildContext so showMenu can position correctly.
   final void Function(BuildContext) onColumnsPressed;
 
   @override
@@ -1950,7 +2177,8 @@ class _Toolbar extends StatelessWidget {
         ),
       );
 
-  Widget _chip(BuildContext ctx, IconData icon, String label, VoidCallback onTap) =>
+  Widget _chip(BuildContext ctx, IconData icon, String label, VoidCallback onTap,
+          {bool active = false}) =>
       InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(4),
@@ -1958,18 +2186,28 @@ class _Toolbar extends StatelessWidget {
           height: 28,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerLowest,
+            color: active
+                ? theme.colorScheme.primaryContainer
+                : theme.colorScheme.surfaceContainerLowest,
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
+            border: Border.all(
+                color: active
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outlineVariant),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 15,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+              Icon(icon,
+                  size: 15,
+                  color: active
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.5)),
               const SizedBox(width: 5),
               Text(label,
                   style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                      color: active
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.5))),
             ],
           ),
         ),

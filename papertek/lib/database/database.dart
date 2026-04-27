@@ -64,7 +64,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -133,6 +133,18 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(fixtures, fixtures.accessories);
             await m.addColumn(fixtures, fixtures.hung);
             await m.addColumn(fixtures, fixtures.focused);
+          }
+          if (from < 12) {
+            await m.addColumn(fixtures, fixtures.patched);
+            await m.addColumn(fixtureParts, fixtureParts.circuit);
+            // Seed patched from the old derived rule: patched if channel or address was set.
+            await customStatement('''
+              UPDATE fixtures SET patched = 1 WHERE id IN (
+                SELECT DISTINCT fixture_id FROM fixture_parts
+                WHERE part_type = 'intensity'
+                  AND (channel IS NOT NULL OR address IS NOT NULL)
+              )
+            ''');
           }
         },
         beforeOpen: (details) async {

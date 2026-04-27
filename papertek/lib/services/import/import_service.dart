@@ -66,11 +66,16 @@ class ImportService {
 
     final batchId = _tracked.beginImportBatch();
 
+    // Group rows that carry a partNumber into a single fixture per
+    // (position, unit#, type) key; ungrouped rows stay as single-element lists.
+    final rowGroups = _buildRowGroups(rows);
+
     await _db.transaction(() async {
-      for (final row in rows) {
+      for (final group in rowGroups) {
+        final primary = group.first;
         try {
-          final fixtureId = await _importRow(
-            row: row,
+          final fixtureId = await _importRowGroup(
+            rowGroup: group,
             batchId: batchId,
             positionCache: positionCache,
             fixtureTypeCache: fixtureTypeCache,
@@ -81,7 +86,7 @@ class ImportService {
           fixturesCreated++;
         } catch (e) {
           rowsSkipped++;
-          warnings.add('Row ${row.csvRowIndex}: skipped — $e');
+          warnings.add('Row ${primary.csvRowIndex}: skipped — $e');
         }
       }
     });
@@ -109,33 +114,74 @@ class ImportService {
     );
   }
 
-  // ── Per-row logic ────────────────────────────────────────────────────────
+  // ── Row grouping ─────────────────────────────────────────────────────────
 
-  Future<int> _importRow({
-    required NormalizedRow row,
+  /// Collects consecutive rows that share the same (position, unit#, type) key
+  /// AND carry a non-null partNumber into a single group; every other row forms
+  /// its own single-element group. Order within the original list is preserved.
+  List<List<NormalizedRow>> _buildRowGroups(List<NormalizedRow> rows) {
+    final groups = <List<NormalizedRow>>[];
+    // key → index into [groups] for the in-progress multi-part group.
+    final keyToGroup = <String, List<NormalizedRow>>{};
+
+    for (final row in rows) {
+      final partNum = row.get(PaperTekImportField.partNumber);
+      if (partNum != null) {
+        final key = [
+          (row.get(PaperTekImportField.position) ?? '').toLowerCase(),
+          (row.get(PaperTekImportField.unitNumber) ?? '').toLowerCase(),
+          (row.get(PaperTekImportField.fixtureType) ?? '').toLowerCase(),
+        ].join('|');
+        final existing = keyToGroup[key];
+        if (existing != null) {
+          existing.add(row);
+        } else {
+          final newGroup = [row];
+          keyToGroup[key] = newGroup;
+          groups.add(newGroup);
+        }
+      } else {
+        groups.add([row]);
+      }
+    }
+    return groups;
+  }
+
+  // ── Per-fixture logic ─────────────────────────────────────────────────────
+
+  /// Imports one logical fixture from one or more CSV rows.
+  ///
+  /// Single-part: [rowGroup] has one element — existing behaviour.
+  /// Multi-part:  [rowGroup] has N elements (e.g. 3 cells of a cyc) — one
+  ///              fixture row is created with N intensity parts, one per
+  ///              part-row, ordered by their position in the group.
+  Future<int> _importRowGroup({
+    required List<NormalizedRow> rowGroup,
     required String batchId,
     required Map<String, int> positionCache,
     required Map<String, int> fixtureTypeCache,
     required void Function() onPositionCreated,
     required void Function() onTypeCreated,
   }) async {
+    final primary = rowGroup.first;
+
     // Resolve (or auto-create) position.
-    final positionName = row.get(PaperTekImportField.position)!;
+    final positionName = primary.get(PaperTekImportField.position)!;
     await _resolvePosition(positionName, positionCache, onPositionCreated);
 
     // Resolve (or auto-create) fixture type.
     int? fixtureTypeId;
-    final typeName = row.get(PaperTekImportField.fixtureType);
+    final typeName = primary.get(PaperTekImportField.fixtureType);
     if (typeName != null) {
       fixtureTypeId = await _resolveFixtureType(
         typeName,
-        wattage: row.get(PaperTekImportField.wattage),
+        wattage: primary.get(PaperTekImportField.wattage),
         cache: fixtureTypeCache,
         onCreated: onTypeCreated,
       );
     }
 
-    final unitStr = row.get(PaperTekImportField.unitNumber);
+    final unitStr = primary.get(PaperTekImportField.unitNumber);
     final unitNumber = unitStr != null ? int.tryParse(unitStr) : null;
 
     // Create the fixture row.
@@ -144,25 +190,27 @@ class ImportService {
           fixtureType: Value(typeName),
           position: Value(positionName),
           unitNumber: Value(unitNumber),
-          wattage: Value(row.get(PaperTekImportField.wattage)),
-          function: Value(row.get(PaperTekImportField.function)),
-          focus: Value(row.get(PaperTekImportField.focus)),
+          wattage: Value(primary.get(PaperTekImportField.wattage)),
+          function: Value(primary.get(PaperTekImportField.function)),
+          focus: Value(primary.get(PaperTekImportField.focus)),
         ));
 
-    // Primary fixture_parts row (intensity part).
-    // Channel is stored as a soft-link text value (not a FK).
-    // Circuit maps to the address soft-link field per the data model.
-    await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
-          fixtureId: Value(fixtureId),
-          partOrder: const Value(0),
-          partType: const Value('intensity'),
-          channel: Value(row.get(PaperTekImportField.channel)),
-          address: Value(row.get(PaperTekImportField.circuit)),
-          extrasJson: _buildExtrasJson(row),
-        ));
+    // Intensity parts — one per row in the group (partOrder = row index).
+    // For single-part fixtures this is one insert at partOrder 0, same as before.
+    for (var i = 0; i < rowGroup.length; i++) {
+      final partRow = rowGroup[i];
+      await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+            fixtureId: Value(fixtureId),
+            partOrder: Value(i),
+            partType: const Value('intensity'),
+            channel: Value(partRow.get(PaperTekImportField.channel)),
+            address: Value(partRow.get(PaperTekImportField.circuit)),
+            extrasJson: _buildExtrasJson(partRow),
+          ));
+    }
 
-    // Create a Gel record when a non-empty, non-"open" color is present.
-    final color = row.get(PaperTekImportField.color);
+    // Gel and gobo records are sourced from the primary row only.
+    final color = primary.get(PaperTekImportField.color);
     if (color != null && !_isNoColor(color)) {
       await _db.into(_db.gels).insert(GelsCompanion(
             color: Value(color),
@@ -170,9 +218,8 @@ class ImportService {
           ));
     }
 
-    // Create Gobo records.
     for (final goboField in [PaperTekImportField.gobo1, PaperTekImportField.gobo2]) {
-      final goboNum = row.get(goboField);
+      final goboNum = primary.get(goboField);
       if (goboNum != null) {
         await _db.into(_db.gobos).insert(GobosCompanion(
               goboNumber: Value(goboNum),
@@ -182,8 +229,6 @@ class ImportService {
     }
 
     // Record a per-fixture insert revision linked to the batch.
-    // Snapshot captures the key display fields; child rows (parts/gels) are
-    // summarised in the batch summary rather than repeated per-row.
     await _db.into(_db.revisions).insert(RevisionsCompanion(
           operation: const Value('insert'),
           targetTable: const Value('fixtures'),
@@ -193,7 +238,8 @@ class ImportService {
             'position': positionName,
             'unit': unitNumber,
             'type': typeName,
-            'channel': row.get(PaperTekImportField.channel),
+            'part_count': rowGroup.length,
+            'channel': primary.get(PaperTekImportField.channel),
           })),
           batchId: Value(batchId),
           userId: const Value('local-user'),

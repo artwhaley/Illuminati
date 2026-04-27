@@ -25,6 +25,8 @@ class Fixtures extends Table {
   TextColumn get accessories => text().nullable()();
   IntColumn get hung => integer().withDefault(const Constant(0))();
   IntColumn get focused => integer().withDefault(const Constant(0))();
+  // v12 additions
+  IntColumn get patched => integer().withDefault(const Constant(0))();
 }
 
 class FixtureParts extends Table {
@@ -37,6 +39,7 @@ class FixtureParts extends Table {
   // Soft-links
   TextColumn get channel => text().nullable()();
   TextColumn get address => text().nullable()();
+  TextColumn get circuit => text().nullable()();
   TextColumn get ipAddress => text().nullable()();
   TextColumn get macAddress => text().nullable()();
   TextColumn get subnet => text().nullable()();

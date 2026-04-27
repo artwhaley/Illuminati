@@ -1,6 +1,29 @@
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 
+/// One intensity part of a multi-part fixture (e.g. one cell of a cyc).
+class FixturePartRow {
+  const FixturePartRow({
+    required this.partOrder,
+    this.channel,
+    this.address,
+    this.circuit,
+    this.ipAddress,
+    this.subnet,
+    this.macAddress,
+    this.ipv6,
+  });
+
+  final int partOrder;
+  final String? channel;
+  final String? address;
+  final String? circuit;
+  final String? ipAddress;
+  final String? subnet;
+  final String? macAddress;
+  final String? ipv6;
+}
+
 class FixtureRow {
   const FixtureRow({
     required this.id,
@@ -26,13 +49,14 @@ class FixtureRow {
     this.ipv6,
     required this.hung,
     required this.focused,
+    this.parts = const [],
   });
 
   final int id;
   final String? channel;
-  final String? dimmer;    // the dimmer/address label looked up from intensity part
-  final String? circuit;
-  final String? position;  // null = "Unspecified"
+  final String? dimmer;   // raw address from intensity part (fixture_parts.address)
+  final String? circuit;  // raw circuit from intensity part (fixture_parts.circuit)
+  final String? position;
   final int? unitNumber;
   final String? fixtureType;
   final String? wattage;
@@ -51,6 +75,9 @@ class FixtureRow {
   final String? ipv6;
   final bool hung;
   final bool focused;
+  final List<FixturePartRow> parts;
+
+  bool get isMultiPart => parts.length > 1;
 }
 
 class FixtureRepository {
@@ -64,32 +91,25 @@ class FixtureRepository {
           ..orderBy([(f) => OrderingTerm.asc(f.sortOrder)]))
         .watch()
         .asyncMap((fixtures) async {
-      final parts   = await _db.select(_db.fixtureParts).get();
-      final dimmers = await _db.select(_db.dimmers).get();
-      final circuits = await _db.select(_db.circuits).get();
+      final parts = await _db.select(_db.fixtureParts).get();
 
       return fixtures.map((f) {
         final fParts = parts.where((p) => p.fixtureId == f.id).toList()
           ..sort((a, b) => a.partOrder.compareTo(b.partOrder));
 
-        final intensityPart =
-            fParts.where((p) => p.partType == 'intensity').firstOrNull;
+        final intensityParts = fParts
+            .where((p) => p.partType == 'intensity')
+            .toList()
+          ..sort((a, b) => a.partOrder.compareTo(b.partOrder));
+        final intensityPart = intensityParts.firstOrNull;
         final gelPart  = fParts.where((p) => p.partType == 'gel').firstOrNull;
         final goboParts = fParts.where((p) => p.partType == 'gobo').toList();
-
-        final addr      = intensityPart?.address;
-        final dimmerName = addr != null
-            ? dimmers.where((d) => d.address == addr).firstOrNull?.name
-            : null;
-        final circuitName = dimmerName != null
-            ? circuits.where((c) => c.dimmer == dimmerName).firstOrNull?.name
-            : null;
 
         return FixtureRow(
           id: f.id,
           channel: intensityPart?.channel,
-          dimmer: dimmerName,
-          circuit: circuitName,
+          dimmer: intensityPart?.address,
+          circuit: intensityPart?.circuit,
           position: f.position,
           unitNumber: f.unitNumber,
           fixtureType: f.fixtureType,
@@ -100,7 +120,7 @@ class FixtureRepository {
           function: f.function,
           focus: f.focus,
           flagged: f.flagged != 0,
-          patched: intensityPart?.channel != null || intensityPart?.address != null,
+          patched: f.patched != 0,
           sortOrder: f.sortOrder,
           accessories: f.accessories,
           ipAddress: intensityPart?.ipAddress,
@@ -109,6 +129,16 @@ class FixtureRepository {
           ipv6: intensityPart?.ipv6,
           hung: f.hung != 0,
           focused: f.focused != 0,
+          parts: intensityParts.map((p) => FixturePartRow(
+            partOrder: p.partOrder,
+            channel: p.channel,
+            address: p.address,
+            circuit: p.circuit,
+            ipAddress: p.ipAddress,
+            subnet: p.subnet,
+            macAddress: p.macAddress,
+            ipv6: p.ipv6,
+          )).toList(),
         );
       }).toList();
     });
@@ -168,6 +198,7 @@ class FixtureRepository {
       function: Value(source.function),
       focus: Value(source.focus),
       flagged: const Value(0),
+      patched: Value(source.patched),
       sortOrder: Value(sort),
       accessories: Value(source.accessories),
       hung: Value(source.hung),
@@ -185,6 +216,7 @@ class FixtureRepository {
         partName: Value(part.partName),
         channel: Value(part.channel),
         address: Value(part.address),
+        circuit: Value(part.circuit),
         ipAddress: Value(part.ipAddress),
         subnet: Value(part.subnet),
         macAddress: Value(part.macAddress),
@@ -230,19 +262,19 @@ class FixtureRepository {
         .write(FixturesCompanion(flagged: Value(f.flagged == 0 ? 1 : 0)));
   }
 
-  Future<void> toggleHung(int id) async {
-    final f = await (_db.select(_db.fixtures)..where((r) => r.id.equals(id))).getSingle();
-    await (_db.update(_db.fixtures)..where((r) => r.id.equals(id)))
-        .write(FixturesCompanion(hung: Value(f.hung == 0 ? 1 : 0)));
-  }
+  Future<void> setPatched(int id, {required bool value}) =>
+      (_db.update(_db.fixtures)..where((r) => r.id.equals(id)))
+          .write(FixturesCompanion(patched: Value(value ? 1 : 0)));
 
-  Future<void> toggleFocused(int id) async {
-    final f = await (_db.select(_db.fixtures)..where((r) => r.id.equals(id))).getSingle();
-    await (_db.update(_db.fixtures)..where((r) => r.id.equals(id)))
-        .write(FixturesCompanion(focused: Value(f.focused == 0 ? 1 : 0)));
-  }
+  Future<void> setHung(int id, {required bool value}) =>
+      (_db.update(_db.fixtures)..where((r) => r.id.equals(id)))
+          .write(FixturesCompanion(hung: Value(value ? 1 : 0)));
 
-  // ── Part-level upserts ────────────────────────────────────────────────────
+  Future<void> setFocused(int id, {required bool value}) =>
+      (_db.update(_db.fixtures)..where((r) => r.id.equals(id)))
+          .write(FixturesCompanion(focused: Value(value ? 1 : 0)));
+
+  // ── Part-level updates ────────────────────────────────────────────────────
 
   Future<void> updateIntensityChannel(int fixtureId, String? channel) async {
     final existing = await _intensityPart(fixtureId);
@@ -335,6 +367,24 @@ class FixtureRepository {
       ));
     }
   }
+
+  Future<void> deleteFixture(int id) =>
+      (_db.delete(_db.fixtures)..where((f) => f.id.equals(id))).go();
+
+  Future<void> updatePartChannel(int fixtureId, int partOrder, String? channel) =>
+      (_db.update(_db.fixtureParts)
+            ..where((p) => p.fixtureId.equals(fixtureId) & p.partOrder.equals(partOrder)))
+          .write(FixturePartsCompanion(channel: Value(channel)));
+
+  Future<void> updatePartAddress(int fixtureId, int partOrder, String? address) =>
+      (_db.update(_db.fixtureParts)
+            ..where((p) => p.fixtureId.equals(fixtureId) & p.partOrder.equals(partOrder)))
+          .write(FixturePartsCompanion(address: Value(address)));
+
+  Future<void> updatePartCircuit(int fixtureId, int partOrder, String? circuit) =>
+      (_db.update(_db.fixtureParts)
+            ..where((p) => p.fixtureId.equals(fixtureId) & p.partOrder.equals(partOrder)))
+          .write(FixturePartsCompanion(circuit: Value(circuit)));
 
   Future<int> _maxPartOrder(int fixtureId) async {
     final all = await (_db.select(_db.fixtureParts)
