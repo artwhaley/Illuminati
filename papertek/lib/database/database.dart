@@ -12,6 +12,7 @@ import 'tables/attachables.dart';
 import 'tables/custom_fields.dart';
 import 'tables/revisions.dart';
 import 'tables/contacts.dart';
+import 'tables/spreadsheet_view_presets.dart';
 
 part 'database.g.dart';
 
@@ -46,6 +47,8 @@ part 'database.g.dart';
   PositionGroups,
   // Migration 8
   RoleContacts,
+  // Migration 14
+  SpreadsheetViewPresets,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
@@ -55,7 +58,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase openFile(String path) =>
       AppDatabase(NativeDatabase(File(path)));
 
-  static const currentSchemaVersion = 11;
+  static const currentSchemaVersion = 14;
 
   static Future<AppDatabase> openDefault(String showName) async {
     final dir = await getApplicationDocumentsDirectory();
@@ -64,7 +67,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => currentSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -145,6 +148,13 @@ class AppDatabase extends _$AppDatabase {
                   AND (channel IS NOT NULL OR address IS NOT NULL)
               )
             ''');
+          }
+          if (from < 13) {
+            await m.addColumn(fixtures, fixtures.deleted);
+            await m.addColumn(fixtureParts, fixtureParts.deleted);
+          }
+          if (from < 14) {
+            await m.createTable(spreadsheetViewPresets);
           }
         },
         beforeOpen: (details) async {

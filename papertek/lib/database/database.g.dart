@@ -4199,6 +4199,18 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<int> deleted = GeneratedColumn<int>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4215,6 +4227,7 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     hung,
     focused,
     patched,
+    deleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4318,6 +4331,12 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         patched.isAcceptableOrUnknown(data['patched']!, _patchedMeta),
       );
     }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
     return context;
   }
 
@@ -4383,6 +4402,10 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         DriftSqlType.int,
         data['${effectivePrefix}patched'],
       )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted'],
+      )!,
     );
   }
 
@@ -4407,6 +4430,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
   final int hung;
   final int focused;
   final int patched;
+  final int deleted;
   const Fixture({
     required this.id,
     this.fixtureTypeId,
@@ -4422,6 +4446,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     required this.hung,
     required this.focused,
     required this.patched,
+    required this.deleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4456,6 +4481,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     map['hung'] = Variable<int>(hung);
     map['focused'] = Variable<int>(focused);
     map['patched'] = Variable<int>(patched);
+    map['deleted'] = Variable<int>(deleted);
     return map;
   }
 
@@ -4491,6 +4517,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       hung: Value(hung),
       focused: Value(focused),
       patched: Value(patched),
+      deleted: Value(deleted),
     );
   }
 
@@ -4514,6 +4541,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       hung: serializer.fromJson<int>(json['hung']),
       focused: serializer.fromJson<int>(json['focused']),
       patched: serializer.fromJson<int>(json['patched']),
+      deleted: serializer.fromJson<int>(json['deleted']),
     );
   }
   @override
@@ -4534,6 +4562,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       'hung': serializer.toJson<int>(hung),
       'focused': serializer.toJson<int>(focused),
       'patched': serializer.toJson<int>(patched),
+      'deleted': serializer.toJson<int>(deleted),
     };
   }
 
@@ -4552,6 +4581,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     int? hung,
     int? focused,
     int? patched,
+    int? deleted,
   }) => Fixture(
     id: id ?? this.id,
     fixtureTypeId: fixtureTypeId.present
@@ -4569,6 +4599,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     hung: hung ?? this.hung,
     focused: focused ?? this.focused,
     patched: patched ?? this.patched,
+    deleted: deleted ?? this.deleted,
   );
   Fixture copyWithCompanion(FixturesCompanion data) {
     return Fixture(
@@ -4594,6 +4625,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       hung: data.hung.present ? data.hung.value : this.hung,
       focused: data.focused.present ? data.focused.value : this.focused,
       patched: data.patched.present ? data.patched.value : this.patched,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
     );
   }
 
@@ -4613,7 +4645,8 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           ..write('accessories: $accessories, ')
           ..write('hung: $hung, ')
           ..write('focused: $focused, ')
-          ..write('patched: $patched')
+          ..write('patched: $patched, ')
+          ..write('deleted: $deleted')
           ..write(')'))
         .toString();
   }
@@ -4634,6 +4667,7 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     hung,
     focused,
     patched,
+    deleted,
   );
   @override
   bool operator ==(Object other) =>
@@ -4652,7 +4686,8 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           other.accessories == this.accessories &&
           other.hung == this.hung &&
           other.focused == this.focused &&
-          other.patched == this.patched);
+          other.patched == this.patched &&
+          other.deleted == this.deleted);
 }
 
 class FixturesCompanion extends UpdateCompanion<Fixture> {
@@ -4670,6 +4705,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
   final Value<int> hung;
   final Value<int> focused;
   final Value<int> patched;
+  final Value<int> deleted;
   const FixturesCompanion({
     this.id = const Value.absent(),
     this.fixtureTypeId = const Value.absent(),
@@ -4685,6 +4721,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.hung = const Value.absent(),
     this.focused = const Value.absent(),
     this.patched = const Value.absent(),
+    this.deleted = const Value.absent(),
   });
   FixturesCompanion.insert({
     this.id = const Value.absent(),
@@ -4701,6 +4738,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.hung = const Value.absent(),
     this.focused = const Value.absent(),
     this.patched = const Value.absent(),
+    this.deleted = const Value.absent(),
   });
   static Insertable<Fixture> custom({
     Expression<int>? id,
@@ -4717,6 +4755,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Expression<int>? hung,
     Expression<int>? focused,
     Expression<int>? patched,
+    Expression<int>? deleted,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4733,6 +4772,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       if (hung != null) 'hung': hung,
       if (focused != null) 'focused': focused,
       if (patched != null) 'patched': patched,
+      if (deleted != null) 'deleted': deleted,
     });
   }
 
@@ -4751,6 +4791,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Value<int>? hung,
     Value<int>? focused,
     Value<int>? patched,
+    Value<int>? deleted,
   }) {
     return FixturesCompanion(
       id: id ?? this.id,
@@ -4767,6 +4808,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       hung: hung ?? this.hung,
       focused: focused ?? this.focused,
       patched: patched ?? this.patched,
+      deleted: deleted ?? this.deleted,
     );
   }
 
@@ -4815,6 +4857,9 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     if (patched.present) {
       map['patched'] = Variable<int>(patched.value);
     }
+    if (deleted.present) {
+      map['deleted'] = Variable<int>(deleted.value);
+    }
     return map;
   }
 
@@ -4834,7 +4879,8 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
           ..write('accessories: $accessories, ')
           ..write('hung: $hung, ')
           ..write('focused: $focused, ')
-          ..write('patched: $patched')
+          ..write('patched: $patched, ')
+          ..write('deleted: $deleted')
           ..write(')'))
         .toString();
   }
@@ -4992,6 +5038,18 @@ class $FixturePartsTable extends FixtureParts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<int> deleted = GeneratedColumn<int>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5007,6 +5065,7 @@ class $FixturePartsTable extends FixtureParts
     subnet,
     ipv6,
     extrasJson,
+    deleted,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5099,6 +5158,12 @@ class $FixturePartsTable extends FixtureParts
         extrasJson.isAcceptableOrUnknown(data['extras_json']!, _extrasJsonMeta),
       );
     }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
     return context;
   }
 
@@ -5160,6 +5225,10 @@ class $FixturePartsTable extends FixtureParts
         DriftSqlType.string,
         data['${effectivePrefix}extras_json'],
       ),
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted'],
+      )!,
     );
   }
 
@@ -5183,6 +5252,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
   final String? subnet;
   final String? ipv6;
   final String? extrasJson;
+  final int deleted;
   const FixturePart({
     required this.id,
     required this.fixtureId,
@@ -5197,6 +5267,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     this.subnet,
     this.ipv6,
     this.extrasJson,
+    required this.deleted,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5234,6 +5305,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     if (!nullToAbsent || extrasJson != null) {
       map['extras_json'] = Variable<String>(extrasJson);
     }
+    map['deleted'] = Variable<int>(deleted);
     return map;
   }
 
@@ -5270,6 +5342,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       extrasJson: extrasJson == null && nullToAbsent
           ? const Value.absent()
           : Value(extrasJson),
+      deleted: Value(deleted),
     );
   }
 
@@ -5292,6 +5365,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       subnet: serializer.fromJson<String?>(json['subnet']),
       ipv6: serializer.fromJson<String?>(json['ipv6']),
       extrasJson: serializer.fromJson<String?>(json['extrasJson']),
+      deleted: serializer.fromJson<int>(json['deleted']),
     );
   }
   @override
@@ -5311,6 +5385,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       'subnet': serializer.toJson<String?>(subnet),
       'ipv6': serializer.toJson<String?>(ipv6),
       'extrasJson': serializer.toJson<String?>(extrasJson),
+      'deleted': serializer.toJson<int>(deleted),
     };
   }
 
@@ -5328,6 +5403,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     Value<String?> subnet = const Value.absent(),
     Value<String?> ipv6 = const Value.absent(),
     Value<String?> extrasJson = const Value.absent(),
+    int? deleted,
   }) => FixturePart(
     id: id ?? this.id,
     fixtureId: fixtureId ?? this.fixtureId,
@@ -5342,6 +5418,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     subnet: subnet.present ? subnet.value : this.subnet,
     ipv6: ipv6.present ? ipv6.value : this.ipv6,
     extrasJson: extrasJson.present ? extrasJson.value : this.extrasJson,
+    deleted: deleted ?? this.deleted,
   );
   FixturePart copyWithCompanion(FixturePartsCompanion data) {
     return FixturePart(
@@ -5362,6 +5439,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       extrasJson: data.extrasJson.present
           ? data.extrasJson.value
           : this.extrasJson,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
     );
   }
 
@@ -5380,7 +5458,8 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
           ..write('macAddress: $macAddress, ')
           ..write('subnet: $subnet, ')
           ..write('ipv6: $ipv6, ')
-          ..write('extrasJson: $extrasJson')
+          ..write('extrasJson: $extrasJson, ')
+          ..write('deleted: $deleted')
           ..write(')'))
         .toString();
   }
@@ -5400,6 +5479,7 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     subnet,
     ipv6,
     extrasJson,
+    deleted,
   );
   @override
   bool operator ==(Object other) =>
@@ -5417,7 +5497,8 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
           other.macAddress == this.macAddress &&
           other.subnet == this.subnet &&
           other.ipv6 == this.ipv6 &&
-          other.extrasJson == this.extrasJson);
+          other.extrasJson == this.extrasJson &&
+          other.deleted == this.deleted);
 }
 
 class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
@@ -5434,6 +5515,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
   final Value<String?> subnet;
   final Value<String?> ipv6;
   final Value<String?> extrasJson;
+  final Value<int> deleted;
   const FixturePartsCompanion({
     this.id = const Value.absent(),
     this.fixtureId = const Value.absent(),
@@ -5448,6 +5530,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     this.subnet = const Value.absent(),
     this.ipv6 = const Value.absent(),
     this.extrasJson = const Value.absent(),
+    this.deleted = const Value.absent(),
   });
   FixturePartsCompanion.insert({
     this.id = const Value.absent(),
@@ -5463,6 +5546,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     this.subnet = const Value.absent(),
     this.ipv6 = const Value.absent(),
     this.extrasJson = const Value.absent(),
+    this.deleted = const Value.absent(),
   }) : fixtureId = Value(fixtureId),
        partOrder = Value(partOrder);
   static Insertable<FixturePart> custom({
@@ -5479,6 +5563,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     Expression<String>? subnet,
     Expression<String>? ipv6,
     Expression<String>? extrasJson,
+    Expression<int>? deleted,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -5494,6 +5579,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
       if (subnet != null) 'subnet': subnet,
       if (ipv6 != null) 'ipv6': ipv6,
       if (extrasJson != null) 'extras_json': extrasJson,
+      if (deleted != null) 'deleted': deleted,
     });
   }
 
@@ -5511,6 +5597,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     Value<String?>? subnet,
     Value<String?>? ipv6,
     Value<String?>? extrasJson,
+    Value<int>? deleted,
   }) {
     return FixturePartsCompanion(
       id: id ?? this.id,
@@ -5526,6 +5613,7 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
       subnet: subnet ?? this.subnet,
       ipv6: ipv6 ?? this.ipv6,
       extrasJson: extrasJson ?? this.extrasJson,
+      deleted: deleted ?? this.deleted,
     );
   }
 
@@ -5571,6 +5659,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     if (extrasJson.present) {
       map['extras_json'] = Variable<String>(extrasJson.value);
     }
+    if (deleted.present) {
+      map['deleted'] = Variable<int>(deleted.value);
+    }
     return map;
   }
 
@@ -5589,7 +5680,8 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
           ..write('macAddress: $macAddress, ')
           ..write('subnet: $subnet, ')
           ..write('ipv6: $ipv6, ')
-          ..write('extrasJson: $extrasJson')
+          ..write('extrasJson: $extrasJson, ')
+          ..write('deleted: $deleted')
           ..write(')'))
         .toString();
   }
@@ -10042,6 +10134,408 @@ class RoleContactsCompanion extends UpdateCompanion<RoleContact> {
   }
 }
 
+class $SpreadsheetViewPresetsTable extends SpreadsheetViewPresets
+    with TableInfo<$SpreadsheetViewPresetsTable, SpreadsheetViewPreset> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SpreadsheetViewPresetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isSystemMeta = const VerificationMeta(
+    'isSystem',
+  );
+  @override
+  late final GeneratedColumn<int> isSystem = GeneratedColumn<int>(
+    'is_system',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _presetJsonMeta = const VerificationMeta(
+    'presetJson',
+  );
+  @override
+  late final GeneratedColumn<String> presetJson = GeneratedColumn<String>(
+    'preset_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    isSystem,
+    createdAt,
+    updatedAt,
+    presetJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'spreadsheet_view_presets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SpreadsheetViewPreset> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('is_system')) {
+      context.handle(
+        _isSystemMeta,
+        isSystem.isAcceptableOrUnknown(data['is_system']!, _isSystemMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('preset_json')) {
+      context.handle(
+        _presetJsonMeta,
+        presetJson.isAcceptableOrUnknown(data['preset_json']!, _presetJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_presetJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SpreadsheetViewPreset map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SpreadsheetViewPreset(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      isSystem: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}is_system'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      presetJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}preset_json'],
+      )!,
+    );
+  }
+
+  @override
+  $SpreadsheetViewPresetsTable createAlias(String alias) {
+    return $SpreadsheetViewPresetsTable(attachedDatabase, alias);
+  }
+}
+
+class SpreadsheetViewPreset extends DataClass
+    implements Insertable<SpreadsheetViewPreset> {
+  final int id;
+  final String name;
+  final int isSystem;
+  final String createdAt;
+  final String updatedAt;
+  final String presetJson;
+  const SpreadsheetViewPreset({
+    required this.id,
+    required this.name,
+    required this.isSystem,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.presetJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['is_system'] = Variable<int>(isSystem);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    map['preset_json'] = Variable<String>(presetJson);
+    return map;
+  }
+
+  SpreadsheetViewPresetsCompanion toCompanion(bool nullToAbsent) {
+    return SpreadsheetViewPresetsCompanion(
+      id: Value(id),
+      name: Value(name),
+      isSystem: Value(isSystem),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      presetJson: Value(presetJson),
+    );
+  }
+
+  factory SpreadsheetViewPreset.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SpreadsheetViewPreset(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      isSystem: serializer.fromJson<int>(json['isSystem']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+      presetJson: serializer.fromJson<String>(json['presetJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'isSystem': serializer.toJson<int>(isSystem),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+      'presetJson': serializer.toJson<String>(presetJson),
+    };
+  }
+
+  SpreadsheetViewPreset copyWith({
+    int? id,
+    String? name,
+    int? isSystem,
+    String? createdAt,
+    String? updatedAt,
+    String? presetJson,
+  }) => SpreadsheetViewPreset(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    isSystem: isSystem ?? this.isSystem,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    presetJson: presetJson ?? this.presetJson,
+  );
+  SpreadsheetViewPreset copyWithCompanion(
+    SpreadsheetViewPresetsCompanion data,
+  ) {
+    return SpreadsheetViewPreset(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      isSystem: data.isSystem.present ? data.isSystem.value : this.isSystem,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      presetJson: data.presetJson.present
+          ? data.presetJson.value
+          : this.presetJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpreadsheetViewPreset(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('isSystem: $isSystem, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('presetJson: $presetJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, isSystem, createdAt, updatedAt, presetJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SpreadsheetViewPreset &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.isSystem == this.isSystem &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.presetJson == this.presetJson);
+}
+
+class SpreadsheetViewPresetsCompanion
+    extends UpdateCompanion<SpreadsheetViewPreset> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int> isSystem;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<String> presetJson;
+  const SpreadsheetViewPresetsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.isSystem = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.presetJson = const Value.absent(),
+  });
+  SpreadsheetViewPresetsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.isSystem = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+    required String presetJson,
+  }) : name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       presetJson = Value(presetJson);
+  static Insertable<SpreadsheetViewPreset> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? isSystem,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<String>? presetJson,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (isSystem != null) 'is_system': isSystem,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (presetJson != null) 'preset_json': presetJson,
+    });
+  }
+
+  SpreadsheetViewPresetsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<int>? isSystem,
+    Value<String>? createdAt,
+    Value<String>? updatedAt,
+    Value<String>? presetJson,
+  }) {
+    return SpreadsheetViewPresetsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      isSystem: isSystem ?? this.isSystem,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      presetJson: presetJson ?? this.presetJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (isSystem.present) {
+      map['is_system'] = Variable<int>(isSystem.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (presetJson.present) {
+      map['preset_json'] = Variable<String>(presetJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpreadsheetViewPresetsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('isSystem: $isSystem, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('presetJson: $presetJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10069,6 +10563,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RevisionsTable revisions = $RevisionsTable(this);
   late final $PositionGroupsTable positionGroups = $PositionGroupsTable(this);
   late final $RoleContactsTable roleContacts = $RoleContactsTable(this);
+  late final $SpreadsheetViewPresetsTable spreadsheetViewPresets =
+      $SpreadsheetViewPresetsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10096,6 +10592,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     revisions,
     positionGroups,
     roleContacts,
+    spreadsheetViewPresets,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -12285,6 +12782,7 @@ typedef $$FixturesTableCreateCompanionBuilder =
       Value<int> hung,
       Value<int> focused,
       Value<int> patched,
+      Value<int> deleted,
     });
 typedef $$FixturesTableUpdateCompanionBuilder =
     FixturesCompanion Function({
@@ -12302,6 +12800,7 @@ typedef $$FixturesTableUpdateCompanionBuilder =
       Value<int> hung,
       Value<int> focused,
       Value<int> patched,
+      Value<int> deleted,
     });
 
 final class $$FixturesTableReferences
@@ -12536,6 +13035,11 @@ class $$FixturesTableFilterComposer
 
   ColumnFilters<int> get patched => $composableBuilder(
     column: $table.patched,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deleted => $composableBuilder(
+    column: $table.deleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12812,6 +13316,11 @@ class $$FixturesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FixtureTypesTableOrderingComposer get fixtureTypeId {
     final $$FixtureTypesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -12889,6 +13398,9 @@ class $$FixturesTableAnnotationComposer
 
   GeneratedColumn<int> get patched =>
       $composableBuilder(column: $table.patched, builder: (column) => column);
+
+  GeneratedColumn<int> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
 
   $$FixtureTypesTableAnnotationComposer get fixtureTypeId {
     final $$FixtureTypesTableAnnotationComposer composer = $composerBuilder(
@@ -13141,6 +13653,7 @@ class $$FixturesTableTableManager
                 Value<int> hung = const Value.absent(),
                 Value<int> focused = const Value.absent(),
                 Value<int> patched = const Value.absent(),
+                Value<int> deleted = const Value.absent(),
               }) => FixturesCompanion(
                 id: id,
                 fixtureTypeId: fixtureTypeId,
@@ -13156,6 +13669,7 @@ class $$FixturesTableTableManager
                 hung: hung,
                 focused: focused,
                 patched: patched,
+                deleted: deleted,
               ),
           createCompanionCallback:
               ({
@@ -13173,6 +13687,7 @@ class $$FixturesTableTableManager
                 Value<int> hung = const Value.absent(),
                 Value<int> focused = const Value.absent(),
                 Value<int> patched = const Value.absent(),
+                Value<int> deleted = const Value.absent(),
               }) => FixturesCompanion.insert(
                 id: id,
                 fixtureTypeId: fixtureTypeId,
@@ -13188,6 +13703,7 @@ class $$FixturesTableTableManager
                 hung: hung,
                 focused: focused,
                 patched: patched,
+                deleted: deleted,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -13438,6 +13954,7 @@ typedef $$FixturePartsTableCreateCompanionBuilder =
       Value<String?> subnet,
       Value<String?> ipv6,
       Value<String?> extrasJson,
+      Value<int> deleted,
     });
 typedef $$FixturePartsTableUpdateCompanionBuilder =
     FixturePartsCompanion Function({
@@ -13454,6 +13971,7 @@ typedef $$FixturePartsTableUpdateCompanionBuilder =
       Value<String?> subnet,
       Value<String?> ipv6,
       Value<String?> extrasJson,
+      Value<int> deleted,
     });
 
 final class $$FixturePartsTableReferences
@@ -13584,6 +14102,11 @@ class $$FixturePartsTableFilterComposer
 
   ColumnFilters<String> get extrasJson => $composableBuilder(
     column: $table.extrasJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deleted => $composableBuilder(
+    column: $table.deleted,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13730,6 +14253,11 @@ class $$FixturePartsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FixturesTableOrderingComposer get fixtureId {
     final $$FixturesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -13802,6 +14330,9 @@ class $$FixturePartsTableAnnotationComposer
     column: $table.extrasJson,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
 
   $$FixturesTableAnnotationComposer get fixtureId {
     final $$FixturesTableAnnotationComposer composer = $composerBuilder(
@@ -13922,6 +14453,7 @@ class $$FixturePartsTableTableManager
                 Value<String?> subnet = const Value.absent(),
                 Value<String?> ipv6 = const Value.absent(),
                 Value<String?> extrasJson = const Value.absent(),
+                Value<int> deleted = const Value.absent(),
               }) => FixturePartsCompanion(
                 id: id,
                 fixtureId: fixtureId,
@@ -13936,6 +14468,7 @@ class $$FixturePartsTableTableManager
                 subnet: subnet,
                 ipv6: ipv6,
                 extrasJson: extrasJson,
+                deleted: deleted,
               ),
           createCompanionCallback:
               ({
@@ -13952,6 +14485,7 @@ class $$FixturePartsTableTableManager
                 Value<String?> subnet = const Value.absent(),
                 Value<String?> ipv6 = const Value.absent(),
                 Value<String?> extrasJson = const Value.absent(),
+                Value<int> deleted = const Value.absent(),
               }) => FixturePartsCompanion.insert(
                 id: id,
                 fixtureId: fixtureId,
@@ -13966,6 +14500,7 @@ class $$FixturePartsTableTableManager
                 subnet: subnet,
                 ipv6: ipv6,
                 extrasJson: extrasJson,
+                deleted: deleted,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -17819,6 +18354,240 @@ typedef $$RoleContactsTableProcessedTableManager =
       RoleContact,
       PrefetchHooks Function()
     >;
+typedef $$SpreadsheetViewPresetsTableCreateCompanionBuilder =
+    SpreadsheetViewPresetsCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<int> isSystem,
+      required String createdAt,
+      required String updatedAt,
+      required String presetJson,
+    });
+typedef $$SpreadsheetViewPresetsTableUpdateCompanionBuilder =
+    SpreadsheetViewPresetsCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<int> isSystem,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+      Value<String> presetJson,
+    });
+
+class $$SpreadsheetViewPresetsTableFilterComposer
+    extends Composer<_$AppDatabase, $SpreadsheetViewPresetsTable> {
+  $$SpreadsheetViewPresetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get isSystem => $composableBuilder(
+    column: $table.isSystem,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get presetJson => $composableBuilder(
+    column: $table.presetJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SpreadsheetViewPresetsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SpreadsheetViewPresetsTable> {
+  $$SpreadsheetViewPresetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get isSystem => $composableBuilder(
+    column: $table.isSystem,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get presetJson => $composableBuilder(
+    column: $table.presetJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SpreadsheetViewPresetsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SpreadsheetViewPresetsTable> {
+  $$SpreadsheetViewPresetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get isSystem =>
+      $composableBuilder(column: $table.isSystem, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get presetJson => $composableBuilder(
+    column: $table.presetJson,
+    builder: (column) => column,
+  );
+}
+
+class $$SpreadsheetViewPresetsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SpreadsheetViewPresetsTable,
+          SpreadsheetViewPreset,
+          $$SpreadsheetViewPresetsTableFilterComposer,
+          $$SpreadsheetViewPresetsTableOrderingComposer,
+          $$SpreadsheetViewPresetsTableAnnotationComposer,
+          $$SpreadsheetViewPresetsTableCreateCompanionBuilder,
+          $$SpreadsheetViewPresetsTableUpdateCompanionBuilder,
+          (
+            SpreadsheetViewPreset,
+            BaseReferences<
+              _$AppDatabase,
+              $SpreadsheetViewPresetsTable,
+              SpreadsheetViewPreset
+            >,
+          ),
+          SpreadsheetViewPreset,
+          PrefetchHooks Function()
+        > {
+  $$SpreadsheetViewPresetsTableTableManager(
+    _$AppDatabase db,
+    $SpreadsheetViewPresetsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SpreadsheetViewPresetsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SpreadsheetViewPresetsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SpreadsheetViewPresetsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> isSystem = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+                Value<String> presetJson = const Value.absent(),
+              }) => SpreadsheetViewPresetsCompanion(
+                id: id,
+                name: name,
+                isSystem: isSystem,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                presetJson: presetJson,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<int> isSystem = const Value.absent(),
+                required String createdAt,
+                required String updatedAt,
+                required String presetJson,
+              }) => SpreadsheetViewPresetsCompanion.insert(
+                id: id,
+                name: name,
+                isSystem: isSystem,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                presetJson: presetJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SpreadsheetViewPresetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SpreadsheetViewPresetsTable,
+      SpreadsheetViewPreset,
+      $$SpreadsheetViewPresetsTableFilterComposer,
+      $$SpreadsheetViewPresetsTableOrderingComposer,
+      $$SpreadsheetViewPresetsTableAnnotationComposer,
+      $$SpreadsheetViewPresetsTableCreateCompanionBuilder,
+      $$SpreadsheetViewPresetsTableUpdateCompanionBuilder,
+      (
+        SpreadsheetViewPreset,
+        BaseReferences<
+          _$AppDatabase,
+          $SpreadsheetViewPresetsTable,
+          SpreadsheetViewPreset
+        >,
+      ),
+      SpreadsheetViewPreset,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -17866,4 +18635,9 @@ class $AppDatabaseManager {
       $$PositionGroupsTableTableManager(_db, _db.positionGroups);
   $$RoleContactsTableTableManager get roleContacts =>
       $$RoleContactsTableTableManager(_db, _db.roleContacts);
+  $$SpreadsheetViewPresetsTableTableManager get spreadsheetViewPresets =>
+      $$SpreadsheetViewPresetsTableTableManager(
+        _db,
+        _db.spreadsheetViewPresets,
+      );
 }

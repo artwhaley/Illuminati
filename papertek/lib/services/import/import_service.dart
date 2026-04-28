@@ -185,69 +185,68 @@ class ImportService {
     final unitNumber = unitStr != null ? int.tryParse(unitStr) : null;
 
     // Create the fixture row.
-    final fixtureId = await _db.into(_db.fixtures).insert(FixturesCompanion(
-          fixtureTypeId: Value(fixtureTypeId),
-          fixtureType: Value(typeName),
-          position: Value(positionName),
-          unitNumber: Value(unitNumber),
-          wattage: Value(primary.get(PaperTekImportField.wattage)),
-          function: Value(primary.get(PaperTekImportField.function)),
-          focus: Value(primary.get(PaperTekImportField.focus)),
-        ));
-
-    // Intensity parts — one per row in the group (partOrder = row index).
-    // For single-part fixtures this is one insert at partOrder 0, same as before.
-    for (var i = 0; i < rowGroup.length; i++) {
-      final partRow = rowGroup[i];
-      await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
-            fixtureId: Value(fixtureId),
-            partOrder: Value(i),
-            partType: const Value('intensity'),
-            channel: Value(partRow.get(PaperTekImportField.channel)),
-            address: Value(partRow.get(PaperTekImportField.circuit)),
-            extrasJson: _buildExtrasJson(partRow),
-          ));
-    }
-
-    // Gel and gobo records are sourced from the primary row only.
-    final color = primary.get(PaperTekImportField.color);
-    if (color != null && !_isNoColor(color)) {
-      await _db.into(_db.gels).insert(GelsCompanion(
-            color: Value(color),
-            fixtureId: Value(fixtureId),
-          ));
-    }
-
-    for (final goboField in [PaperTekImportField.gobo1, PaperTekImportField.gobo2]) {
-      final goboNum = primary.get(goboField);
-      if (goboNum != null) {
-        await _db.into(_db.gobos).insert(GobosCompanion(
-              goboNumber: Value(goboNum),
-              fixtureId: Value(fixtureId),
+    final res = await _tracked.insertRow(
+      table: 'fixtures',
+      doInsert: () async {
+        final fixtureId = await _db.into(_db.fixtures).insert(FixturesCompanion(
+              fixtureTypeId: Value(fixtureTypeId),
+              fixtureType: Value(typeName),
+              position: Value(positionName),
+              unitNumber: Value(unitNumber),
+              wattage: Value(primary.get(PaperTekImportField.wattage)),
+              function: Value(primary.get(PaperTekImportField.function)),
+              focus: Value(primary.get(PaperTekImportField.focus)),
             ));
-      }
-    }
 
-    // Record a per-fixture insert revision linked to the batch.
-    await _db.into(_db.revisions).insert(RevisionsCompanion(
-          operation: const Value('insert'),
-          targetTable: const Value('fixtures'),
-          targetId: Value(fixtureId),
-          newValue: Value(jsonEncode({
-            'fixture_id': fixtureId,
-            'position': positionName,
-            'unit': unitNumber,
-            'type': typeName,
-            'part_count': rowGroup.length,
-            'channel': primary.get(PaperTekImportField.channel),
-          })),
-          batchId: Value(batchId),
-          userId: const Value('local-user'),
-          timestamp: Value(DateTime.now().toIso8601String()),
-          status: const Value('pending'),
-        ));
+        // Intensity parts — one per row in the group (partOrder = row index).
+        for (var i = 0; i < rowGroup.length; i++) {
+          final partRow = rowGroup[i];
+          await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+                fixtureId: Value(fixtureId),
+                partOrder: Value(i),
+                partType: const Value('intensity'),
+                channel: Value(partRow.get(PaperTekImportField.channel)),
+                address: Value(partRow.get(PaperTekImportField.circuit)),
+                extrasJson: _buildExtrasJson(partRow),
+              ));
+        }
 
-    return fixtureId;
+        // Gel and gobo records are sourced from the primary row only.
+        final color = primary.get(PaperTekImportField.color);
+        if (color != null && !_isNoColor(color)) {
+          await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+                fixtureId: Value(fixtureId),
+                partOrder: Value(rowGroup.length),
+                partType: const Value('gel'),
+                partName: Value(color),
+              ));
+        }
+
+        final gobo1 = primary.get(PaperTekImportField.gobo1);
+        if (gobo1 != null) {
+          await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+                fixtureId: Value(fixtureId),
+                partOrder: Value(rowGroup.length + 1),
+                partType: const Value('gobo'),
+                partName: Value(gobo1),
+              ));
+        }
+
+        return fixtureId;
+      },
+      buildSnapshot: (id) async {
+        final fixture = await (_db.select(_db.fixtures)..where((t) => t.id.equals(id))).getSingle();
+        final parts =
+            await (_db.select(_db.fixtureParts)..where((t) => t.fixtureId.equals(id))).get();
+        return {
+          'fixture': fixture.toJson(),
+          'parts': parts.map((p) => p.toJson()).toList(),
+        };
+      },
+      batchId: batchId,
+    );
+
+    return res.rowId;
   }
 
   // ── Lookup helpers ───────────────────────────────────────────────────────

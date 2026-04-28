@@ -1,10 +1,12 @@
 import 'package:drift/drift.dart';
 import '../database/database.dart';
+import 'tracked_write_repository.dart';
 
 class FixtureTypeRepository {
-  FixtureTypeRepository(this._db);
+  FixtureTypeRepository(this._db, this._tracked);
 
   final AppDatabase _db;
+  final TrackedWriteRepository _tracked;
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
@@ -24,25 +26,32 @@ class FixtureTypeRepository {
 
   // ── CRUD ─────────────────────────────────────────────────────────────────
 
-  Future<int> addType(String name) =>
-      _db.into(_db.fixtureTypes).insert(
+  Future<int> addType(String name) async {
+    final res = await _tracked.insertRow(
+      table: 'fixture_types',
+      doInsert: () => _db.into(_db.fixtureTypes).insert(
             FixtureTypesCompanion(name: Value(name)),
-          );
+          ),
+      buildSnapshot: _buildSnapshot,
+    );
+    return res.rowId;
+  }
 
   Future<void> updateName(int id, String name) =>
-      (_db.update(_db.fixtureTypes)..where((t) => t.id.equals(id)))
-          .write(FixtureTypesCompanion(name: Value(name)));
+      _updateField(id, 'name', name, (r) => r.name, (v) => FixtureTypesCompanion(name: Value(v)));
 
-  Future<void> updateWattage(int id, String? wattage) =>
-      (_db.update(_db.fixtureTypes)..where((t) => t.id.equals(id)))
-          .write(FixtureTypesCompanion(wattage: Value(wattage)));
+  Future<void> updateWattage(int id, String? wattage) => _updateField(
+      id, 'wattage', wattage, (r) => r.wattage, (v) => FixtureTypesCompanion(wattage: Value(v)));
 
-  Future<void> updatePartCount(int id, int count) =>
-      (_db.update(_db.fixtureTypes)..where((t) => t.id.equals(id)))
-          .write(FixtureTypesCompanion(partCount: Value(count)));
+  Future<void> updatePartCount(int id, int count) => _updateField(
+      id, 'part_count', count, (r) => r.partCount, (v) => FixtureTypesCompanion(partCount: Value(v)));
 
-  Future<void> deleteType(int id) =>
-      (_db.delete(_db.fixtureTypes)..where((t) => t.id.equals(id))).go();
+  Future<void> deleteType(int id) => _tracked.deleteRow(
+        table: 'fixture_types',
+        id: id,
+        buildSnapshot: () => _buildSnapshot(id),
+        doDelete: () => (_db.delete(_db.fixtureTypes)..where((t) => t.id.equals(id))).go(),
+      );
 
   /// Merges [deleteId] into [keepId]. All fixtures referencing [deleteId] are
   /// reassigned (both FK and soft-link name). If [newName] is supplied the
@@ -53,34 +62,110 @@ class FixtureTypeRepository {
     required int deleteId,
     String? newName,
   }) async {
-    final keepRow = await (_db.select(_db.fixtureTypes)
-          ..where((t) => t.id.equals(keepId)))
-        .getSingle();
-    final deleteRow = await (_db.select(_db.fixtureTypes)
-          ..where((t) => t.id.equals(deleteId)))
-        .getSingle();
+    final keepRow =
+        await (_db.select(_db.fixtureTypes)..where((t) => t.id.equals(keepId))).getSingle();
+    final deleteRow =
+        await (_db.select(_db.fixtureTypes)..where((t) => t.id.equals(deleteId))).getSingle();
 
     final finalName = newName ?? keepRow.name;
+    final batchId = _tracked.beginImportBatch();
 
     await _db.transaction(() async {
       // Reassign FK references
-      await (_db.update(_db.fixtures)
+      final affectedByFk = await (_db.select(_db.fixtures)
             ..where((t) => t.fixtureTypeId.equals(deleteId)))
-          .write(FixturesCompanion(fixtureTypeId: Value(keepId)));
+          .get();
+      for (final fixture in affectedByFk) {
+        await _tracked.updateField(
+          table: 'fixtures',
+          id: fixture.id,
+          field: 'fixture_type_id',
+          newValue: keepId,
+          readCurrentValue: () async => fixture.fixtureTypeId,
+          applyUpdate: (v) async {
+            await (_db.update(_db.fixtures)..where((t) => t.id.equals(fixture.id)))
+                .write(FixturesCompanion(fixtureTypeId: Value(v)));
+          },
+          batchId: batchId,
+        );
+      }
+
       // Reassign soft-link name references from deleted type
-      await (_db.update(_db.fixtures)
+      final affectedBySoftLink = await (_db.select(_db.fixtures)
             ..where((t) => t.fixtureType.equals(deleteRow.name)))
-          .write(FixturesCompanion(fixtureType: Value(finalName)));
+          .get();
+      for (final fixture in affectedBySoftLink) {
+        await _tracked.updateField(
+          table: 'fixtures',
+          id: fixture.id,
+          field: 'fixture_type',
+          newValue: finalName,
+          readCurrentValue: () async => fixture.fixtureType,
+          applyUpdate: (v) async {
+            await (_db.update(_db.fixtures)..where((t) => t.id.equals(fixture.id)))
+                .write(FixturesCompanion(fixtureType: Value(v)));
+          },
+          batchId: batchId,
+        );
+      }
+
       // If renaming, update kept type's existing fixture soft-links too
       if (newName != null && keepRow.name != finalName) {
-        await (_db.update(_db.fixtures)
+        final keepSoftLinkFixtures = await (_db.select(_db.fixtures)
               ..where((t) => t.fixtureType.equals(keepRow.name)))
-            .write(FixturesCompanion(fixtureType: Value(finalName)));
-        await (_db.update(_db.fixtureTypes)
-              ..where((t) => t.id.equals(keepId)))
-            .write(FixtureTypesCompanion(name: Value(finalName)));
+            .get();
+        for (final fixture in keepSoftLinkFixtures) {
+          await _tracked.updateField(
+            table: 'fixtures',
+            id: fixture.id,
+            field: 'fixture_type',
+            newValue: finalName,
+            readCurrentValue: () async => fixture.fixtureType,
+            applyUpdate: (v) async {
+              await (_db.update(_db.fixtures)..where((t) => t.id.equals(fixture.id)))
+                  .write(FixturesCompanion(fixtureType: Value(v)));
+            },
+            batchId: batchId,
+          );
+        }
+        await _updateField(keepId, 'name', finalName, (r) => r.name,
+            (v) => FixtureTypesCompanion(name: Value(v)),
+            batchId: batchId);
       }
-      await deleteType(deleteId);
+      await _tracked.deleteRow(
+        table: 'fixture_types',
+        id: deleteId,
+        buildSnapshot: () async => deleteRow.toJson(),
+        doDelete: () => (_db.delete(_db.fixtureTypes)..where((t) => t.id.equals(deleteId))).go(),
+        batchId: batchId,
+      );
     });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  Future<void> _updateField<T>(
+    int id,
+    String fieldName,
+    T newValue,
+    T Function(FixtureType) readField,
+    FixtureTypesCompanion Function(T) buildCompanion, {
+    String? batchId,
+  }) =>
+      _tracked.updateField(
+        table: 'fixture_types',
+        id: id,
+        field: fieldName,
+        newValue: newValue,
+        readCurrentValue: () async =>
+            readField(await (_db.select(_db.fixtureTypes)..where((t) => t.id.equals(id))).getSingle()),
+        applyUpdate: (v) async =>
+            (_db.update(_db.fixtureTypes)..where((t) => t.id.equals(id))).write(buildCompanion(v)),
+        batchId: batchId,
+      );
+
+  Future<Map<String, dynamic>> _buildSnapshot(int id) async {
+    final row = await (_db.select(_db.fixtureTypes)..where((t) => t.id.equals(id))).getSingle();
+    return row.toJson();
   }
 }

@@ -27,6 +27,7 @@ class Fixtures extends Table {
   IntColumn get focused => integer().withDefault(const Constant(0))();
   // v12 additions
   IntColumn get patched => integer().withDefault(const Constant(0))();
+  IntColumn get deleted => integer().withDefault(const Constant(0))();
 }
 
 class FixtureParts extends Table {
@@ -45,6 +46,7 @@ class FixtureParts extends Table {
   TextColumn get subnet => text().nullable()();
   TextColumn get ipv6 => text().nullable()();
   TextColumn get extrasJson => text().nullable()();
+  IntColumn get deleted => integer().withDefault(const Constant(0))();
 
   @override
   List<String> get customConstraints => ['UNIQUE (fixture_id, part_order)'];
