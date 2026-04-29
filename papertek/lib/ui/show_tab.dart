@@ -469,7 +469,7 @@ class _RolePanelState extends ConsumerState<_RolePanel> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final labelColor = const Color(0xFF6B7280);
+    final labelColor = theme.colorScheme.onSurfaceVariant;
     final isCustom = widget.customLabel != null;
 
     return Column(
@@ -512,7 +512,7 @@ class _RolePanelState extends ConsumerState<_RolePanel> {
                         contentPadding: EdgeInsets.zero,
                         suffixText: '  (Enter to save · Esc to cancel)',
                         suffixStyle: theme.textTheme.labelSmall?.copyWith(
-                          color: const Color(0xFF4B5263),
+                          color: labelColor.withValues(alpha: 0.8),
                           fontSize: 9,
                         ),
                       ),

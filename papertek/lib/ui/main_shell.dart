@@ -12,6 +12,7 @@ import 'import/column_mapping_screen.dart';
 import 'show_tab.dart';
 import 'spreadsheet/spreadsheet_tab.dart';
 import 'maintenance/maintenance_tab.dart';
+import 'settings/settings_dialog.dart';
 import '../services/commit_service.dart';
 import 'work_notes/work_notes_shell.dart';
 
@@ -28,8 +29,10 @@ class _DesignerModeToggle extends ConsumerWidget {
 
     // Themed colors: designer = warm amber; tracked = cool teal
     final activeColor   = isDesigner
-        ? const Color(0xFFE8A000)   // amber — "you're designing freely"
-        : theme.colorScheme.primary;// teal/blue — "changes are tracked"
+        ? theme.colorScheme.primary.withValues(alpha: 0.9)
+        : theme.colorScheme.primary;
+    final inactiveColor = theme.colorScheme.onSurface.withValues(alpha: 0.1);
+    final indicatorCol  = isDesigner ? Colors.white : Colors.white70;
 
     return InkWell(
       borderRadius: BorderRadius.circular(20),
@@ -482,6 +485,13 @@ class _MainShellState extends ConsumerState<MainShell> {
                     ),
                     children: [
                       _menu('File', [
+                        _item('Settings...', Icons.settings, () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => const SettingsDialog(),
+                          );
+                        }),
+                        const Divider(height: 1),
                         _item('Close Show', Icons.close, _closeShow),
                         const Divider(height: 1),
                         _item('Exit', Icons.exit_to_app, () => exit(0)),
@@ -530,11 +540,23 @@ class _MainShellState extends ConsumerState<MainShell> {
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            NavigationBar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (i) =>
-                  setState(() => _selectedIndex = i),
-              destinations: _buildTabs(pendingCount),
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainer,
+                border: Border(
+                  top: BorderSide(color: theme.colorScheme.outlineVariant),
+                ),
+              ),
+              padding: const EdgeInsets.only(top: 12),
+              child: NavigationBar(
+                height: 68,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (i) =>
+                    setState(() => _selectedIndex = i),
+                destinations: _buildTabs(pendingCount),
+              ),
             ),
             // ── Global status bar ──────────────────────────────────────
             const _GlobalStatusBar(),

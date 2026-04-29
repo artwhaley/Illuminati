@@ -25,6 +25,7 @@ import '../../../repositories/fixture_repository.dart';
 import '../../../repositories/spreadsheet_view_preset_repository.dart';
 import 'column_spec.dart';
 import 'fixture_data_source.dart';
+import 'fixture_draft.dart';
 
 class SpreadsheetViewController extends ChangeNotifier {
   SpreadsheetViewController({
@@ -46,7 +47,28 @@ class SpreadsheetViewController extends ChangeNotifier {
   List<String> colOrder = List.from(kDefaultColumnOrder);
   Set<String> hiddenCols = {};
   Map<String, double> colWidths = Map.from(kDefaultWidths);
-  List<SortSpec> sortSpecs = [];
+  List<SortSpec> sortSpecs = [SortSpec(column: 'chan', ascending: true)];
+
+  // ── Add Fixture Mode ───────────────────────────────────────────────────────
+
+  /// Whether the sidebar is currently in "Add Fixture" mode.
+  bool isAddMode = false;
+
+  /// The draft being composed in add mode. Null when not in add mode.
+  FixtureDraft? addDraft;
+
+  /// The sort order of the row we started adding from.
+  double? _addDonorSortOrder;
+
+  /// Whether to stay in add mode after a successful insert.
+  bool continueAdding = false;
+
+  /// Whether to copy the selected fixture's values when entering add mode.
+  bool copySelected = true;
+
+  /// The column ID of the last field the user edited in add mode.
+  /// Used to restore focus after a continue-adding insert.
+  String? lastEditedAddField;
 
   SpreadsheetViewPreset? activePreset;
   bool isPresetDirty = false;
@@ -55,6 +77,18 @@ class SpreadsheetViewController extends ChangeNotifier {
   void _init() {
     searchController.addListener(_onSearchChanged);
     dataSource.onSortChanged = _onDataSourceSortChanged;
+    // Initial sort sync
+    _syncSortToDataSource();
+  }
+
+  void _syncSortToDataSource() {
+    dataSource.sortedColumns.clear();
+    for (final spec in sortSpecs) {
+      dataSource.sortedColumns.add(SortColumnDetails(
+        name: spec.column,
+        sortDirection: spec.ascending ? DataGridSortDirection.ascending : DataGridSortDirection.descending,
+      ));
+    }
   }
 
   @override
@@ -281,9 +315,83 @@ class SpreadsheetViewController extends ChangeNotifier {
     await repo.addFixture();
   }
 
-  Future<void> cloneFixture(FixtureRow fixture) async {
-    await repo.cloneFixture(fixture.id);
+  /// Enter add mode. If [donor] is provided and [copySelected] is true, prefill the draft.
+  void enterAddMode({FixtureRow? donor}) {
+    isAddMode = true;
+    _addDonorSortOrder = donor?.sortOrder;
+    addDraft = (donor != null && copySelected)
+        ? FixtureDraft.fromDonor(donor, _allEditableFields())
+        : FixtureDraft();
+    notifyListeners();
   }
+
+  static Set<String> _allEditableFields() => kColumns
+      .where((c) => !c.isReadOnly && c.id != '#')
+      .map((c) => c.id)
+      .toSet();
+
+  void setCopySelected(bool value) {
+    copySelected = value;
+    notifyListeners();
+  }
+
+  /// Exit add mode and discard the draft.
+  void cancelAddMode() {
+    isAddMode = false;
+    addDraft = null;
+    _addDonorSortOrder = null;
+    notifyListeners();
+  }
+
+
+
+  void setContinueAdding(bool value) {
+    continueAdding = value;
+    notifyListeners();
+  }
+
+  /// Called from the sidebar "ADD FIXTURE" button.
+  /// Inserts the current [addDraft] via the repository, then either
+  /// stays in add mode (advance draft) or exits.
+  Future<void> submitAddFixture() async {
+    final draft = addDraft;
+    if (draft == null) return;
+
+    final newSort = await repo.addFixtureFromDraft(draft, afterSortOrder: _addDonorSortOrder);
+
+    if (continueAdding) {
+      draft.advanceForContinue();
+      _addDonorSortOrder = newSort; // Next insert goes after this one
+      // Trigger a rebuild so the sidebar editor reflects the updated draft.
+      notifyListeners();
+    } else {
+      cancelAddMode();
+    }
+  }
+
+  void updateDraftField(String colId, String? val) {
+    final d = addDraft;
+    if (d == null) return;
+    switch (colId) {
+      case 'chan':        d.channel     = val; break;
+      case 'dimmer':      d.dimmer      = val; break;
+      case 'circuit':     d.circuit     = val; break;
+      case 'position':    d.position    = val; break;
+      case 'unit':        d.unitNumber  = int.tryParse(val ?? ''); break;
+      case 'type':        d.fixtureType = val; break;
+      case 'function':    d.function    = val; break;
+      case 'focus':       d.focus       = val; break;
+      case 'accessories': d.accessories = val; break;
+      case 'ip':          d.ipAddress   = val; break;
+      case 'subnet':      d.subnet      = val; break;
+      case 'mac':         d.macAddress  = val; break;
+      case 'ipv6':        d.ipv6        = val; break;
+    }
+    lastEditedAddField = colId;
+    notifyListeners();
+  }
+
+
 
   Future<void> deleteFixture(FixtureRow fixture) async {
     await repo.deleteFixture(fixture.id);

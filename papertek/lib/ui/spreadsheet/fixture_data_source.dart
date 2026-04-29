@@ -70,7 +70,11 @@ class FixtureDataSource extends DataGridSource {
   String? _selectedColName;
   ThemeData? _theme;
 
-  void setTheme(ThemeData theme) => _theme = theme;
+  void setTheme(ThemeData theme) {
+    if (_theme == theme) return;
+    _theme = theme;
+    notifyListeners();
+  }
 
   Color get _textMain => _theme?.colorScheme.onSurface ?? Colors.white;
   Color get _textMuted => _theme?.colorScheme.onSurfaceVariant ?? Colors.grey;
@@ -81,12 +85,8 @@ class FixtureDataSource extends DataGridSource {
   Color get _bgSel =>
       _theme?.colorScheme.primaryContainer ?? const Color(0xFF2D2A1C);
 
-  // Pending / conflict highlight sets — updated by the tab via Riverpod streams.
   Set<int> _pendingIds = {};
   Set<int> _conflictIds = {};
-
-  static const _kPendingColor  = Color(0x1ADDAA00); // 10% opacity amber
-  static const _kConflictColor = Color(0x1ACC3333); // 10% opacity red
 
   /// Called by the tab whenever the pending/conflict sets change.
   void updateRevisionState(Set<int> pending, Set<int> conflicts) {
@@ -95,6 +95,11 @@ class FixtureDataSource extends DataGridSource {
     _conflictIds = conflicts;
     notifyListeners();
   }
+
+  Color get _pendingColor => _theme?.brightness == Brightness.dark
+      ? const Color(0x87141111) // Even darker and more desaturated reddish amber
+      : (_theme?.colorScheme.primary ?? Colors.amber).withValues(alpha: 0.1);
+  Color get _conflictColor => (_theme?.colorScheme.error ?? Colors.red).withValues(alpha: 0.1);
 
   String? get selectedColName => _selectedColName;
   FixtureRow? get selectedFixture => _selectedFixtureId == null
@@ -135,21 +140,51 @@ class FixtureDataSource extends DataGridSource {
     notifyListeners();
   }
 
+  static final _naturalRegExp = RegExp(r'(\d+|\D+)');
+
+  int _naturalCompare(String a, String b) {
+    final matchesA = _naturalRegExp.allMatches(a.toLowerCase()).toList();
+    final matchesB = _naturalRegExp.allMatches(b.toLowerCase()).toList();
+
+    for (var i = 0; i < matchesA.length && i < matchesB.length; i++) {
+      final partA = matchesA[i].group(0)!;
+      final partB = matchesB[i].group(0)!;
+
+      final numA = int.tryParse(partA);
+      final numB = int.tryParse(partB);
+
+      if (numA != null && numB != null) {
+        final cmp = numA.compareTo(numB);
+        if (cmp != 0) return cmp;
+      } else {
+        final cmp = partA.compareTo(partB);
+        if (cmp != 0) return cmp;
+      }
+    }
+    return matchesA.length.compareTo(matchesB.length);
+  }
+
   @override
   int compare(DataGridRow? a, DataGridRow? b, SortColumnDetails sortColumn) {
     final spec = kColumnById[sortColumn.name];
     if (spec == null) return 0;
 
-    final va = a?.getCells().firstWhere((c) => c.columnName == sortColumn.name).value;
-    final vb = b?.getCells().firstWhere((c) => c.columnName == sortColumn.name).value;
+    final va = a?.getCells().firstWhere((c) => c.columnName == sortColumn.name).value?.toString() ?? '';
+    final vb = b?.getCells().firstWhere((c) => c.columnName == sortColumn.name).value?.toString() ?? '';
 
     int cmp;
+    // For specific numeric-primary columns, we try double parse first.
+    // If it fails (e.g. "5a"), we fall back to natural compare.
     if (spec.isNumeric) {
-      final na = double.tryParse(va?.toString() ?? '') ?? 0.0;
-      final nb = double.tryParse(vb?.toString() ?? '') ?? 0.0;
-      cmp = na.compareTo(nb);
+      final na = double.tryParse(va);
+      final nb = double.tryParse(vb);
+      if (na != null && nb != null) {
+        cmp = na.compareTo(nb);
+      } else {
+        cmp = _naturalCompare(va, vb);
+      }
     } else {
-      cmp = (va?.toString() ?? '').toLowerCase().compareTo((vb?.toString() ?? '').toLowerCase());
+      cmp = _naturalCompare(va, vb);
     }
 
     if (cmp != 0) {
@@ -194,11 +229,15 @@ class FixtureDataSource extends DataGridSource {
 
           int cmp;
           if (spec.isNumeric) {
-            final na = double.tryParse(va ?? '') ?? 0.0;
-            final nb = double.tryParse(vb ?? '') ?? 0.0;
-            cmp = na.compareTo(nb);
+            final na = double.tryParse(va ?? '');
+            final nb = double.tryParse(vb ?? '');
+            if (na != null && nb != null) {
+              cmp = na.compareTo(nb);
+            } else {
+              cmp = _naturalCompare(va ?? '', vb ?? '');
+            }
           } else {
-            cmp = (va ?? '').toLowerCase().compareTo((vb ?? '').toLowerCase());
+            cmp = _naturalCompare(va ?? '', vb ?? '');
           }
 
           if (cmp != 0) {
@@ -258,32 +297,27 @@ class FixtureDataSource extends DataGridSource {
     final isChild = partOrder != null;
     final selected = fixture.id == _selectedFixtureId;
 
+    final visibleEntries = _visibleCols.asMap().entries.toList();
+
     // ── Child row ────────────────────────────────────────────────────────────
     if (isChild) {
       final bgChild = (_theme?.colorScheme.surfaceContainerHighest ??
-              const Color(0xFF2A2D34))
+              _theme?.colorScheme.surface ?? 
+              Colors.transparent)
           .withValues(alpha: 0.35);
       final byName = {
         for (final cell in row.getCells()) cell.columnName: cell.value?.toString() ?? '',
       };
       return DataGridRowAdapter(
         color: bgChild,
-        cells: _visibleCols.map((name) {
-          String text;
-          Color color;
-          if (name == '#') {
-            text = '  ·${partOrder + 1}';
-            color = _textMuted;
-          } else if (name == 'chan') {
-            text = byName['chan'] ?? '';
-            color = _accent;
-          } else if (name == 'dimmer') {
-            text = byName['dimmer'] ?? '';
-            color = _textMuted;
-          } else {
-            text = byName[name] ?? '';
-            color = _textMuted;
-          }
+        cells: visibleEntries.map((entry) {
+          final idx = entry.key;
+          final name = entry.value;
+          final isFirst = idx == 0;
+
+          final text = byName[name] ?? '';
+          final color = isFirst ? _accent : _textMuted; // Keep child rows slightly muted generally
+          
           return Container(
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.only(left: 16, right: 8),
@@ -298,14 +332,13 @@ class FixtureDataSource extends DataGridSource {
     }
 
     // ── Parent / single row ──────────────────────────────────────────────────
-    final isMulti = fixture.isMultiPart;
     final isPending  = _pendingIds.contains(fixture.id);
     final isConflict = _conflictIds.contains(fixture.id);
     Color bg;
     if (isConflict) {
-      bg = _kConflictColor;
+      bg = _conflictColor;
     } else if (isPending) {
-      bg = _kPendingColor;
+      bg = _pendingColor;
     } else {
       bg = index.isEven ? Colors.transparent : _bgAlt;
     }
@@ -314,40 +347,26 @@ class FixtureDataSource extends DataGridSource {
     };
 
     return DataGridRowAdapter(
-      cells: _visibleCols.map((name) {
+      cells: visibleEntries.map((entry) {
+        final idx = entry.key;
+        final name = entry.value;
+        final isFirst = idx == 0;
         final isSelectedCell = selected && name == _selectedColName;
-        var color = _textMain;
-        var bold = false;
-        // Multi-part parent rows show fixture-level data only; part-level columns are blank.
-        String text = (isMulti && const {'chan', 'dimmer', 'circuit', 'ip', 'subnet', 'mac', 'ipv6'}.contains(name))
+        
+        var color = isFirst ? _accent : _textMain;
+        var bold = isFirst || (selected && !isFirst); // Bold first col OR selected row items
+        
+        String text = (fixture.isMultiPart && const {'chan', 'dimmer', 'circuit', 'ip', 'subnet', 'mac', 'ipv6'}.contains(name))
             ? ''
             : (byName[name] ?? '');
 
-        switch (name) {
-          case '#':
-            color = selected ? _textMain : _textMuted;
-            bold = selected;
-            break;
-          case 'chan':
-            if (!isMulti) {
-              color = _accent;
-              bold = true;
-            } else {
-              color = _textMuted;
-            }
-            break;
-          case 'dimmer':
-          case 'circuit':
-            color = _textMuted;
-            break;
-          case 'hung':
-          case 'patch':
-          case 'focused':
-            color = byName[name] == '✓' ? Colors.green : _textMuted;
-            break;
-          default:
-            color = _textMain;
+        // Override status column colors
+        if (const {'hung', 'patch', 'focused'}.contains(name)) {
+          if (byName[name] == '✓') {
+            color = Colors.green;
+          }
         }
+
         if (isSelectedCell) {
           color = Colors.orange;
           bold = true;

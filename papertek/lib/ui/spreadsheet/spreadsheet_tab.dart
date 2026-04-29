@@ -137,14 +137,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
       context: context,
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx + 1, pos.dy + 1),
       items: [
-        PopupMenuItem(
-          onTap: () => _controller.cloneFixture(fixture),
-          child: const ListTile(
-            leading: Icon(Icons.copy),
-            title: Text('Clone Fixture'),
-            dense: true,
-          ),
-        ),
+
         PopupMenuItem(
           onTap: () => _controller.deleteFixture(fixture),
           child: ListTile(
@@ -155,6 +148,14 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
         ),
       ],
     );
+  }
+
+  void _clearSelection() {
+    _source.setSelectedCell(null, null);
+    _sidebarSelection.value = null;
+    _controller.gridController.selectedIndex = -1;
+    _controller.gridController.selectedRow = null;
+    _controller.gridController.moveCurrentCellTo(RowColumnIndex(-1, -1));
   }
 
   void _syncSelectionFromRowCol(RowColumnIndex rci) {
@@ -210,9 +211,19 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                     return SpreadsheetSidebar(
                       theme: theme,
                       selected: sel,
-                      canClone: sel != null,
-                      onAdd: _controller.addFixture,
-                      onClone: () { if (sel != null) _controller.cloneFixture(sel); },
+                      isAddMode: _controller.isAddMode,
+                      addDraft: _controller.isAddMode ? _controller.addDraft : null,
+                      continueAdding: _controller.continueAdding,
+                      copySelected: _controller.copySelected,
+                      lastEditedAddField: _controller.lastEditedAddField,
+                      onEnterAddMode: () => _controller.enterAddMode(donor: sel),
+                      onCancelAddMode: _controller.cancelAddMode,
+                      onSubmitAdd: () => _controller.submitAddFixture(),
+                      onContinueAddingChanged: _controller.setContinueAdding,
+                      onCopySelectedChanged: _controller.setCopySelected,
+                      onDraftEdit: (colId, val) {
+                        _controller.updateDraftField(colId, val);
+                      },
                       onDelete: () { if (sel != null) _controller.deleteFixture(sel); },
                       onEdit: (col, val) =>
                           sel != null ? _controller.editCell(sel, col, val, null) : Future.value(),
@@ -228,33 +239,47 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
-                      SpreadsheetToolbar(
-                        theme: theme,
-                        searchCtrl: _controller.searchController,
-                        sortSpecs: _controller.sortSpecs,
-                        onSortLevel: _controller.setSortLevel,
-                        onToggleDirection: _controller.toggleSortDirection,
-                        availableCols: kDefaultColumnOrder.where((c) => !_controller.hiddenCols.contains(c) && c != '#').toList(),
-                        onColumnsPressed: _showColumnPicker,
-                      ),
-                      SpreadsheetFilterStrip(
-                        theme: theme,
-                        filterActive: _controller.filterActive,
-                        filterLabel: _controller.filterLabel,
-                        onQuickFilter: () {
-                           final selCol = _source.selectedColName;
-                           final selVal = _source.selectedCellValue;
-                           if (selCol != null && selVal != null) {
-                             _controller.applyQuickFilter(selCol, selVal);
-                           }
+                      Listener(
+                        onPointerDown: (e) {
+                          if (e.buttons == 1 || e.buttons == 2) _clearSelection();
                         },
-                        onClearFilter: _controller.clearFilter,
+                        child: SpreadsheetToolbar(
+                          theme: theme,
+                          searchCtrl: _controller.searchController,
+                          sortSpecs: _controller.sortSpecs,
+                          onSortLevel: _controller.setSortLevel,
+                          onToggleDirection: _controller.toggleSortDirection,
+                          availableCols: kDefaultColumnOrder.where((c) => !_controller.hiddenCols.contains(c) && c != '#').toList(),
+                          onColumnsPressed: _showColumnPicker,
+                          onDeselect: _clearSelection,
+                        ),
+                      ),
+                      Listener(
+                        onPointerDown: (e) {
+                          if (e.buttons == 1 || e.buttons == 2) _clearSelection();
+                        },
+                        child: SpreadsheetFilterStrip(
+                          theme: theme,
+                          filterActive: _controller.filterActive,
+                          filterLabel: _controller.filterLabel,
+                          onQuickFilter: () {
+                             final selCol = _source.selectedColName;
+                             final selVal = _source.selectedCellValue;
+                             if (selCol != null && selVal != null) {
+                               _controller.applyQuickFilter(selCol, selVal);
+                             }
+                          },
+                          onClearFilter: _controller.clearFilter,
+                        ),
                       ),
                       Expanded(
                         child: SfDataGridTheme(
                           data: SfDataGridThemeData(
                             headerColor: theme.colorScheme.surfaceContainerLow,
                             gridLineColor: theme.colorScheme.outlineVariant,
+                            selectionColor: theme.brightness == Brightness.dark
+                                ? const Color(0xFF42451A).withValues(alpha: 0.8) // Brighter greenish-yellow
+                                : theme.colorScheme.primary.withValues(alpha: 0.1),
                           ),
                           child: SfDataGrid(
                             controller: _controller.gridController,
@@ -335,18 +360,28 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                           ),
                         ),
                       ),
-                      SpreadsheetPresetsStrip(
-                        theme: theme,
-                        presets: presets,
-                        controller: _controller,
-                        onCreatePressed: _showCreatePresetDialog,
+                      Listener(
+                        onPointerDown: (e) {
+                          if (e.buttons == 1 || e.buttons == 2) _clearSelection();
+                        },
+                        child: SpreadsheetPresetsStrip(
+                          theme: theme,
+                          presets: presets,
+                          controller: _controller,
+                          onCreatePressed: _showCreatePresetDialog,
+                        ),
                       ),
-                      SpreadsheetStatusBar(
-                        totalFixtures: fixtures.length,
-                        visibleCount: _source.rows.length,
-                        filterActive: _controller.filterActive,
-                        showName: showName,
-                        theme: theme,
+                      Listener(
+                        onPointerDown: (e) {
+                          if (e.buttons == 1 || e.buttons == 2) _clearSelection();
+                        },
+                        child: SpreadsheetStatusBar(
+                          totalFixtures: fixtures.length,
+                          visibleCount: _source.rows.length,
+                          filterActive: _controller.filterActive,
+                          showName: showName,
+                          theme: theme,
+                        ),
                       ),
                     ],
                   ),

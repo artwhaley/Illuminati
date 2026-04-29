@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'providers/show_provider.dart';
+import 'providers/theme_provider.dart';
 import 'ui/app.dart';
 
 void main() async {
@@ -20,6 +21,9 @@ void main() async {
   });
 
   final container = ProviderContainer();
+  // Initialize theme settings from storage before starting the app.
+  await container.read(themeProvider.notifier).initialize();
+
   windowManager.addListener(_AppWindowListener(container));
   await windowManager.setPreventClose(true);
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 import 'tracked_write_repository.dart';
+import '../ui/spreadsheet/fixture_draft.dart';
 
 /// One intensity part of a multi-part fixture (e.g. one cell of a cyc).
 class FixturePartRow {
@@ -195,6 +196,95 @@ class FixtureRepository {
       buildSnapshot: _buildSnapshot,
     );
     return res.rowId;
+  }
+
+  /// Inserts a new fixture pre-populated from [draft].
+  /// All inserts are a single undo frame.
+  Future<double> addFixtureFromDraft(FixtureDraft draft, {double? afterSortOrder}) async {
+    final sort = afterSortOrder == null
+        ? await _maxSortOrder() + 1.0
+        : await _sortOrderAfter(afterSortOrder);
+    _tracked.beginBatchFrame('Add fixture');
+    try {
+      // 1. Fixture row
+      final fixtureRes = await _tracked.insertRow(
+        table: 'fixtures',
+        doInsert: () => _db.into(_db.fixtures).insert(FixturesCompanion(
+          position:    Value(draft.position),
+          unitNumber:  Value(draft.unitNumber),
+          fixtureType: Value(draft.fixtureType),
+          wattage:     Value(draft.wattage),
+          function:    Value(draft.function),
+          focus:       Value(draft.focus),
+          accessories: Value(draft.accessories),
+          flagged:     const Value(0),
+          sortOrder:   Value(sort),
+        )),
+        buildSnapshot: _buildSnapshot,
+      );
+      final fixtureId = fixtureRes.rowId;
+
+      // 2. Intensity part
+      await _tracked.insertRow(
+        table: 'fixture_parts',
+        doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+          fixtureId:  Value(fixtureId),
+          partOrder:  const Value(0),
+          partType:   const Value('intensity'),
+          channel:    Value(draft.channel),
+          address:    Value(draft.dimmer),
+          circuit:    Value(draft.circuit),
+          ipAddress:  Value(draft.ipAddress),
+          subnet:     Value(draft.subnet),
+          macAddress: Value(draft.macAddress),
+          ipv6:       Value(draft.ipv6),
+        )),
+        buildSnapshot: (id) async =>
+            (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
+                .getSingle()).toJson(),
+      );
+
+      // 3. Gel part (optional)
+      if (draft.color != null && draft.color!.isNotEmpty) {
+        final maxOrder = await _maxPartOrder(fixtureId);
+        await _tracked.insertRow(
+          table: 'fixture_parts',
+          doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+            fixtureId: Value(fixtureId),
+            partOrder: Value(maxOrder + 1),
+            partType:  const Value('gel'),
+            partName:  Value(draft.color),
+          )),
+          buildSnapshot: (id) async =>
+              (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
+                  .getSingle()).toJson(),
+        );
+      }
+
+      // 4. Gobo parts (optional)
+      for (final entry in [draft.gobo1, draft.gobo2].indexed) {
+        final name = entry.$2;
+        if (name != null && name.isNotEmpty) {
+          final maxOrder = await _maxPartOrder(fixtureId);
+          await _tracked.insertRow(
+            table: 'fixture_parts',
+            doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+              fixtureId: Value(fixtureId),
+              partOrder: Value(maxOrder + 1),
+              partType:  const Value('gobo'),
+              partName:  Value(name),
+            )),
+            buildSnapshot: (id) async =>
+                (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
+                    .getSingle()).toJson(),
+          );
+        }
+      }
+
+      return sort;
+    } finally {
+      _tracked.endBatchFrame();
+    }
   }
 
   Future<int> cloneFixture(int sourceId) async {

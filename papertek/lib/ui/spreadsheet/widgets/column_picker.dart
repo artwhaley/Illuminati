@@ -1,7 +1,6 @@
-/// A checkbox-based menu for toggling column visibility in the spreadsheet.
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../column_spec.dart';
+import 'column_checkbox_list.dart';
 
 class ColumnPickerMenuEntry extends PopupMenuEntry<Never> {
   const ColumnPickerMenuEntry({
@@ -14,7 +13,7 @@ class ColumnPickerMenuEntry extends PopupMenuEntry<Never> {
   final void Function(Set<String>) onChanged;
 
   @override
-  double get height => (kColumns.length - 1) * 40.0;
+  double get height => kColumns.where((c) => !c.isAlwaysVisible).length * 40.0;
 
   @override
   bool represents(Never? value) => false;
@@ -24,39 +23,24 @@ class ColumnPickerMenuEntry extends PopupMenuEntry<Never> {
 }
 
 class _ColumnPickerMenuEntryState extends State<ColumnPickerMenuEntry> {
-  late Set<String> _hidden;
-
-  @override
-  void initState() {
-    super.initState();
-    _hidden = Set.of(widget.hidden);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final col in kColumns)
-          if (!col.isAlwaysVisible)
-            CheckboxListTile(
-              dense: true,
-              visualDensity: VisualDensity.compact,
-              title: Text(col.label,
-                  style: GoogleFonts.jetBrainsMono(fontSize: 13)),
-              value: !_hidden.contains(col.id),
-              onChanged: (v) {
-                setState(() {
-                  if (v == true) {
-                    _hidden.remove(col.id);
-                  } else {
-                    _hidden.add(col.id);
-                  }
-                });
-                widget.onChanged(_hidden);
-              },
-            ),
-      ],
+    // Visibility picker uses selected = visible = NOT hidden.
+    final selected = kColumns
+        .where((c) => !c.isAlwaysVisible && !widget.hidden.contains(c.id))
+        .map((c) => c.id)
+        .toSet();
+
+    return ColumnCheckboxList(
+      selected: selected,
+      onChanged: (newSelected) {
+        // Convert back: hidden = all non-alwaysVisible columns NOT in newSelected.
+        final newHidden = kColumns
+            .where((c) => !c.isAlwaysVisible && !newSelected.contains(c.id))
+            .map((c) => c.id)
+            .toSet();
+        widget.onChanged(newHidden);
+      },
     );
   }
 }

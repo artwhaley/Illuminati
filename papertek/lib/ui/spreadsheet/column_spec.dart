@@ -66,16 +66,16 @@ class ColumnSpec {
 
 /// The single, canonical list of all columns in the spreadsheet.
 final List<ColumnSpec> kColumns = [
-  ColumnSpec(
-    id: '#',
-    label: '#',
-    defaultWidth: 40.0,
-    section: ColumnSection.number,
-    getValue: (f) => f.id.toString(),
-    isReadOnly: true,
-    isNumeric: true,
-    isAlwaysVisible: true,
-  ),
+  // ColumnSpec(
+  //   id: '#',
+  //   label: '#',
+  //   defaultWidth: 40.0,
+  //   section: ColumnSection.number,
+  //   getValue: (f) => f.id.toString(),
+  //   isReadOnly: true,
+  //   isNumeric: true,
+  //   isAlwaysVisible: true,
+  // ),
   ColumnSpec(
     id: 'chan',
     label: 'CHAN',

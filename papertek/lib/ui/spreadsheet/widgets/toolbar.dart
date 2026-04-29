@@ -13,6 +13,7 @@ class SpreadsheetToolbar extends StatelessWidget {
     required this.onToggleDirection,
     required this.availableCols,
     required this.onColumnsPressed,
+    required this.onDeselect,
   });
 
   final ThemeData theme;
@@ -22,6 +23,7 @@ class SpreadsheetToolbar extends StatelessWidget {
   final void Function(int) onToggleDirection;
   final List<String> availableCols;
   final void Function(BuildContext) onColumnsPressed;
+  final VoidCallback onDeselect;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +48,13 @@ class SpreadsheetToolbar extends StatelessWidget {
                 _buildSortLevel(2, '3rd'),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          _chip(
+            context,
+            Icons.deselect_outlined,
+            'Deselect',
+            onDeselect,
           ),
           const SizedBox(width: 8),
           Builder(
