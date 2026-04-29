@@ -21,4 +21,5 @@ class Reports extends Table {
   TextColumn get name => text()();
   // JSON: columns, sort, filter, grouping, PDF layout settings
   TextColumn get templateJson => text()();
+  IntColumn get isSystem => integer().withDefault(const Constant(0))();
 }

@@ -1,5 +1,11 @@
 # REPORT-003: Default Templates & Persistence
 
+## Execution Guardrails (Must Follow)
+- All paths in this ticket are under `papertek/`.
+- Add schema support for `reports.is_system` before implementing delete restrictions.
+- Regenerate Drift code after schema updates; do not hand-edit generated files.
+- Repository in v1 uses direct CRUD for reports (no tracked-write requirement).
+
 ## Summary
 Create the `ReportTemplateRepository` for CRUD operations on the `Reports` table, define the 3 built-in default templates, wire providers into `show_provider.dart`, and seed defaults on first open.
 
@@ -7,11 +13,13 @@ Create the `ReportTemplateRepository` for CRUD operations on the `Reports` table
 - REPORT-001 (data models)
 
 ## Files to Create
-1. `lib/features/reports/report_template_defaults.dart`
-2. `lib/repositories/report_template_repository.dart`
+1. `papertek/lib/features/reports/report_template_defaults.dart`
+2. `papertek/lib/repositories/report_template_repository.dart`
 
 ## Files to Modify
-1. `lib/providers/show_provider.dart` — add `reportTemplateRepoProvider` and `reportTemplatesProvider`
+1. `papertek/lib/providers/show_provider.dart` — add `reportTemplateRepoProvider` and `reportTemplatesProvider`
+2. `papertek/lib/database/tables/custom_fields.dart` — add `isSystem` to `Reports` table
+3. `papertek/lib/database/database.dart` — add migration step and schema version bump
 
 ## Detailed Instructions
 
@@ -82,7 +90,7 @@ const kDefaultTemplates = <ReportTemplate>[
 
 ### 2. `report_template_repository.dart`
 
-Follow the exact same pattern as `SpreadsheetViewPresetRepository`:
+Follow a similar pattern to preset repositories, with report-specific system-template safeguards:
 
 ```dart
 import 'dart:convert';
@@ -90,12 +98,10 @@ import 'package:drift/drift.dart';
 import '../database/database.dart';
 import '../features/reports/report_template.dart';
 import '../features/reports/report_template_defaults.dart';
-import 'tracked_write_repository.dart';
 
 class ReportTemplateRepository {
-  ReportTemplateRepository(this._db, this._tracked);
+  ReportTemplateRepository(this._db);
   final AppDatabase _db;
-  final TrackedWriteRepository _tracked;
 
   Stream<List<Report>> watchTemplates() {
     return (_db.select(_db.reports)
@@ -120,6 +126,10 @@ class ReportTemplateRepository {
   }
 
   Future<void> deleteTemplate(int id) async {
+    final row = await (_db.select(_db.reports)..where((t) => t.id.equals(id))).getSingle();
+    if (row.isSystem == 1) {
+      throw StateError('Cannot delete system template');
+    }
     await (_db.delete(_db.reports)..where((t) => t.id.equals(id))).go();
   }
 
@@ -134,6 +144,7 @@ class ReportTemplateRepository {
       for (final tmpl in kDefaultTemplates) {
         batch.insert(_db.reports, ReportsCompanion(
           name: Value(tmpl.name),
+          isSystem: const Value(1),
           templateJson: Value(jsonEncode(tmpl.toJson())),
         ));
       }
@@ -157,9 +168,8 @@ Add these two providers at the bottom of the file, before the closing blank line
 /// Repository for saved report templates.
 final reportTemplateRepoProvider = Provider.autoDispose<ReportTemplateRepository?>((ref) {
   final db = ref.watch(databaseProvider);
-  final tracked = ref.watch(trackedWriteProvider);
-  if (db == null || tracked == null) return null;
-  return ReportTemplateRepository(db, tracked);
+  if (db == null) return null;
+  return ReportTemplateRepository(db);
 });
 
 /// Streams the list of saved report templates.
@@ -200,5 +210,6 @@ void initState() {
 
 ## Testing
 - After hot restart, verify the `reports` table contains 3 rows (use sqlite browser or add a debug print)
+- Verify seeded defaults have `is_system = 1`
 - Verify `ReportTemplateRepository.parseTemplate()` correctly deserializes the stored JSON
 - Verify the providers compile without errors

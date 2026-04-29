@@ -1,5 +1,13 @@
 # REPORT-001: Data Models & Field Registry
 
+## Execution Guardrails (Must Follow)
+- All paths in this ticket are under `papertek/`:
+  - `papertek/lib/features/reports/report_template.dart`
+  - `papertek/lib/features/reports/report_field_registry.dart`
+- Do not create or modify root-level `lib/` files for app implementation.
+- `ReportPickerItem` must be a **public** type (no leading underscore).
+- Add normalization helpers for invalid JSON inputs (invalid orientation/flex/empty field keys/duplicate column IDs).
+
 ## Summary
 Create the foundational data models (`ReportTemplate`, `ReportColumn`, `ReportFieldDef`) and the field registry (`kReportFields`, `kStackedColumns`) that the entire report engine depends on.
 
@@ -7,8 +15,8 @@ Create the foundational data models (`ReportTemplate`, `ReportColumn`, `ReportFi
 None — this is the first ticket.
 
 ## Files to Create
-1. `lib/features/reports/report_template.dart`
-2. `lib/features/reports/report_field_registry.dart`
+1. `papertek/lib/features/reports/report_template.dart`
+2. `papertek/lib/features/reports/report_field_registry.dart`
 
 ## File to Delete
 None.
@@ -249,7 +257,7 @@ class _PickerItem {
 }
 ```
 
-> **IMPORTANT:** The `_PickerItem` class name should NOT start with underscore since it will be used outside this file. Rename it to `ReportPickerItem`.
+> **IMPORTANT:** Use `ReportPickerItem` directly (public type). Do not declare `_PickerItem`.
 
 ## Acceptance Criteria
 - `ReportTemplate.fromJson(template.toJson())` round-trips without data loss
@@ -258,3 +266,8 @@ class _PickerItem {
 - `kStackedColumns` contains exactly 3 entries
 - `getFieldValue()` returns empty string for unknown keys and null field values
 - `effectiveRowHeight` returns 36.0 when any column is stacked, 22.0 otherwise
+- `ReportTemplate.fromJson` normalizes invalid values:
+  - unknown orientation -> `'portrait'`
+  - flex < 1 -> 1
+  - empty fieldKeys columns are dropped
+  - duplicate column IDs are deduped (keep first)

@@ -1,5 +1,12 @@
 # REPORT-005: Editor UI & Reports Tab Rewrite
 
+## Execution Guardrails (Must Follow)
+- All paths in this ticket are under `papertek/`.
+- Do not use widget-local `_selectedId` as source of truth; use provider state.
+- Initial template load must be event-driven (`ref.listen`) to avoid async race after seeding.
+- System templates cannot be deleted (UI disabled + repository enforcement already in place).
+- Keep PDF preview resilient when theme load fails (no `_theme!` null force).
+
 ## Summary
 Rewrite `ReportsTab` as a split-panel layout: a template editor on the left and a live PDF preview on the right. Create the editor sub-widgets: template selector, column list with reorder/width controls, and grouping/sorting controls.
 
@@ -10,12 +17,12 @@ Rewrite `ReportsTab` as a split-panel layout: a template editor on the left and 
 - REPORT-004 (state management)
 
 ## Files to Create
-1. `lib/ui/reports/template_editor_panel.dart`
-2. `lib/ui/reports/template_column_list.dart`
-3. `lib/ui/reports/template_selector.dart`
+1. `papertek/lib/ui/reports/template_editor_panel.dart`
+2. `papertek/lib/ui/reports/template_column_list.dart`
+3. `papertek/lib/ui/reports/template_selector.dart`
 
 ## Files to Modify
-1. `lib/ui/reports/reports_tab.dart` — complete rewrite
+1. `papertek/lib/ui/reports/reports_tab.dart` — complete rewrite
 
 ## Detailed Instructions
 
@@ -51,14 +58,17 @@ class _ReportsTabState extends ConsumerState<ReportsTab> {
     _loadTheme();
     // Seed default templates
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(reportTemplateRepoProvider)?.seedDefaults().then((_) {
-        // After seeding, load the first template if none is loaded
-        final templates = ref.read(reportTemplatesProvider).valueOrNull ?? [];
-        if (templates.isNotEmpty) {
-          final first = ReportTemplateRepository.parseTemplate(templates.first);
-          ref.read(activeReportTemplateProvider.notifier).loadTemplate(first);
-        }
-      });
+      ref.read(reportTemplateRepoProvider)?.seedDefaults();
+    });
+    ref.listenManual(reportTemplatesProvider, (previous, next) {
+      final rows = next.valueOrNull ?? [];
+      final selectedId = ref.read(activeReportTemplateIdProvider);
+      if (rows.isNotEmpty && selectedId == null) {
+        final first = rows.first;
+        ref.read(activeReportTemplateIdProvider.notifier).state = first.id;
+        ref.read(activeReportTemplateProvider.notifier)
+            .loadTemplate(ReportTemplateRepository.parseTemplate(first));
+      }
     });
   }
 
@@ -92,10 +102,10 @@ class _ReportsTabState extends ConsumerState<ReportsTab> {
           const VerticalDivider(width: 1),
           // Right panel: PDF preview
           Expanded(
-            child: template.columns.isEmpty
+                child: template.columns.isEmpty
               ? const Center(child: Text('Add at least one column to generate a report.'))
               : PdfPreview(
-                  build: (format) => buildFromTemplate(format, fixtures, template, _theme!),
+                  build: (format) => buildFromTemplate(format, fixtures, template, _theme ?? ReportTheme.fallback()),
                   canChangeOrientation: false,
                   canChangePageFormat: false,
                   initialPageFormat: PdfPageFormat.letter,
@@ -435,7 +445,7 @@ class TemplateSelector extends ConsumerStatefulWidget {
 }
 
 class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
-  int? _selectedId;
+  // Selection state lives in provider; no local source-of-truth id.
 
   @override
   Widget build(BuildContext context) {
@@ -450,7 +460,7 @@ class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DropdownButtonFormField<int>(
-            value: _selectedId,
+            value: ref.watch(activeReportTemplateIdProvider),
             decoration: InputDecoration(
               labelText: 'Template',
               isDense: true,
@@ -462,7 +472,7 @@ class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
             ).toList(),
             onChanged: (id) {
               if (id == null) return;
-              setState(() => _selectedId = id);
+              ref.read(activeReportTemplateIdProvider.notifier).state = id;
               final row = templates.firstWhere((t) => t.id == id);
               final template = ReportTemplateRepository.parseTemplate(row);
               notifier.loadTemplate(template);
@@ -475,8 +485,8 @@ class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.save, size: 14),
                   label: const Text('Save'),
-                  onPressed: _selectedId == null ? null : () {
-                    repo?.updateTemplate(_selectedId!, currentTemplate);
+                  onPressed: ref.watch(activeReportTemplateIdProvider) == null ? null : () {
+                    repo?.updateTemplate(ref.read(activeReportTemplateIdProvider)!, currentTemplate);
                   },
                 ),
               ),
@@ -491,7 +501,7 @@ class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
                       final newTemplate = currentTemplate.copyWith(name: name);
                       notifier.setName(name);
                       final id = await repo?.createTemplate(name, newTemplate);
-                      if (id != null) setState(() => _selectedId = id);
+                      if (id != null) ref.read(activeReportTemplateIdProvider.notifier).state = id;
                     }
                   },
                 ),
@@ -499,9 +509,13 @@ class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
               const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
-                onPressed: _selectedId == null ? null : () async {
-                  await repo?.deleteTemplate(_selectedId!);
-                  setState(() => _selectedId = null);
+                onPressed: ref.watch(activeReportTemplateIdProvider) == null ? null : () async {
+                  final selectedId = ref.read(activeReportTemplateIdProvider);
+                  if (selectedId == null) return;
+                  final selected = templates.firstWhere((t) => t.id == selectedId);
+                  if (selected.isSystem == 1) return;
+                  await repo?.deleteTemplate(selectedId);
+                  ref.read(activeReportTemplateIdProvider.notifier).state = null;
                 },
               ),
             ],
@@ -543,4 +557,5 @@ class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
 - Verify switching orientation updates the PDF
 - Verify "Save As" creates a new template that appears in the dropdown
 - Verify deleting a template removes it from the dropdown
+- Verify system template delete button is disabled/no-op
 - Verify removing all columns shows the "Add at least one column" message instead of crashing

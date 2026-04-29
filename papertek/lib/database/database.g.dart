@@ -8212,8 +8212,20 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isSystemMeta = const VerificationMeta(
+    'isSystem',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, templateJson];
+  late final GeneratedColumn<int> isSystem = GeneratedColumn<int>(
+    'is_system',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, templateJson, isSystem];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -8248,6 +8260,12 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
     } else if (isInserting) {
       context.missing(_templateJsonMeta);
     }
+    if (data.containsKey('is_system')) {
+      context.handle(
+        _isSystemMeta,
+        isSystem.isAcceptableOrUnknown(data['is_system']!, _isSystemMeta),
+      );
+    }
     return context;
   }
 
@@ -8269,6 +8287,10 @@ class $ReportsTable extends Reports with TableInfo<$ReportsTable, Report> {
         DriftSqlType.string,
         data['${effectivePrefix}template_json'],
       )!,
+      isSystem: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}is_system'],
+      )!,
     );
   }
 
@@ -8282,10 +8304,12 @@ class Report extends DataClass implements Insertable<Report> {
   final int id;
   final String name;
   final String templateJson;
+  final int isSystem;
   const Report({
     required this.id,
     required this.name,
     required this.templateJson,
+    required this.isSystem,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -8293,6 +8317,7 @@ class Report extends DataClass implements Insertable<Report> {
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['template_json'] = Variable<String>(templateJson);
+    map['is_system'] = Variable<int>(isSystem);
     return map;
   }
 
@@ -8301,6 +8326,7 @@ class Report extends DataClass implements Insertable<Report> {
       id: Value(id),
       name: Value(name),
       templateJson: Value(templateJson),
+      isSystem: Value(isSystem),
     );
   }
 
@@ -8313,6 +8339,7 @@ class Report extends DataClass implements Insertable<Report> {
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       templateJson: serializer.fromJson<String>(json['templateJson']),
+      isSystem: serializer.fromJson<int>(json['isSystem']),
     );
   }
   @override
@@ -8322,13 +8349,20 @@ class Report extends DataClass implements Insertable<Report> {
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'templateJson': serializer.toJson<String>(templateJson),
+      'isSystem': serializer.toJson<int>(isSystem),
     };
   }
 
-  Report copyWith({int? id, String? name, String? templateJson}) => Report(
+  Report copyWith({
+    int? id,
+    String? name,
+    String? templateJson,
+    int? isSystem,
+  }) => Report(
     id: id ?? this.id,
     name: name ?? this.name,
     templateJson: templateJson ?? this.templateJson,
+    isSystem: isSystem ?? this.isSystem,
   );
   Report copyWithCompanion(ReportsCompanion data) {
     return Report(
@@ -8337,6 +8371,7 @@ class Report extends DataClass implements Insertable<Report> {
       templateJson: data.templateJson.present
           ? data.templateJson.value
           : this.templateJson,
+      isSystem: data.isSystem.present ? data.isSystem.value : this.isSystem,
     );
   }
 
@@ -8345,46 +8380,53 @@ class Report extends DataClass implements Insertable<Report> {
     return (StringBuffer('Report(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('templateJson: $templateJson')
+          ..write('templateJson: $templateJson, ')
+          ..write('isSystem: $isSystem')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, templateJson);
+  int get hashCode => Object.hash(id, name, templateJson, isSystem);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Report &&
           other.id == this.id &&
           other.name == this.name &&
-          other.templateJson == this.templateJson);
+          other.templateJson == this.templateJson &&
+          other.isSystem == this.isSystem);
 }
 
 class ReportsCompanion extends UpdateCompanion<Report> {
   final Value<int> id;
   final Value<String> name;
   final Value<String> templateJson;
+  final Value<int> isSystem;
   const ReportsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.templateJson = const Value.absent(),
+    this.isSystem = const Value.absent(),
   });
   ReportsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required String templateJson,
+    this.isSystem = const Value.absent(),
   }) : name = Value(name),
        templateJson = Value(templateJson);
   static Insertable<Report> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? templateJson,
+    Expression<int>? isSystem,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (templateJson != null) 'template_json': templateJson,
+      if (isSystem != null) 'is_system': isSystem,
     });
   }
 
@@ -8392,11 +8434,13 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     Value<int>? id,
     Value<String>? name,
     Value<String>? templateJson,
+    Value<int>? isSystem,
   }) {
     return ReportsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       templateJson: templateJson ?? this.templateJson,
+      isSystem: isSystem ?? this.isSystem,
     );
   }
 
@@ -8412,6 +8456,9 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     if (templateJson.present) {
       map['template_json'] = Variable<String>(templateJson.value);
     }
+    if (isSystem.present) {
+      map['is_system'] = Variable<int>(isSystem.value);
+    }
     return map;
   }
 
@@ -8420,7 +8467,8 @@ class ReportsCompanion extends UpdateCompanion<Report> {
     return (StringBuffer('ReportsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('templateJson: $templateJson')
+          ..write('templateJson: $templateJson, ')
+          ..write('isSystem: $isSystem')
           ..write(')'))
         .toString();
   }
@@ -18794,12 +18842,14 @@ typedef $$ReportsTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       required String templateJson,
+      Value<int> isSystem,
     });
 typedef $$ReportsTableUpdateCompanionBuilder =
     ReportsCompanion Function({
       Value<int> id,
       Value<String> name,
       Value<String> templateJson,
+      Value<int> isSystem,
     });
 
 class $$ReportsTableFilterComposer
@@ -18823,6 +18873,11 @@ class $$ReportsTableFilterComposer
 
   ColumnFilters<String> get templateJson => $composableBuilder(
     column: $table.templateJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get isSystem => $composableBuilder(
+    column: $table.isSystem,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -18850,6 +18905,11 @@ class $$ReportsTableOrderingComposer
     column: $table.templateJson,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get isSystem => $composableBuilder(
+    column: $table.isSystem,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ReportsTableAnnotationComposer
@@ -18871,6 +18931,9 @@ class $$ReportsTableAnnotationComposer
     column: $table.templateJson,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get isSystem =>
+      $composableBuilder(column: $table.isSystem, builder: (column) => column);
 }
 
 class $$ReportsTableTableManager
@@ -18904,20 +18967,24 @@ class $$ReportsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> templateJson = const Value.absent(),
+                Value<int> isSystem = const Value.absent(),
               }) => ReportsCompanion(
                 id: id,
                 name: name,
                 templateJson: templateJson,
+                isSystem: isSystem,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
                 required String templateJson,
+                Value<int> isSystem = const Value.absent(),
               }) => ReportsCompanion.insert(
                 id: id,
                 name: name,
                 templateJson: templateJson,
+                isSystem: isSystem,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

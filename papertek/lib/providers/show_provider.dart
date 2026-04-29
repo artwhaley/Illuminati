@@ -39,6 +39,9 @@ import '../services/show_file_service.dart';
 import '../repositories/spreadsheet_view_preset_repository.dart';
 import '../services/import/import_service.dart';
 import '../services/commit_service.dart';
+import '../repositories/report_template_repository.dart';
+import '../ui/reports/report_template_notifier.dart';
+import '../features/reports/report_template.dart';
 
 // ── CORE PROVIDERS ───────────────────────────────────────────────────────────
 
@@ -270,5 +273,31 @@ final spreadsheetViewPresetsProvider =
   if (repo == null) return Stream.value([]);
   return repo.watchPresets();
 });
+
+/// Repository for saved report templates.
+final reportTemplateRepoProvider = Provider.autoDispose<ReportTemplateRepository?>((ref) {
+  final db = ref.watch(databaseProvider);
+  if (db == null) return null;
+  return ReportTemplateRepository(db);
+});
+
+/// Streams the list of saved report templates.
+final reportTemplatesProvider = StreamProvider.autoDispose<List<Report>>((ref) {
+  final repo = ref.watch(reportTemplateRepoProvider);
+  if (repo == null) return Stream.value([]);
+  return repo.watchTemplates();
+});
+
+/// The currently-edited report template. Shared between the editor panel and PDF preview.
+final activeReportTemplateProvider =
+    StateNotifierProvider<ReportTemplateNotifier, ReportTemplate>((ref) {
+  return ReportTemplateNotifier();
+});
+
+/// The currently selected template row id in DB.
+final activeReportTemplateIdProvider = StateProvider<int?>((ref) => null);
+
+/// Dirty flag for template editor state.
+final activeReportTemplateDirtyProvider = StateProvider<bool>((ref) => false);
 
 

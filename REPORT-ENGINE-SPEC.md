@@ -1,10 +1,22 @@
-# Report Template Engine — Full Specification
+# Report Template Engine — Full Specification (Execution Locked)
 
 ## Overview
 
 Replace the hardcoded channel hookup report with a **data-driven template engine** and an **interactive template editor**. Users select columns, reorder them, resize widths, pick grouping/sorting, and see a live PDF preview update in real time. Templates are persisted to the database and can be saved, renamed, and deleted.
 
+This document is the **authoritative implementation contract** for execution agents. If any ticket conflicts with this file, this file wins.
+
 ---
+
+## Mandatory Scope and Boundaries
+
+1. **All app implementation paths are under `papertek/`.**
+   - Use `papertek/lib/...`, `papertek/test/...`, `papertek/assets/...`.
+   - Do not create or modify root-level app files under `lib/` for this feature.
+2. **Do not broaden scope.**
+   - No additional report features beyond this spec.
+3. **Do not delete `channel_hookup_report.dart` until final migration pass.**
+   - New renderer must be fully wired and verified first.
 
 ## Architecture
 
@@ -26,7 +38,7 @@ Replace the hardcoded channel hookup report with a **data-driven template engine
               (Riverpod StateNotifier)
 ```
 
-Both panels read from the same `ReportTemplate` state. The editor modifies it, the PDF renderer consumes it.
+Both panels read from the same report editor state. The editor modifies it, the PDF renderer consumes it.
 
 ---
 
@@ -57,7 +69,7 @@ class ReportColumn {
 ```dart
 /// Complete description of a report layout. JSON-serializable.
 class ReportTemplate {
-  final String name;                    // "Channel Hookup", "My Custom Report"
+  final String name;                    // Display name inside template JSON
   final List<ReportColumn> columns;     // Ordered list of visible columns
   final String? groupByFieldKey;        // e.g. 'position', null = no grouping
   final String? sortByFieldKey;         // Primary sort field
@@ -74,7 +86,7 @@ class ReportTemplate {
 
 ### Field Registry
 
-A `Map<String, ReportFieldDef>` that maps field keys to data accessors. This is derived from the existing `kColumns` list in `column_spec.dart` but extended with additional fields not currently in the spreadsheet (`wattage`, `gobo1`, `gobo2`).
+A `Map<String, ReportFieldDef>` that maps field keys to data accessors. This should be derived from existing spreadsheet field metadata where possible, then extended with report-only fields (`wattage`, `gobo1`, `gobo2`).
 
 ```dart
 /// All fields available for report columns.
@@ -106,7 +118,7 @@ class ReportFieldDef {
 | `gobo1` | Gobo 1 | NEW — `f.gobo1` |
 | `gobo2` | Gobo 2 | NEW — `f.gobo2` |
 | `wattage` | Wattage | NEW — `f.wattage` |
-| `notes` | Notes | `ColumnSpec 'notes'` — currently empty |
+| `notes` | Notes | Placeholder only; if not backed by real data, exclude from v1 selectable fields |
 
 ### Pre-Built Stacked Columns
 
@@ -141,22 +153,29 @@ Three templates ship pre-installed (seeded on first open, `isSystem = 1`):
 
 ## Persistence
 
-Templates are stored in the **existing `Reports` table** (already in schema since migration 5):
+Templates are stored in the **`Reports` table**, with explicit system-template support:
 
 ```sql
 CREATE TABLE reports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
+  is_system INTEGER NOT NULL DEFAULT 0,
   template_json TEXT NOT NULL  -- JSON-encoded ReportTemplate
 );
 ```
 
-A `ReportTemplateRepository` handles CRUD following the same pattern as `SpreadsheetViewPresetRepository`:
+A `ReportTemplateRepository` handles CRUD:
 - `watchTemplates()` → `Stream<List<Report>>`
 - `createTemplate(String name, ReportTemplate template)` → `Future<int>`
 - `updateTemplate(int id, ReportTemplate template)` → `Future<void>`
 - `deleteTemplate(int id)` → `Future<void>`
 - `seedDefaults()` → inserts the 3 built-in templates if table is empty
+
+Rules:
+- Built-ins are seeded with `is_system = 1`.
+- User templates use `is_system = 0`.
+- System templates cannot be deleted (enforced in UI and repository).
+- Report templates use direct CRUD in v1 (no tracked-write dependency).
 
 ---
 
@@ -173,7 +192,7 @@ Future<Uint8List> buildFromTemplate(
 ) async { ... }
 ```
 
-This replaces the current `buildChannelHookup` function. The existing `channel_hookup_report.dart` is deleted entirely.
+This replaces the current `buildChannelHookup` function. Delete `channel_hookup_report.dart` only after new renderer is active and verified.
 
 ### Layout Rules (Learned from Spike)
 
@@ -196,7 +215,7 @@ This replaces the current `buildChannelHookup` function. The existing `channel_h
    )
    ```
 
-4. **`pw.MultiPage` build must return a flat `List<pw.Widget>`.** Do not nest a `pw.Column` containing all rows — it prevents page breaks. Each data row, group header, and spacer must be a top-level item in the list.
+4. **`pw.MultiPage` build must return a flat `List<pw.Widget>`.** Do not nest a `pw.Column` containing all rows.
 
 5. **Use `pw.PageTheme` exclusively.** Do NOT pass `pageFormat`, `margin`, `theme`, or `orientation` alongside `pageTheme` in `MultiPage`. The `pdf` package asserts that only one or the other is used.
 
@@ -213,6 +232,15 @@ For columns where `isStacked == true`:
 - Each sub-field gets its own line within the cell
 - Apply the same `OverflowBox > ConstrainedBox > FittedBox` safety wrapper to each sub-line independently
 - If ALL sub-fields for a stacked column are empty, render `pw.SizedBox()` (do NOT feed empty strings to FittedBox)
+
+### Sorting and Grouping Rules (Locked)
+
+- Apply sorting before grouping.
+- Sorting is field-key driven from template.
+- Numeric-aware comparison is required for numeric-like fields (`chan`, `unit`, `dimmer`, `circuit` when parseable).
+- Fallback to case-insensitive string compare.
+- Null/empty values sort last.
+- Group ordering follows first appearance in the sorted list.
 
 ### Header / Footer
 
@@ -267,7 +295,12 @@ final activeReportTemplateProvider = StateNotifierProvider<ReportTemplateNotifie
 });
 ```
 
-The `ReportTemplateNotifier` exposes methods like:
+The editor must also track selected template identity outside widget-local state:
+- `activeReportTemplateIdProvider` (or equivalent in editor state)
+- dirty-state tracking (`isDirty`)
+- current template system flag (`isSystem`) for delete permissions
+
+The notifier exposes methods like:
 - `addColumn(String fieldKeyOrStackId)`
 - `removeColumn(String columnId)`
 - `reorderColumns(int oldIndex, int newIndex)`
@@ -285,7 +318,7 @@ Every mutation triggers a Riverpod state update, which causes the `PdfPreview` t
 ## File Structure
 
 ```
-lib/
+papertek/lib/
   features/
     reports/
       report_field_registry.dart      // kReportFields map + ReportFieldDef + kStackedColumns
@@ -306,7 +339,7 @@ lib/
 ```
 
 **Deleted files:**
-- `lib/features/reports/channel_hookup_report.dart` — replaced by `template_renderer.dart`
+- `papertek/lib/features/reports/channel_hookup_report.dart` — replaced by `template_renderer.dart` in final cleanup pass
 
 ---
 
@@ -318,12 +351,24 @@ lib/
 
 3. **Template with stale field keys:** If a saved template references a `fieldKey` that no longer exists in `kReportFields`, skip that column silently during rendering (log a warning, don't crash).
 
-4. **Very long text:** The `OverflowBox > FittedBox` pattern handles this, but cap `FittedBox` scaling at a minimum font size of 5pt to prevent unreadable micro-text.
+4. **Very long text:** If implementing minimum readable size, enforce it in code (do not claim 5pt floor unless actually enforced).
 
-5. **Font loading failure:** Wrap `ReportTheme.load()` in try/catch. On failure, fall back to `pw.Font.helvetica()` / `pw.Font.times()` base14 fonts and log a warning.
+5. **Font loading failure:** Wrap `ReportTheme.load()` in try/catch. On failure, use an explicit fallback theme. Never force-unwrap a null theme in preview build.
 
 6. **Zero-flex columns:** If a flex column has `flex: 0`, treat it as `flex: 1` to prevent division-by-zero in the layout engine.
 
 7. **Group-by field not in columns:** Grouping works on the data regardless of whether the grouped field is a visible column. This is intentional — you might group by Position but not display Position as a column.
 
-8. **Duplicate column IDs:** The editor must prevent adding the same column twice. If a simple field (`type`) is already added, and the user checks a stack containing `type` (`stack_instrument`), allow it — stacks and singles are independent column entries.
+8. **Duplicate column IDs:** Prevent duplicate column IDs in a template. Stacks and singles remain independent entries.
+
+9. **Stale JSON / malformed templates:** Parsing must be defensive. Invalid templates should fail gracefully and never crash the tab.
+
+## Migration and Rollout Order (Locked)
+
+1. Add/upgrade schema for `reports.is_system`, regenerate Drift artifacts.
+2. Implement models + field registry + validation/normalization.
+3. Implement defaults + repository + providers + seed flow.
+4. Implement template renderer and wire preview.
+5. Implement editor state and UI.
+6. Remove legacy `channel_hookup_report.dart`.
+7. Add regression tests and malformed-template tests.

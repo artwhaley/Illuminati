@@ -1,5 +1,12 @@
 # REPORT-002: Template Renderer (PDF Generation Engine)
 
+## Execution Guardrails (Must Follow)
+- All paths in this ticket are under `papertek/`.
+- Do not delete legacy `channel_hookup_report.dart` in this ticket. Keep it until new renderer is fully wired and verified.
+- Sorting must be numeric-aware for numeric-like keys (`chan`, `unit`, `dimmer`, `circuit` when parseable), then fallback to case-insensitive string compare.
+- Null/empty values sort last.
+- Never force-unwrap nullable theme state in preview path.
+
 ## Summary
 Create the generic PDF renderer that accepts a `ReportTemplate` and `List<FixtureRow>` and produces a PDF document. This replaces the hardcoded `channel_hookup_report.dart`.
 
@@ -7,13 +14,13 @@ Create the generic PDF renderer that accepts a `ReportTemplate` and `List<Fixtur
 - REPORT-001 (data models and field registry)
 
 ## Files to Create
-1. `lib/features/reports/template_renderer.dart`
+1. `papertek/lib/features/reports/template_renderer.dart`
 
 ## Files to Delete
-1. `lib/features/reports/channel_hookup_report.dart` — replaced by `template_renderer.dart`
+1. `papertek/lib/features/reports/channel_hookup_report.dart` — **defer deletion to final cleanup after migration verification**
 
 ## Files to Modify
-1. `lib/ui/reports/reports_tab.dart` — update import from `channel_hookup_report.dart` to `template_renderer.dart`
+1. `papertek/lib/ui/reports/reports_tab.dart` — update import from `channel_hookup_report.dart` to `template_renderer.dart`
 
 ## Critical Layout Rules
 
@@ -83,7 +90,8 @@ The function must:
 3. **Sort fixtures** using `template.sortByFieldKey`:
    - Look up the field's accessor from `kReportFields`
    - Sort ascending or descending per `template.sortAscending`
-   - Use natural string comparison (null values sort last)
+   - Use numeric-aware comparison for numeric-like keys; otherwise case-insensitive string compare
+   - Null/empty values sort last
 
 4. **Group fixtures** using `template.groupByFieldKey`:
    - If null, treat all fixtures as one group with key `''` (no group headers rendered)
@@ -293,3 +301,4 @@ build: (format) => buildFromTemplate(
 - Verify stacked columns show two lines per cell
 - Verify empty cells don't crash
 - Verify the page header shows the template name
+- Verify `chan` sorting is numeric (`1,2,10` not `1,10,2`)

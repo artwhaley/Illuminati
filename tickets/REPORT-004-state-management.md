@@ -1,5 +1,11 @@
 # REPORT-004: Template State Management (Riverpod)
 
+## Execution Guardrails (Must Follow)
+- All paths in this ticket are under `papertek/`.
+- Selection identity (`selected template id`) must be provider-owned, not widget-local.
+- Track dirty state (`isDirty`) to control save UX.
+- Keep template normalization constraints enforced on every mutating operation.
+
 ## Summary
 Create the `ReportTemplateNotifier` (a Riverpod `StateNotifier`) that manages the currently-edited report template. This is the shared state between the editor UI and the PDF preview.
 
@@ -8,10 +14,10 @@ Create the `ReportTemplateNotifier` (a Riverpod `StateNotifier`) that manages th
 - REPORT-003 (persistence — for loading/saving)
 
 ## Files to Create
-1. `lib/ui/reports/report_template_notifier.dart`
+1. `papertek/lib/ui/reports/report_template_notifier.dart`
 
 ## Files to Modify
-1. `lib/providers/show_provider.dart` — add the `activeReportTemplateProvider`
+1. `papertek/lib/providers/show_provider.dart` — add state providers
 
 ## Detailed Instructions
 
@@ -159,6 +165,12 @@ final activeReportTemplateProvider =
     StateNotifierProvider<ReportTemplateNotifier, ReportTemplate>((ref) {
   return ReportTemplateNotifier();
 });
+
+/// The currently selected template row id in DB.
+final activeReportTemplateIdProvider = StateProvider<int?>((ref) => null);
+
+/// Dirty flag for template editor state.
+final activeReportTemplateDirtyProvider = StateProvider<bool>((ref) => false);
 ```
 
 ## Testing
@@ -168,3 +180,4 @@ final activeReportTemplateProvider =
 - Verify `reorderColumns(0, 2)` moves the first column to position 2
 - Verify `setColumnFlex('chan', 2)` sets the column to flex mode and clears fixedWidth
 - Verify `setColumnFixedWidth('chan', 50)` sets fixedWidth and the column renders with a SizedBox
+- Verify dirty flag becomes true after any mutation and false after explicit successful save

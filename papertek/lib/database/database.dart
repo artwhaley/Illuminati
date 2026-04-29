@@ -89,7 +89,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase openFile(String path) =>
       AppDatabase(NativeDatabase(File(path)));
 
-  static const currentSchemaVersion = 19;
+  static const currentSchemaVersion = 20;
 
   /// Utility to open the default show file in the system's documents directory.
   static Future<AppDatabase> openDefault(String showName) async {
@@ -208,6 +208,9 @@ class AppDatabase extends _$AppDatabase {
             } catch (_) {
               // Tables might already exist if we are upgrading from a beta build.
             }
+          }
+          if (from < 20) {
+            await m.addColumn(reports, reports.isSystem);
           }
         },
         beforeOpen: (details) async {

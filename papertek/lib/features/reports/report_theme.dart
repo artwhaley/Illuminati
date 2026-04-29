@@ -73,4 +73,20 @@ class ReportTheme {
       plexSansMedium: plexSansMedium,
     );
   }
+
+  /// Provides a theme using standard PDF fonts (Helvetica, Times, Courier) 
+  /// if custom TTF loading fails.
+  factory ReportTheme.fallback() {
+    return ReportTheme(
+      cormorantRegular: pw.Font.times(),
+      cormorantMedium: pw.Font.timesBold(),
+      cormorantSemiBold: pw.Font.timesBold(),
+      plexMonoLight: pw.Font.courier(),
+      plexMonoRegular: pw.Font.courier(),
+      plexMonoMedium: pw.Font.courierBold(),
+      plexSansLight: pw.Font.helvetica(),
+      plexSansRegular: pw.Font.helvetica(),
+      plexSansMedium: pw.Font.helveticaBold(),
+    );
+  }
 }
