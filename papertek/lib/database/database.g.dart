@@ -10536,6 +10536,1472 @@ class SpreadsheetViewPresetsCompanion
   }
 }
 
+class $NotesTable extends Notes with TableInfo<$NotesTable, Note> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdByMeta = const VerificationMeta(
+    'createdBy',
+  );
+  @override
+  late final GeneratedColumn<String> createdBy = GeneratedColumn<String>(
+    'created_by',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _completedMeta = const VerificationMeta(
+    'completed',
+  );
+  @override
+  late final GeneratedColumn<int> completed = GeneratedColumn<int>(
+    'completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<String> completedAt = GeneratedColumn<String>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _completedByMeta = const VerificationMeta(
+    'completedBy',
+  );
+  @override
+  late final GeneratedColumn<String> completedBy = GeneratedColumn<String>(
+    'completed_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _elevatedMeta = const VerificationMeta(
+    'elevated',
+  );
+  @override
+  late final GeneratedColumn<int> elevated = GeneratedColumn<int>(
+    'elevated',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _fixtureTypeIdMeta = const VerificationMeta(
+    'fixtureTypeId',
+  );
+  @override
+  late final GeneratedColumn<int> fixtureTypeId = GeneratedColumn<int>(
+    'fixture_type_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES fixture_types (id) ON DELETE SET NULL',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    type,
+    body,
+    createdBy,
+    createdAt,
+    completed,
+    completedAt,
+    completedBy,
+    elevated,
+    fixtureTypeId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Note> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('created_by')) {
+      context.handle(
+        _createdByMeta,
+        createdBy.isAcceptableOrUnknown(data['created_by']!, _createdByMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdByMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('completed')) {
+      context.handle(
+        _completedMeta,
+        completed.isAcceptableOrUnknown(data['completed']!, _completedMeta),
+      );
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('completed_by')) {
+      context.handle(
+        _completedByMeta,
+        completedBy.isAcceptableOrUnknown(
+          data['completed_by']!,
+          _completedByMeta,
+        ),
+      );
+    }
+    if (data.containsKey('elevated')) {
+      context.handle(
+        _elevatedMeta,
+        elevated.isAcceptableOrUnknown(data['elevated']!, _elevatedMeta),
+      );
+    }
+    if (data.containsKey('fixture_type_id')) {
+      context.handle(
+        _fixtureTypeIdMeta,
+        fixtureTypeId.isAcceptableOrUnknown(
+          data['fixture_type_id']!,
+          _fixtureTypeIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Note map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Note(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      createdBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      completed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}completed'],
+      )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}completed_at'],
+      ),
+      completedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}completed_by'],
+      ),
+      elevated: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}elevated'],
+      )!,
+      fixtureTypeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fixture_type_id'],
+      ),
+    );
+  }
+
+  @override
+  $NotesTable createAlias(String alias) {
+    return $NotesTable(attachedDatabase, alias);
+  }
+}
+
+class Note extends DataClass implements Insertable<Note> {
+  final int id;
+  final String type;
+  final String body;
+  final String createdBy;
+  final String createdAt;
+  final int completed;
+  final String? completedAt;
+  final String? completedBy;
+  final int elevated;
+  final int? fixtureTypeId;
+  const Note({
+    required this.id,
+    required this.type,
+    required this.body,
+    required this.createdBy,
+    required this.createdAt,
+    required this.completed,
+    this.completedAt,
+    this.completedBy,
+    required this.elevated,
+    this.fixtureTypeId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['type'] = Variable<String>(type);
+    map['body'] = Variable<String>(body);
+    map['created_by'] = Variable<String>(createdBy);
+    map['created_at'] = Variable<String>(createdAt);
+    map['completed'] = Variable<int>(completed);
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<String>(completedAt);
+    }
+    if (!nullToAbsent || completedBy != null) {
+      map['completed_by'] = Variable<String>(completedBy);
+    }
+    map['elevated'] = Variable<int>(elevated);
+    if (!nullToAbsent || fixtureTypeId != null) {
+      map['fixture_type_id'] = Variable<int>(fixtureTypeId);
+    }
+    return map;
+  }
+
+  NotesCompanion toCompanion(bool nullToAbsent) {
+    return NotesCompanion(
+      id: Value(id),
+      type: Value(type),
+      body: Value(body),
+      createdBy: Value(createdBy),
+      createdAt: Value(createdAt),
+      completed: Value(completed),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+      completedBy: completedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedBy),
+      elevated: Value(elevated),
+      fixtureTypeId: fixtureTypeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fixtureTypeId),
+    );
+  }
+
+  factory Note.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Note(
+      id: serializer.fromJson<int>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      body: serializer.fromJson<String>(json['body']),
+      createdBy: serializer.fromJson<String>(json['createdBy']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      completed: serializer.fromJson<int>(json['completed']),
+      completedAt: serializer.fromJson<String?>(json['completedAt']),
+      completedBy: serializer.fromJson<String?>(json['completedBy']),
+      elevated: serializer.fromJson<int>(json['elevated']),
+      fixtureTypeId: serializer.fromJson<int?>(json['fixtureTypeId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'type': serializer.toJson<String>(type),
+      'body': serializer.toJson<String>(body),
+      'createdBy': serializer.toJson<String>(createdBy),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'completed': serializer.toJson<int>(completed),
+      'completedAt': serializer.toJson<String?>(completedAt),
+      'completedBy': serializer.toJson<String?>(completedBy),
+      'elevated': serializer.toJson<int>(elevated),
+      'fixtureTypeId': serializer.toJson<int?>(fixtureTypeId),
+    };
+  }
+
+  Note copyWith({
+    int? id,
+    String? type,
+    String? body,
+    String? createdBy,
+    String? createdAt,
+    int? completed,
+    Value<String?> completedAt = const Value.absent(),
+    Value<String?> completedBy = const Value.absent(),
+    int? elevated,
+    Value<int?> fixtureTypeId = const Value.absent(),
+  }) => Note(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    body: body ?? this.body,
+    createdBy: createdBy ?? this.createdBy,
+    createdAt: createdAt ?? this.createdAt,
+    completed: completed ?? this.completed,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    completedBy: completedBy.present ? completedBy.value : this.completedBy,
+    elevated: elevated ?? this.elevated,
+    fixtureTypeId: fixtureTypeId.present
+        ? fixtureTypeId.value
+        : this.fixtureTypeId,
+  );
+  Note copyWithCompanion(NotesCompanion data) {
+    return Note(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      body: data.body.present ? data.body.value : this.body,
+      createdBy: data.createdBy.present ? data.createdBy.value : this.createdBy,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      completed: data.completed.present ? data.completed.value : this.completed,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+      completedBy: data.completedBy.present
+          ? data.completedBy.value
+          : this.completedBy,
+      elevated: data.elevated.present ? data.elevated.value : this.elevated,
+      fixtureTypeId: data.fixtureTypeId.present
+          ? data.fixtureTypeId.value
+          : this.fixtureTypeId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Note(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('body: $body, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('completed: $completed, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('completedBy: $completedBy, ')
+          ..write('elevated: $elevated, ')
+          ..write('fixtureTypeId: $fixtureTypeId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    type,
+    body,
+    createdBy,
+    createdAt,
+    completed,
+    completedAt,
+    completedBy,
+    elevated,
+    fixtureTypeId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Note &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.body == this.body &&
+          other.createdBy == this.createdBy &&
+          other.createdAt == this.createdAt &&
+          other.completed == this.completed &&
+          other.completedAt == this.completedAt &&
+          other.completedBy == this.completedBy &&
+          other.elevated == this.elevated &&
+          other.fixtureTypeId == this.fixtureTypeId);
+}
+
+class NotesCompanion extends UpdateCompanion<Note> {
+  final Value<int> id;
+  final Value<String> type;
+  final Value<String> body;
+  final Value<String> createdBy;
+  final Value<String> createdAt;
+  final Value<int> completed;
+  final Value<String?> completedAt;
+  final Value<String?> completedBy;
+  final Value<int> elevated;
+  final Value<int?> fixtureTypeId;
+  const NotesCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.body = const Value.absent(),
+    this.createdBy = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.completed = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.completedBy = const Value.absent(),
+    this.elevated = const Value.absent(),
+    this.fixtureTypeId = const Value.absent(),
+  });
+  NotesCompanion.insert({
+    this.id = const Value.absent(),
+    required String type,
+    required String body,
+    required String createdBy,
+    required String createdAt,
+    this.completed = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.completedBy = const Value.absent(),
+    this.elevated = const Value.absent(),
+    this.fixtureTypeId = const Value.absent(),
+  }) : type = Value(type),
+       body = Value(body),
+       createdBy = Value(createdBy),
+       createdAt = Value(createdAt);
+  static Insertable<Note> custom({
+    Expression<int>? id,
+    Expression<String>? type,
+    Expression<String>? body,
+    Expression<String>? createdBy,
+    Expression<String>? createdAt,
+    Expression<int>? completed,
+    Expression<String>? completedAt,
+    Expression<String>? completedBy,
+    Expression<int>? elevated,
+    Expression<int>? fixtureTypeId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (body != null) 'body': body,
+      if (createdBy != null) 'created_by': createdBy,
+      if (createdAt != null) 'created_at': createdAt,
+      if (completed != null) 'completed': completed,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (completedBy != null) 'completed_by': completedBy,
+      if (elevated != null) 'elevated': elevated,
+      if (fixtureTypeId != null) 'fixture_type_id': fixtureTypeId,
+    });
+  }
+
+  NotesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? type,
+    Value<String>? body,
+    Value<String>? createdBy,
+    Value<String>? createdAt,
+    Value<int>? completed,
+    Value<String?>? completedAt,
+    Value<String?>? completedBy,
+    Value<int>? elevated,
+    Value<int?>? fixtureTypeId,
+  }) {
+    return NotesCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      body: body ?? this.body,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      completed: completed ?? this.completed,
+      completedAt: completedAt ?? this.completedAt,
+      completedBy: completedBy ?? this.completedBy,
+      elevated: elevated ?? this.elevated,
+      fixtureTypeId: fixtureTypeId ?? this.fixtureTypeId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (createdBy.present) {
+      map['created_by'] = Variable<String>(createdBy.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (completed.present) {
+      map['completed'] = Variable<int>(completed.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<String>(completedAt.value);
+    }
+    if (completedBy.present) {
+      map['completed_by'] = Variable<String>(completedBy.value);
+    }
+    if (elevated.present) {
+      map['elevated'] = Variable<int>(elevated.value);
+    }
+    if (fixtureTypeId.present) {
+      map['fixture_type_id'] = Variable<int>(fixtureTypeId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotesCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('body: $body, ')
+          ..write('createdBy: $createdBy, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('completed: $completed, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('completedBy: $completedBy, ')
+          ..write('elevated: $elevated, ')
+          ..write('fixtureTypeId: $fixtureTypeId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $NoteActionsTable extends NoteActions
+    with TableInfo<$NoteActionsTable, NoteAction> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NoteActionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _noteIdMeta = const VerificationMeta('noteId');
+  @override
+  late final GeneratedColumn<int> noteId = GeneratedColumn<int>(
+    'note_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notes (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<String> timestamp = GeneratedColumn<String>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, noteId, body, userId, timestamp];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'note_actions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NoteAction> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('note_id')) {
+      context.handle(
+        _noteIdMeta,
+        noteId.isAcceptableOrUnknown(data['note_id']!, _noteIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_noteIdMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NoteAction map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NoteAction(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      noteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}note_id'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}timestamp'],
+      )!,
+    );
+  }
+
+  @override
+  $NoteActionsTable createAlias(String alias) {
+    return $NoteActionsTable(attachedDatabase, alias);
+  }
+}
+
+class NoteAction extends DataClass implements Insertable<NoteAction> {
+  final int id;
+  final int noteId;
+  final String body;
+  final String userId;
+  final String timestamp;
+  const NoteAction({
+    required this.id,
+    required this.noteId,
+    required this.body,
+    required this.userId,
+    required this.timestamp,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['note_id'] = Variable<int>(noteId);
+    map['body'] = Variable<String>(body);
+    map['user_id'] = Variable<String>(userId);
+    map['timestamp'] = Variable<String>(timestamp);
+    return map;
+  }
+
+  NoteActionsCompanion toCompanion(bool nullToAbsent) {
+    return NoteActionsCompanion(
+      id: Value(id),
+      noteId: Value(noteId),
+      body: Value(body),
+      userId: Value(userId),
+      timestamp: Value(timestamp),
+    );
+  }
+
+  factory NoteAction.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NoteAction(
+      id: serializer.fromJson<int>(json['id']),
+      noteId: serializer.fromJson<int>(json['noteId']),
+      body: serializer.fromJson<String>(json['body']),
+      userId: serializer.fromJson<String>(json['userId']),
+      timestamp: serializer.fromJson<String>(json['timestamp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'noteId': serializer.toJson<int>(noteId),
+      'body': serializer.toJson<String>(body),
+      'userId': serializer.toJson<String>(userId),
+      'timestamp': serializer.toJson<String>(timestamp),
+    };
+  }
+
+  NoteAction copyWith({
+    int? id,
+    int? noteId,
+    String? body,
+    String? userId,
+    String? timestamp,
+  }) => NoteAction(
+    id: id ?? this.id,
+    noteId: noteId ?? this.noteId,
+    body: body ?? this.body,
+    userId: userId ?? this.userId,
+    timestamp: timestamp ?? this.timestamp,
+  );
+  NoteAction copyWithCompanion(NoteActionsCompanion data) {
+    return NoteAction(
+      id: data.id.present ? data.id.value : this.id,
+      noteId: data.noteId.present ? data.noteId.value : this.noteId,
+      body: data.body.present ? data.body.value : this.body,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NoteAction(')
+          ..write('id: $id, ')
+          ..write('noteId: $noteId, ')
+          ..write('body: $body, ')
+          ..write('userId: $userId, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, noteId, body, userId, timestamp);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NoteAction &&
+          other.id == this.id &&
+          other.noteId == this.noteId &&
+          other.body == this.body &&
+          other.userId == this.userId &&
+          other.timestamp == this.timestamp);
+}
+
+class NoteActionsCompanion extends UpdateCompanion<NoteAction> {
+  final Value<int> id;
+  final Value<int> noteId;
+  final Value<String> body;
+  final Value<String> userId;
+  final Value<String> timestamp;
+  const NoteActionsCompanion({
+    this.id = const Value.absent(),
+    this.noteId = const Value.absent(),
+    this.body = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  });
+  NoteActionsCompanion.insert({
+    this.id = const Value.absent(),
+    required int noteId,
+    required String body,
+    required String userId,
+    required String timestamp,
+  }) : noteId = Value(noteId),
+       body = Value(body),
+       userId = Value(userId),
+       timestamp = Value(timestamp);
+  static Insertable<NoteAction> custom({
+    Expression<int>? id,
+    Expression<int>? noteId,
+    Expression<String>? body,
+    Expression<String>? userId,
+    Expression<String>? timestamp,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (noteId != null) 'note_id': noteId,
+      if (body != null) 'body': body,
+      if (userId != null) 'user_id': userId,
+      if (timestamp != null) 'timestamp': timestamp,
+    });
+  }
+
+  NoteActionsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? noteId,
+    Value<String>? body,
+    Value<String>? userId,
+    Value<String>? timestamp,
+  }) {
+    return NoteActionsCompanion(
+      id: id ?? this.id,
+      noteId: noteId ?? this.noteId,
+      body: body ?? this.body,
+      userId: userId ?? this.userId,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (noteId.present) {
+      map['note_id'] = Variable<int>(noteId.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<String>(timestamp.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NoteActionsCompanion(')
+          ..write('id: $id, ')
+          ..write('noteId: $noteId, ')
+          ..write('body: $body, ')
+          ..write('userId: $userId, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $NoteFixturesTable extends NoteFixtures
+    with TableInfo<$NoteFixturesTable, NoteFixture> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NoteFixturesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _noteIdMeta = const VerificationMeta('noteId');
+  @override
+  late final GeneratedColumn<int> noteId = GeneratedColumn<int>(
+    'note_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notes (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _fixtureIdMeta = const VerificationMeta(
+    'fixtureId',
+  );
+  @override
+  late final GeneratedColumn<int> fixtureId = GeneratedColumn<int>(
+    'fixture_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES fixtures (id) ON DELETE CASCADE',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, noteId, fixtureId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'note_fixtures';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NoteFixture> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('note_id')) {
+      context.handle(
+        _noteIdMeta,
+        noteId.isAcceptableOrUnknown(data['note_id']!, _noteIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_noteIdMeta);
+    }
+    if (data.containsKey('fixture_id')) {
+      context.handle(
+        _fixtureIdMeta,
+        fixtureId.isAcceptableOrUnknown(data['fixture_id']!, _fixtureIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fixtureIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NoteFixture map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NoteFixture(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      noteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}note_id'],
+      )!,
+      fixtureId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fixture_id'],
+      )!,
+    );
+  }
+
+  @override
+  $NoteFixturesTable createAlias(String alias) {
+    return $NoteFixturesTable(attachedDatabase, alias);
+  }
+}
+
+class NoteFixture extends DataClass implements Insertable<NoteFixture> {
+  final int id;
+  final int noteId;
+  final int fixtureId;
+  const NoteFixture({
+    required this.id,
+    required this.noteId,
+    required this.fixtureId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['note_id'] = Variable<int>(noteId);
+    map['fixture_id'] = Variable<int>(fixtureId);
+    return map;
+  }
+
+  NoteFixturesCompanion toCompanion(bool nullToAbsent) {
+    return NoteFixturesCompanion(
+      id: Value(id),
+      noteId: Value(noteId),
+      fixtureId: Value(fixtureId),
+    );
+  }
+
+  factory NoteFixture.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NoteFixture(
+      id: serializer.fromJson<int>(json['id']),
+      noteId: serializer.fromJson<int>(json['noteId']),
+      fixtureId: serializer.fromJson<int>(json['fixtureId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'noteId': serializer.toJson<int>(noteId),
+      'fixtureId': serializer.toJson<int>(fixtureId),
+    };
+  }
+
+  NoteFixture copyWith({int? id, int? noteId, int? fixtureId}) => NoteFixture(
+    id: id ?? this.id,
+    noteId: noteId ?? this.noteId,
+    fixtureId: fixtureId ?? this.fixtureId,
+  );
+  NoteFixture copyWithCompanion(NoteFixturesCompanion data) {
+    return NoteFixture(
+      id: data.id.present ? data.id.value : this.id,
+      noteId: data.noteId.present ? data.noteId.value : this.noteId,
+      fixtureId: data.fixtureId.present ? data.fixtureId.value : this.fixtureId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NoteFixture(')
+          ..write('id: $id, ')
+          ..write('noteId: $noteId, ')
+          ..write('fixtureId: $fixtureId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, noteId, fixtureId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NoteFixture &&
+          other.id == this.id &&
+          other.noteId == this.noteId &&
+          other.fixtureId == this.fixtureId);
+}
+
+class NoteFixturesCompanion extends UpdateCompanion<NoteFixture> {
+  final Value<int> id;
+  final Value<int> noteId;
+  final Value<int> fixtureId;
+  const NoteFixturesCompanion({
+    this.id = const Value.absent(),
+    this.noteId = const Value.absent(),
+    this.fixtureId = const Value.absent(),
+  });
+  NoteFixturesCompanion.insert({
+    this.id = const Value.absent(),
+    required int noteId,
+    required int fixtureId,
+  }) : noteId = Value(noteId),
+       fixtureId = Value(fixtureId);
+  static Insertable<NoteFixture> custom({
+    Expression<int>? id,
+    Expression<int>? noteId,
+    Expression<int>? fixtureId,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (noteId != null) 'note_id': noteId,
+      if (fixtureId != null) 'fixture_id': fixtureId,
+    });
+  }
+
+  NoteFixturesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? noteId,
+    Value<int>? fixtureId,
+  }) {
+    return NoteFixturesCompanion(
+      id: id ?? this.id,
+      noteId: noteId ?? this.noteId,
+      fixtureId: fixtureId ?? this.fixtureId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (noteId.present) {
+      map['note_id'] = Variable<int>(noteId.value);
+    }
+    if (fixtureId.present) {
+      map['fixture_id'] = Variable<int>(fixtureId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NoteFixturesCompanion(')
+          ..write('id: $id, ')
+          ..write('noteId: $noteId, ')
+          ..write('fixtureId: $fixtureId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $NotePositionsTable extends NotePositions
+    with TableInfo<$NotePositionsTable, NotePosition> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotePositionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _noteIdMeta = const VerificationMeta('noteId');
+  @override
+  late final GeneratedColumn<int> noteId = GeneratedColumn<int>(
+    'note_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES notes (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _positionNameMeta = const VerificationMeta(
+    'positionName',
+  );
+  @override
+  late final GeneratedColumn<String> positionName = GeneratedColumn<String>(
+    'position_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, noteId, positionName];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'note_positions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NotePosition> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('note_id')) {
+      context.handle(
+        _noteIdMeta,
+        noteId.isAcceptableOrUnknown(data['note_id']!, _noteIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_noteIdMeta);
+    }
+    if (data.containsKey('position_name')) {
+      context.handle(
+        _positionNameMeta,
+        positionName.isAcceptableOrUnknown(
+          data['position_name']!,
+          _positionNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_positionNameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NotePosition map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotePosition(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      noteId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}note_id'],
+      )!,
+      positionName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}position_name'],
+      )!,
+    );
+  }
+
+  @override
+  $NotePositionsTable createAlias(String alias) {
+    return $NotePositionsTable(attachedDatabase, alias);
+  }
+}
+
+class NotePosition extends DataClass implements Insertable<NotePosition> {
+  final int id;
+  final int noteId;
+  final String positionName;
+  const NotePosition({
+    required this.id,
+    required this.noteId,
+    required this.positionName,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['note_id'] = Variable<int>(noteId);
+    map['position_name'] = Variable<String>(positionName);
+    return map;
+  }
+
+  NotePositionsCompanion toCompanion(bool nullToAbsent) {
+    return NotePositionsCompanion(
+      id: Value(id),
+      noteId: Value(noteId),
+      positionName: Value(positionName),
+    );
+  }
+
+  factory NotePosition.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotePosition(
+      id: serializer.fromJson<int>(json['id']),
+      noteId: serializer.fromJson<int>(json['noteId']),
+      positionName: serializer.fromJson<String>(json['positionName']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'noteId': serializer.toJson<int>(noteId),
+      'positionName': serializer.toJson<String>(positionName),
+    };
+  }
+
+  NotePosition copyWith({int? id, int? noteId, String? positionName}) =>
+      NotePosition(
+        id: id ?? this.id,
+        noteId: noteId ?? this.noteId,
+        positionName: positionName ?? this.positionName,
+      );
+  NotePosition copyWithCompanion(NotePositionsCompanion data) {
+    return NotePosition(
+      id: data.id.present ? data.id.value : this.id,
+      noteId: data.noteId.present ? data.noteId.value : this.noteId,
+      positionName: data.positionName.present
+          ? data.positionName.value
+          : this.positionName,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotePosition(')
+          ..write('id: $id, ')
+          ..write('noteId: $noteId, ')
+          ..write('positionName: $positionName')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, noteId, positionName);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotePosition &&
+          other.id == this.id &&
+          other.noteId == this.noteId &&
+          other.positionName == this.positionName);
+}
+
+class NotePositionsCompanion extends UpdateCompanion<NotePosition> {
+  final Value<int> id;
+  final Value<int> noteId;
+  final Value<String> positionName;
+  const NotePositionsCompanion({
+    this.id = const Value.absent(),
+    this.noteId = const Value.absent(),
+    this.positionName = const Value.absent(),
+  });
+  NotePositionsCompanion.insert({
+    this.id = const Value.absent(),
+    required int noteId,
+    required String positionName,
+  }) : noteId = Value(noteId),
+       positionName = Value(positionName);
+  static Insertable<NotePosition> custom({
+    Expression<int>? id,
+    Expression<int>? noteId,
+    Expression<String>? positionName,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (noteId != null) 'note_id': noteId,
+      if (positionName != null) 'position_name': positionName,
+    });
+  }
+
+  NotePositionsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? noteId,
+    Value<String>? positionName,
+  }) {
+    return NotePositionsCompanion(
+      id: id ?? this.id,
+      noteId: noteId ?? this.noteId,
+      positionName: positionName ?? this.positionName,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (noteId.present) {
+      map['note_id'] = Variable<int>(noteId.value);
+    }
+    if (positionName.present) {
+      map['position_name'] = Variable<String>(positionName.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotePositionsCompanion(')
+          ..write('id: $id, ')
+          ..write('noteId: $noteId, ')
+          ..write('positionName: $positionName')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -10565,6 +12031,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RoleContactsTable roleContacts = $RoleContactsTable(this);
   late final $SpreadsheetViewPresetsTable spreadsheetViewPresets =
       $SpreadsheetViewPresetsTable(this);
+  late final $NotesTable notes = $NotesTable(this);
+  late final $NoteActionsTable noteActions = $NoteActionsTable(this);
+  late final $NoteFixturesTable noteFixtures = $NoteFixturesTable(this);
+  late final $NotePositionsTable notePositions = $NotePositionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10593,6 +12063,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     positionGroups,
     roleContacts,
     spreadsheetViewPresets,
+    notes,
+    noteActions,
+    noteFixtures,
+    notePositions,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -10665,6 +12139,41 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('custom_field_values', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'fixture_types',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('notes', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notes',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('note_actions', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notes',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('note_fixtures', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'fixtures',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('note_fixtures', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'notes',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('note_positions', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -12505,6 +14014,25 @@ final class $$FixtureTypesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$NotesTable, List<Note>> _notesRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.notes,
+    aliasName: $_aliasNameGenerator(db.fixtureTypes.id, db.notes.fixtureTypeId),
+  );
+
+  $$NotesTableProcessedTableManager get notesRefs {
+    final manager = $$NotesTableTableManager(
+      $_db,
+      $_db.notes,
+    ).filter((f) => f.fixtureTypeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_notesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$FixtureTypesTableFilterComposer
@@ -12557,6 +14085,31 @@ class $$FixtureTypesTableFilterComposer
           }) => $$FixturesTableFilterComposer(
             $db: $db,
             $table: $db.fixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> notesRefs(
+    Expression<bool> Function($$NotesTableFilterComposer f) f,
+  ) {
+    final $$NotesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.fixtureTypeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableFilterComposer(
+            $db: $db,
+            $table: $db.notes,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -12652,6 +14205,31 @@ class $$FixtureTypesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> notesRefs<T extends Object>(
+    Expression<T> Function($$NotesTableAnnotationComposer a) f,
+  ) {
+    final $$NotesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.fixtureTypeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$FixtureTypesTableTableManager
@@ -12667,7 +14245,7 @@ class $$FixtureTypesTableTableManager
           $$FixtureTypesTableUpdateCompanionBuilder,
           (FixtureType, $$FixtureTypesTableReferences),
           FixtureType,
-          PrefetchHooks Function({bool fixturesRefs})
+          PrefetchHooks Function({bool fixturesRefs, bool notesRefs})
         > {
   $$FixtureTypesTableTableManager(_$AppDatabase db, $FixtureTypesTable table)
     : super(
@@ -12716,10 +14294,13 @@ class $$FixtureTypesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({fixturesRefs = false}) {
+          prefetchHooksCallback: ({fixturesRefs = false, notesRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [if (fixturesRefs) db.fixtures],
+              explicitlyWatchedTables: [
+                if (fixturesRefs) db.fixtures,
+                if (notesRefs) db.notes,
+              ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
@@ -12738,6 +14319,27 @@ class $$FixtureTypesTableTableManager
                             table,
                             p0,
                           ).fixturesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.fixtureTypeId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                  if (notesRefs)
+                    await $_getPrefetchedData<
+                      FixtureType,
+                      $FixtureTypesTable,
+                      Note
+                    >(
+                      currentTable: table,
+                      referencedTable: $$FixtureTypesTableReferences
+                          ._notesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$FixtureTypesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).notesRefs,
                       referencedItemsForCurrentItem: (item, referencedItems) =>
                           referencedItems.where(
                             (e) => e.fixtureTypeId == item.id,
@@ -12764,7 +14366,7 @@ typedef $$FixtureTypesTableProcessedTableManager =
       $$FixtureTypesTableUpdateCompanionBuilder,
       (FixtureType, $$FixtureTypesTableReferences),
       FixtureType,
-      PrefetchHooks Function({bool fixturesRefs})
+      PrefetchHooks Function({bool fixturesRefs, bool notesRefs})
     >;
 typedef $$FixturesTableCreateCompanionBuilder =
     FixturesCompanion Function({
@@ -12958,6 +14560,24 @@ final class $$FixturesTableReferences
     final cache = $_typedResult.readTableOrNull(
       _customFieldValuesRefsTable($_db),
     );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$NoteFixturesTable, List<NoteFixture>>
+  _noteFixturesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.noteFixtures,
+    aliasName: $_aliasNameGenerator(db.fixtures.id, db.noteFixtures.fixtureId),
+  );
+
+  $$NoteFixturesTableProcessedTableManager get noteFixturesRefs {
+    final manager = $$NoteFixturesTableTableManager(
+      $_db,
+      $_db.noteFixtures,
+    ).filter((f) => f.fixtureId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_noteFixturesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -13232,6 +14852,31 @@ class $$FixturesTableFilterComposer
           }) => $$CustomFieldValuesTableFilterComposer(
             $db: $db,
             $table: $db.customFieldValues,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> noteFixturesRefs(
+    Expression<bool> Function($$NoteFixturesTableFilterComposer f) f,
+  ) {
+    final $$NoteFixturesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.noteFixtures,
+      getReferencedColumn: (t) => t.fixtureId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NoteFixturesTableFilterComposer(
+            $db: $db,
+            $table: $db.noteFixtures,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -13600,6 +15245,31 @@ class $$FixturesTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> noteFixturesRefs<T extends Object>(
+    Expression<T> Function($$NoteFixturesTableAnnotationComposer a) f,
+  ) {
+    final $$NoteFixturesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.noteFixtures,
+      getReferencedColumn: (t) => t.fixtureId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NoteFixturesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.noteFixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$FixturesTableTableManager
@@ -13624,6 +15294,7 @@ class $$FixturesTableTableManager
             bool workNotesRefs,
             bool maintenanceLogRefs,
             bool customFieldValuesRefs,
+            bool noteFixturesRefs,
           })
         > {
   $$FixturesTableTableManager(_$AppDatabase db, $FixturesTable table)
@@ -13723,6 +15394,7 @@ class $$FixturesTableTableManager
                 workNotesRefs = false,
                 maintenanceLogRefs = false,
                 customFieldValuesRefs = false,
+                noteFixturesRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -13734,6 +15406,7 @@ class $$FixturesTableTableManager
                     if (workNotesRefs) db.workNotes,
                     if (maintenanceLogRefs) db.maintenanceLog,
                     if (customFieldValuesRefs) db.customFieldValues,
+                    if (noteFixturesRefs) db.noteFixtures,
                   ],
                   addJoins:
                       <
@@ -13908,6 +15581,27 @@ class $$FixturesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (noteFixturesRefs)
+                        await $_getPrefetchedData<
+                          Fixture,
+                          $FixturesTable,
+                          NoteFixture
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FixturesTableReferences
+                              ._noteFixturesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FixturesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).noteFixturesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.fixtureId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -13937,6 +15631,7 @@ typedef $$FixturesTableProcessedTableManager =
         bool workNotesRefs,
         bool maintenanceLogRefs,
         bool customFieldValuesRefs,
+        bool noteFixturesRefs,
       })
     >;
 typedef $$FixturePartsTableCreateCompanionBuilder =
@@ -18588,6 +20283,1657 @@ typedef $$SpreadsheetViewPresetsTableProcessedTableManager =
       SpreadsheetViewPreset,
       PrefetchHooks Function()
     >;
+typedef $$NotesTableCreateCompanionBuilder =
+    NotesCompanion Function({
+      Value<int> id,
+      required String type,
+      required String body,
+      required String createdBy,
+      required String createdAt,
+      Value<int> completed,
+      Value<String?> completedAt,
+      Value<String?> completedBy,
+      Value<int> elevated,
+      Value<int?> fixtureTypeId,
+    });
+typedef $$NotesTableUpdateCompanionBuilder =
+    NotesCompanion Function({
+      Value<int> id,
+      Value<String> type,
+      Value<String> body,
+      Value<String> createdBy,
+      Value<String> createdAt,
+      Value<int> completed,
+      Value<String?> completedAt,
+      Value<String?> completedBy,
+      Value<int> elevated,
+      Value<int?> fixtureTypeId,
+    });
+
+final class $$NotesTableReferences
+    extends BaseReferences<_$AppDatabase, $NotesTable, Note> {
+  $$NotesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $FixtureTypesTable _fixtureTypeIdTable(_$AppDatabase db) =>
+      db.fixtureTypes.createAlias(
+        $_aliasNameGenerator(db.notes.fixtureTypeId, db.fixtureTypes.id),
+      );
+
+  $$FixtureTypesTableProcessedTableManager? get fixtureTypeId {
+    final $_column = $_itemColumn<int>('fixture_type_id');
+    if ($_column == null) return null;
+    final manager = $$FixtureTypesTableTableManager(
+      $_db,
+      $_db.fixtureTypes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fixtureTypeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$NoteActionsTable, List<NoteAction>>
+  _noteActionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.noteActions,
+    aliasName: $_aliasNameGenerator(db.notes.id, db.noteActions.noteId),
+  );
+
+  $$NoteActionsTableProcessedTableManager get noteActionsRefs {
+    final manager = $$NoteActionsTableTableManager(
+      $_db,
+      $_db.noteActions,
+    ).filter((f) => f.noteId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_noteActionsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$NoteFixturesTable, List<NoteFixture>>
+  _noteFixturesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.noteFixtures,
+    aliasName: $_aliasNameGenerator(db.notes.id, db.noteFixtures.noteId),
+  );
+
+  $$NoteFixturesTableProcessedTableManager get noteFixturesRefs {
+    final manager = $$NoteFixturesTableTableManager(
+      $_db,
+      $_db.noteFixtures,
+    ).filter((f) => f.noteId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_noteFixturesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$NotePositionsTable, List<NotePosition>>
+  _notePositionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.notePositions,
+    aliasName: $_aliasNameGenerator(db.notes.id, db.notePositions.noteId),
+  );
+
+  $$NotePositionsTableProcessedTableManager get notePositionsRefs {
+    final manager = $$NotePositionsTableTableManager(
+      $_db,
+      $_db.notePositions,
+    ).filter((f) => f.noteId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_notePositionsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$NotesTableFilterComposer extends Composer<_$AppDatabase, $NotesTable> {
+  $$NotesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get completed => $composableBuilder(
+    column: $table.completed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get completedBy => $composableBuilder(
+    column: $table.completedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get elevated => $composableBuilder(
+    column: $table.elevated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$FixtureTypesTableFilterComposer get fixtureTypeId {
+    final $$FixtureTypesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixtureTypeId,
+      referencedTable: $db.fixtureTypes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixtureTypesTableFilterComposer(
+            $db: $db,
+            $table: $db.fixtureTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> noteActionsRefs(
+    Expression<bool> Function($$NoteActionsTableFilterComposer f) f,
+  ) {
+    final $$NoteActionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.noteActions,
+      getReferencedColumn: (t) => t.noteId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NoteActionsTableFilterComposer(
+            $db: $db,
+            $table: $db.noteActions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> noteFixturesRefs(
+    Expression<bool> Function($$NoteFixturesTableFilterComposer f) f,
+  ) {
+    final $$NoteFixturesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.noteFixtures,
+      getReferencedColumn: (t) => t.noteId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NoteFixturesTableFilterComposer(
+            $db: $db,
+            $table: $db.noteFixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> notePositionsRefs(
+    Expression<bool> Function($$NotePositionsTableFilterComposer f) f,
+  ) {
+    final $$NotePositionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.notePositions,
+      getReferencedColumn: (t) => t.noteId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotePositionsTableFilterComposer(
+            $db: $db,
+            $table: $db.notePositions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$NotesTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotesTable> {
+  $$NotesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdBy => $composableBuilder(
+    column: $table.createdBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get completed => $composableBuilder(
+    column: $table.completed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get completedBy => $composableBuilder(
+    column: $table.completedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get elevated => $composableBuilder(
+    column: $table.elevated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$FixtureTypesTableOrderingComposer get fixtureTypeId {
+    final $$FixtureTypesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixtureTypeId,
+      referencedTable: $db.fixtureTypes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixtureTypesTableOrderingComposer(
+            $db: $db,
+            $table: $db.fixtureTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NotesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotesTable> {
+  $$NotesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get createdBy =>
+      $composableBuilder(column: $table.createdBy, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get completed =>
+      $composableBuilder(column: $table.completed, builder: (column) => column);
+
+  GeneratedColumn<String> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get completedBy => $composableBuilder(
+    column: $table.completedBy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get elevated =>
+      $composableBuilder(column: $table.elevated, builder: (column) => column);
+
+  $$FixtureTypesTableAnnotationComposer get fixtureTypeId {
+    final $$FixtureTypesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixtureTypeId,
+      referencedTable: $db.fixtureTypes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixtureTypesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.fixtureTypes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> noteActionsRefs<T extends Object>(
+    Expression<T> Function($$NoteActionsTableAnnotationComposer a) f,
+  ) {
+    final $$NoteActionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.noteActions,
+      getReferencedColumn: (t) => t.noteId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NoteActionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.noteActions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> noteFixturesRefs<T extends Object>(
+    Expression<T> Function($$NoteFixturesTableAnnotationComposer a) f,
+  ) {
+    final $$NoteFixturesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.noteFixtures,
+      getReferencedColumn: (t) => t.noteId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NoteFixturesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.noteFixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> notePositionsRefs<T extends Object>(
+    Expression<T> Function($$NotePositionsTableAnnotationComposer a) f,
+  ) {
+    final $$NotePositionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.notePositions,
+      getReferencedColumn: (t) => t.noteId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotePositionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notePositions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$NotesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NotesTable,
+          Note,
+          $$NotesTableFilterComposer,
+          $$NotesTableOrderingComposer,
+          $$NotesTableAnnotationComposer,
+          $$NotesTableCreateCompanionBuilder,
+          $$NotesTableUpdateCompanionBuilder,
+          (Note, $$NotesTableReferences),
+          Note,
+          PrefetchHooks Function({
+            bool fixtureTypeId,
+            bool noteActionsRefs,
+            bool noteFixturesRefs,
+            bool notePositionsRefs,
+          })
+        > {
+  $$NotesTableTableManager(_$AppDatabase db, $NotesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<String> createdBy = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<int> completed = const Value.absent(),
+                Value<String?> completedAt = const Value.absent(),
+                Value<String?> completedBy = const Value.absent(),
+                Value<int> elevated = const Value.absent(),
+                Value<int?> fixtureTypeId = const Value.absent(),
+              }) => NotesCompanion(
+                id: id,
+                type: type,
+                body: body,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                completed: completed,
+                completedAt: completedAt,
+                completedBy: completedBy,
+                elevated: elevated,
+                fixtureTypeId: fixtureTypeId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String type,
+                required String body,
+                required String createdBy,
+                required String createdAt,
+                Value<int> completed = const Value.absent(),
+                Value<String?> completedAt = const Value.absent(),
+                Value<String?> completedBy = const Value.absent(),
+                Value<int> elevated = const Value.absent(),
+                Value<int?> fixtureTypeId = const Value.absent(),
+              }) => NotesCompanion.insert(
+                id: id,
+                type: type,
+                body: body,
+                createdBy: createdBy,
+                createdAt: createdAt,
+                completed: completed,
+                completedAt: completedAt,
+                completedBy: completedBy,
+                elevated: elevated,
+                fixtureTypeId: fixtureTypeId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) =>
+                    (e.readTable(table), $$NotesTableReferences(db, table, e)),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                fixtureTypeId = false,
+                noteActionsRefs = false,
+                noteFixturesRefs = false,
+                notePositionsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (noteActionsRefs) db.noteActions,
+                    if (noteFixturesRefs) db.noteFixtures,
+                    if (notePositionsRefs) db.notePositions,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (fixtureTypeId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.fixtureTypeId,
+                                    referencedTable: $$NotesTableReferences
+                                        ._fixtureTypeIdTable(db),
+                                    referencedColumn: $$NotesTableReferences
+                                        ._fixtureTypeIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (noteActionsRefs)
+                        await $_getPrefetchedData<
+                          Note,
+                          $NotesTable,
+                          NoteAction
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotesTableReferences
+                              ._noteActionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).noteActionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.noteId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (noteFixturesRefs)
+                        await $_getPrefetchedData<
+                          Note,
+                          $NotesTable,
+                          NoteFixture
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotesTableReferences
+                              ._noteFixturesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).noteFixturesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.noteId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (notePositionsRefs)
+                        await $_getPrefetchedData<
+                          Note,
+                          $NotesTable,
+                          NotePosition
+                        >(
+                          currentTable: table,
+                          referencedTable: $$NotesTableReferences
+                              ._notePositionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$NotesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).notePositionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.noteId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$NotesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NotesTable,
+      Note,
+      $$NotesTableFilterComposer,
+      $$NotesTableOrderingComposer,
+      $$NotesTableAnnotationComposer,
+      $$NotesTableCreateCompanionBuilder,
+      $$NotesTableUpdateCompanionBuilder,
+      (Note, $$NotesTableReferences),
+      Note,
+      PrefetchHooks Function({
+        bool fixtureTypeId,
+        bool noteActionsRefs,
+        bool noteFixturesRefs,
+        bool notePositionsRefs,
+      })
+    >;
+typedef $$NoteActionsTableCreateCompanionBuilder =
+    NoteActionsCompanion Function({
+      Value<int> id,
+      required int noteId,
+      required String body,
+      required String userId,
+      required String timestamp,
+    });
+typedef $$NoteActionsTableUpdateCompanionBuilder =
+    NoteActionsCompanion Function({
+      Value<int> id,
+      Value<int> noteId,
+      Value<String> body,
+      Value<String> userId,
+      Value<String> timestamp,
+    });
+
+final class $$NoteActionsTableReferences
+    extends BaseReferences<_$AppDatabase, $NoteActionsTable, NoteAction> {
+  $$NoteActionsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $NotesTable _noteIdTable(_$AppDatabase db) => db.notes.createAlias(
+    $_aliasNameGenerator(db.noteActions.noteId, db.notes.id),
+  );
+
+  $$NotesTableProcessedTableManager get noteId {
+    final $_column = $_itemColumn<int>('note_id')!;
+
+    final manager = $$NotesTableTableManager(
+      $_db,
+      $_db.notes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_noteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$NoteActionsTableFilterComposer
+    extends Composer<_$AppDatabase, $NoteActionsTable> {
+  $$NoteActionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotesTableFilterComposer get noteId {
+    final $$NotesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableFilterComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NoteActionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $NoteActionsTable> {
+  $$NoteActionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotesTableOrderingComposer get noteId {
+    final $$NotesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableOrderingComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NoteActionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NoteActionsTable> {
+  $$NoteActionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  $$NotesTableAnnotationComposer get noteId {
+    final $$NotesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NoteActionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NoteActionsTable,
+          NoteAction,
+          $$NoteActionsTableFilterComposer,
+          $$NoteActionsTableOrderingComposer,
+          $$NoteActionsTableAnnotationComposer,
+          $$NoteActionsTableCreateCompanionBuilder,
+          $$NoteActionsTableUpdateCompanionBuilder,
+          (NoteAction, $$NoteActionsTableReferences),
+          NoteAction,
+          PrefetchHooks Function({bool noteId})
+        > {
+  $$NoteActionsTableTableManager(_$AppDatabase db, $NoteActionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NoteActionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NoteActionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NoteActionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> noteId = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> timestamp = const Value.absent(),
+              }) => NoteActionsCompanion(
+                id: id,
+                noteId: noteId,
+                body: body,
+                userId: userId,
+                timestamp: timestamp,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int noteId,
+                required String body,
+                required String userId,
+                required String timestamp,
+              }) => NoteActionsCompanion.insert(
+                id: id,
+                noteId: noteId,
+                body: body,
+                userId: userId,
+                timestamp: timestamp,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$NoteActionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({noteId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (noteId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.noteId,
+                                referencedTable: $$NoteActionsTableReferences
+                                    ._noteIdTable(db),
+                                referencedColumn: $$NoteActionsTableReferences
+                                    ._noteIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$NoteActionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NoteActionsTable,
+      NoteAction,
+      $$NoteActionsTableFilterComposer,
+      $$NoteActionsTableOrderingComposer,
+      $$NoteActionsTableAnnotationComposer,
+      $$NoteActionsTableCreateCompanionBuilder,
+      $$NoteActionsTableUpdateCompanionBuilder,
+      (NoteAction, $$NoteActionsTableReferences),
+      NoteAction,
+      PrefetchHooks Function({bool noteId})
+    >;
+typedef $$NoteFixturesTableCreateCompanionBuilder =
+    NoteFixturesCompanion Function({
+      Value<int> id,
+      required int noteId,
+      required int fixtureId,
+    });
+typedef $$NoteFixturesTableUpdateCompanionBuilder =
+    NoteFixturesCompanion Function({
+      Value<int> id,
+      Value<int> noteId,
+      Value<int> fixtureId,
+    });
+
+final class $$NoteFixturesTableReferences
+    extends BaseReferences<_$AppDatabase, $NoteFixturesTable, NoteFixture> {
+  $$NoteFixturesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $NotesTable _noteIdTable(_$AppDatabase db) => db.notes.createAlias(
+    $_aliasNameGenerator(db.noteFixtures.noteId, db.notes.id),
+  );
+
+  $$NotesTableProcessedTableManager get noteId {
+    final $_column = $_itemColumn<int>('note_id')!;
+
+    final manager = $$NotesTableTableManager(
+      $_db,
+      $_db.notes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_noteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $FixturesTable _fixtureIdTable(_$AppDatabase db) =>
+      db.fixtures.createAlias(
+        $_aliasNameGenerator(db.noteFixtures.fixtureId, db.fixtures.id),
+      );
+
+  $$FixturesTableProcessedTableManager get fixtureId {
+    final $_column = $_itemColumn<int>('fixture_id')!;
+
+    final manager = $$FixturesTableTableManager(
+      $_db,
+      $_db.fixtures,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fixtureIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$NoteFixturesTableFilterComposer
+    extends Composer<_$AppDatabase, $NoteFixturesTable> {
+  $$NoteFixturesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotesTableFilterComposer get noteId {
+    final $$NotesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableFilterComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FixturesTableFilterComposer get fixtureId {
+    final $$FixturesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixtureId,
+      referencedTable: $db.fixtures,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixturesTableFilterComposer(
+            $db: $db,
+            $table: $db.fixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NoteFixturesTableOrderingComposer
+    extends Composer<_$AppDatabase, $NoteFixturesTable> {
+  $$NoteFixturesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotesTableOrderingComposer get noteId {
+    final $$NotesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableOrderingComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FixturesTableOrderingComposer get fixtureId {
+    final $$FixturesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixtureId,
+      referencedTable: $db.fixtures,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixturesTableOrderingComposer(
+            $db: $db,
+            $table: $db.fixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NoteFixturesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NoteFixturesTable> {
+  $$NoteFixturesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  $$NotesTableAnnotationComposer get noteId {
+    final $$NotesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FixturesTableAnnotationComposer get fixtureId {
+    final $$FixturesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixtureId,
+      referencedTable: $db.fixtures,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixturesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.fixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NoteFixturesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NoteFixturesTable,
+          NoteFixture,
+          $$NoteFixturesTableFilterComposer,
+          $$NoteFixturesTableOrderingComposer,
+          $$NoteFixturesTableAnnotationComposer,
+          $$NoteFixturesTableCreateCompanionBuilder,
+          $$NoteFixturesTableUpdateCompanionBuilder,
+          (NoteFixture, $$NoteFixturesTableReferences),
+          NoteFixture,
+          PrefetchHooks Function({bool noteId, bool fixtureId})
+        > {
+  $$NoteFixturesTableTableManager(_$AppDatabase db, $NoteFixturesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NoteFixturesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NoteFixturesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NoteFixturesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> noteId = const Value.absent(),
+                Value<int> fixtureId = const Value.absent(),
+              }) => NoteFixturesCompanion(
+                id: id,
+                noteId: noteId,
+                fixtureId: fixtureId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int noteId,
+                required int fixtureId,
+              }) => NoteFixturesCompanion.insert(
+                id: id,
+                noteId: noteId,
+                fixtureId: fixtureId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$NoteFixturesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({noteId = false, fixtureId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (noteId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.noteId,
+                                referencedTable: $$NoteFixturesTableReferences
+                                    ._noteIdTable(db),
+                                referencedColumn: $$NoteFixturesTableReferences
+                                    ._noteIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (fixtureId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.fixtureId,
+                                referencedTable: $$NoteFixturesTableReferences
+                                    ._fixtureIdTable(db),
+                                referencedColumn: $$NoteFixturesTableReferences
+                                    ._fixtureIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$NoteFixturesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NoteFixturesTable,
+      NoteFixture,
+      $$NoteFixturesTableFilterComposer,
+      $$NoteFixturesTableOrderingComposer,
+      $$NoteFixturesTableAnnotationComposer,
+      $$NoteFixturesTableCreateCompanionBuilder,
+      $$NoteFixturesTableUpdateCompanionBuilder,
+      (NoteFixture, $$NoteFixturesTableReferences),
+      NoteFixture,
+      PrefetchHooks Function({bool noteId, bool fixtureId})
+    >;
+typedef $$NotePositionsTableCreateCompanionBuilder =
+    NotePositionsCompanion Function({
+      Value<int> id,
+      required int noteId,
+      required String positionName,
+    });
+typedef $$NotePositionsTableUpdateCompanionBuilder =
+    NotePositionsCompanion Function({
+      Value<int> id,
+      Value<int> noteId,
+      Value<String> positionName,
+    });
+
+final class $$NotePositionsTableReferences
+    extends BaseReferences<_$AppDatabase, $NotePositionsTable, NotePosition> {
+  $$NotePositionsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $NotesTable _noteIdTable(_$AppDatabase db) => db.notes.createAlias(
+    $_aliasNameGenerator(db.notePositions.noteId, db.notes.id),
+  );
+
+  $$NotesTableProcessedTableManager get noteId {
+    final $_column = $_itemColumn<int>('note_id')!;
+
+    final manager = $$NotesTableTableManager(
+      $_db,
+      $_db.notes,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_noteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$NotePositionsTableFilterComposer
+    extends Composer<_$AppDatabase, $NotePositionsTable> {
+  $$NotePositionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get positionName => $composableBuilder(
+    column: $table.positionName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$NotesTableFilterComposer get noteId {
+    final $$NotesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableFilterComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NotePositionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotePositionsTable> {
+  $$NotePositionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get positionName => $composableBuilder(
+    column: $table.positionName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$NotesTableOrderingComposer get noteId {
+    final $$NotesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableOrderingComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NotePositionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotePositionsTable> {
+  $$NotePositionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get positionName => $composableBuilder(
+    column: $table.positionName,
+    builder: (column) => column,
+  );
+
+  $$NotesTableAnnotationComposer get noteId {
+    final $$NotesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.noteId,
+      referencedTable: $db.notes,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$NotesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.notes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$NotePositionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NotePositionsTable,
+          NotePosition,
+          $$NotePositionsTableFilterComposer,
+          $$NotePositionsTableOrderingComposer,
+          $$NotePositionsTableAnnotationComposer,
+          $$NotePositionsTableCreateCompanionBuilder,
+          $$NotePositionsTableUpdateCompanionBuilder,
+          (NotePosition, $$NotePositionsTableReferences),
+          NotePosition,
+          PrefetchHooks Function({bool noteId})
+        > {
+  $$NotePositionsTableTableManager(_$AppDatabase db, $NotePositionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotePositionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotePositionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotePositionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> noteId = const Value.absent(),
+                Value<String> positionName = const Value.absent(),
+              }) => NotePositionsCompanion(
+                id: id,
+                noteId: noteId,
+                positionName: positionName,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int noteId,
+                required String positionName,
+              }) => NotePositionsCompanion.insert(
+                id: id,
+                noteId: noteId,
+                positionName: positionName,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$NotePositionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({noteId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (noteId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.noteId,
+                                referencedTable: $$NotePositionsTableReferences
+                                    ._noteIdTable(db),
+                                referencedColumn: $$NotePositionsTableReferences
+                                    ._noteIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$NotePositionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NotePositionsTable,
+      NotePosition,
+      $$NotePositionsTableFilterComposer,
+      $$NotePositionsTableOrderingComposer,
+      $$NotePositionsTableAnnotationComposer,
+      $$NotePositionsTableCreateCompanionBuilder,
+      $$NotePositionsTableUpdateCompanionBuilder,
+      (NotePosition, $$NotePositionsTableReferences),
+      NotePosition,
+      PrefetchHooks Function({bool noteId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -18640,4 +21986,12 @@ class $AppDatabaseManager {
         _db,
         _db.spreadsheetViewPresets,
       );
+  $$NotesTableTableManager get notes =>
+      $$NotesTableTableManager(_db, _db.notes);
+  $$NoteActionsTableTableManager get noteActions =>
+      $$NoteActionsTableTableManager(_db, _db.noteActions);
+  $$NoteFixturesTableTableManager get noteFixtures =>
+      $$NoteFixturesTableTableManager(_db, _db.noteFixtures);
+  $$NotePositionsTableTableManager get notePositions =>
+      $$NotePositionsTableTableManager(_db, _db.notePositions);
 }

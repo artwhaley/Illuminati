@@ -191,7 +191,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 1, vsync: this);
   }
 
   @override
@@ -209,15 +209,16 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab>
           child: TabBar(
             controller: _tabController,
             isScrollable: false,
-            tabs: const [Tab(text: 'Edit Review'), Tab(text: 'Flagged / Issues')],
+            tabs: const [
+              Tab(text: 'Edit Review'),
+            ],
           ),
         ),
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [
-              const EditReviewTab(),
-              const Center(child: Text('Maintenance Log / Issues (Coming Soon)')),
+            children: const [
+              EditReviewTab(),
             ],
           ),
         ),

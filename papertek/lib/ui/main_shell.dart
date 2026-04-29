@@ -13,6 +13,7 @@ import 'show_tab.dart';
 import 'spreadsheet/spreadsheet_tab.dart';
 import 'maintenance/maintenance_tab.dart';
 import '../services/commit_service.dart';
+import 'work_notes/work_notes_shell.dart';
 
 // ── Designer mode toggle widget ───────────────────────────────────────────────
 
@@ -565,7 +566,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     const tabs = <Widget>[
       ShowTab(),
       SpreadsheetTab(),
-      _StubTab('Work Notes'),
+      WorkNotesShell(),
       MaintenanceTab(),
       _StubTab('Reports'),
     ];

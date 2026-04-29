@@ -13,6 +13,7 @@ import 'tables/custom_fields.dart';
 import 'tables/revisions.dart';
 import 'tables/contacts.dart';
 import 'tables/spreadsheet_view_presets.dart';
+import 'tables/notes.dart';
 
 part 'database.g.dart';
 
@@ -49,6 +50,11 @@ part 'database.g.dart';
   RoleContacts,
   // Migration 14
   SpreadsheetViewPresets,
+  // Migration 15
+  Notes,
+  NoteActions,
+  NoteFixtures,
+  NotePositions,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
@@ -58,7 +64,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase openFile(String path) =>
       AppDatabase(NativeDatabase(File(path)));
 
-  static const currentSchemaVersion = 14;
+  static const currentSchemaVersion = 19;
 
   static Future<AppDatabase> openDefault(String showName) async {
     final dir = await getApplicationDocumentsDirectory();
@@ -73,6 +79,7 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+          await _createFts5Table();
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
@@ -156,11 +163,110 @@ class AppDatabase extends _$AppDatabase {
           if (from < 14) {
             await m.createTable(spreadsheetViewPresets);
           }
+          if (from < 19) {
+            await _createFts5Table();
+            
+            try {
+              await m.createTable(notes);
+              await m.createTable(noteActions);
+              await m.createTable(noteFixtures);
+              await m.createTable(notePositions);
+              await customStatement(
+                'CREATE UNIQUE INDEX IF NOT EXISTS idx_note_fixtures_unique ON note_fixtures(note_id, fixture_id);');
+              await customStatement(
+                'CREATE UNIQUE INDEX IF NOT EXISTS idx_note_positions_unique ON note_positions(note_id, position_name);');
+            } catch (_) {
+              // Tables might already exist
+            }
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
         },
       );
+
+  Future<void> _createFts5Table() async {
+    await customStatement('DROP TABLE IF EXISTS fixtures_fts;');
+
+    // Standard FTS5 table. Stores its own index data for maximum reliability.
+    await customStatement('''
+      CREATE VIRTUAL TABLE fixtures_fts USING fts5(
+        channel,
+        position,
+        fixture_type,
+        function,
+        focus
+      );
+    ''');
+
+    // Initial population
+    await customStatement('''
+      INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+      SELECT
+        f.id,
+        (SELECT fp.channel FROM fixture_parts fp
+         WHERE fp.fixture_id = f.id AND fp.part_type = 'intensity' LIMIT 1),
+        f.position,
+        f.fixture_type,
+        f.function,
+        f.focus
+      FROM fixtures f
+      WHERE (f.deleted IS NULL OR f.deleted = 0);
+    ''');
+
+    // Triggers to keep FTS in sync
+    
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS fixtures_after_insert AFTER INSERT ON fixtures BEGIN
+        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+        SELECT
+          new.id,
+          (SELECT fp.channel FROM fixture_parts fp
+           WHERE fp.fixture_id = new.id AND fp.part_type = 'intensity' LIMIT 1),
+          new.position,
+          new.fixture_type,
+          new.function,
+          new.focus;
+      END;
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS fixtures_after_update AFTER UPDATE ON fixtures BEGIN
+        DELETE FROM fixtures_fts WHERE rowid = old.id;
+        
+        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+        SELECT
+          new.id,
+          (SELECT fp.channel FROM fixture_parts fp
+           WHERE fp.fixture_id = new.id AND fp.part_type = 'intensity' LIMIT 1),
+          new.position,
+          new.fixture_type,
+          new.function,
+          new.focus
+        WHERE (new.deleted IS NULL OR new.deleted = 0);
+      END;
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS fixture_parts_after_update AFTER UPDATE ON fixture_parts 
+      WHEN new.part_type = 'intensity' OR old.part_type = 'intensity'
+      BEGIN
+        DELETE FROM fixtures_fts WHERE rowid = new.fixture_id;
+
+        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+        SELECT
+          f.id,
+          (SELECT fp.channel FROM fixture_parts fp
+           WHERE fp.fixture_id = f.id AND fp.part_type = 'intensity' LIMIT 1),
+          f.position,
+          f.fixture_type,
+          f.function,
+          f.focus
+        FROM fixtures f
+        WHERE f.id = new.fixture_id AND (f.deleted IS NULL OR f.deleted = 0);
+      END;
+    ''');
+  }
 
   static Future<void> _tryAddColumn(
     Migrator m,
