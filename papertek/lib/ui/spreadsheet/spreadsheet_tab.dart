@@ -1,3 +1,37 @@
+/// ── SPREADSHEET ARCHITECTURE ────────────────────────────────────────────────
+///
+/// The Spreadsheet tab is the "Working Heart" of the application. It provides 
+/// a high-performance, editable grid for managing thousands of lighting 
+/// fixtures and their associated data (patch, position, type, etc.).
+///
+/// KEY COMPONENTS:
+/// 1. Syncfusion DataGrid (SfDataGrid):
+///    We use a professional-grade grid component to handle large datasets. It 
+///    supports column resizing, dragging, multi-level sorting, and frozen 
+///    columns (the '#' index column).
+///
+/// 2. FixtureDataSource:
+///    This is the "Adapter" between our Drift database streams and the Grid 
+///    UI. It transforms raw `FixtureRow` objects into `DataGridRow` objects. 
+///    It also handles:
+///    - Searching/Filtering: Local filtering of the row list.
+///    - Sorting: Multi-level sort logic (e.g. Sort by Position, then Unit).
+///    - Cell Editing: Managing text field focus and committing edits to the 
+///      TrackedWriteRepository.
+///
+/// 3. The Sidebar Sync:
+///    A critical feature is the "Property Sidebar". We maintain a separate 
+///    `ValueNotifier` for the selection so that tapping a cell updates the 
+///    sidebar without forcing the entire DataGrid to rebuild. This ensures 
+///    that "Double Tap to Edit" remains responsive and fast.
+///
+/// 4. Focus Preservation:
+///    Because the database can update in the background (e.g. from an import 
+///    or sync), we use a "Deferred Update" pattern. If you are typing in a cell, 
+///    the grid ignores incoming database rows until you finish your edit, 
+///    preventing your cursor from being lost or the keyboard from closing.
+/// ─────────────────────────────────────────────────────────────────────────────
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -13,7 +47,6 @@ import '../../providers/show_provider.dart';
 import '../../repositories/fixture_repository.dart';
 import '../../database/database.dart';
 import '../../repositories/spreadsheet_view_preset_repository.dart';
-
 
 // ── Column metadata ───────────────────────────────────────────────────────────
 
@@ -73,8 +106,8 @@ const _kNumericCols  = {'#', 'chan', 'unit'};
 const _kAlwaysVisible = {'#'};
 
 const _kPrefsWidthKey = 'papertek.colWidths.v1';
-const _kMinimalSpreadsheetMode = true;
 
+/// A simple record used to track multi-level sorting preferences.
 class SortSpec {
   final String column;
   final bool ascending;
@@ -95,394 +128,11 @@ class SortSpec {
   int get hashCode => column.hashCode ^ ascending.hashCode;
 }
 
-// ── DataGridSource ────────────────────────────────────────────────────────────
-
-class _FixtureDataSource extends DataGridSource {
-  _FixtureDataSource({
-    required this.onCellEditCommit,
-    required this.onNativeEditComplete,
-    required this.onNativeEditStart,
-  });
-
-  List<DataGridRow> _baseRows = [];
-  List<DataGridRow> _rows     = [];
-  List<DataGridRow> _filtered = [];
-
-  final Map<DataGridRow, FixtureRow> _rowToFixture = {};
-
-  int?    _selectedFixtureId;
-  String? _selectedColName;
-
-  String  _searchQuery = '';
-  String? _filterCol;
-  String? _filterValue;
-
-  List<String> _visibleCols = List.of(_kColOrder);
-
-  VoidCallback? onSortChanged;
-  final Future<void> Function(FixtureRow fixture, String col, String? value, int? partOrder)
-      onCellEditCommit;
-  final VoidCallback onNativeEditComplete;
-  final void Function(FixtureRow fixture, String col) onNativeEditStart;
-
-  TextEditingController? _editingController;
-  FocusNode? _editingFocusNode;
-  String? _newCellValue;
-
-  ThemeData? _theme;
-  void setTheme(ThemeData t) => _theme = t;
-
-  Color get _textMain  => _theme?.colorScheme.onSurface ?? Colors.white;
-  Color get _textMuted => _theme?.colorScheme.onSurfaceVariant ?? Colors.grey;
-  Color get _accent    => _theme?.colorScheme.primary ?? Colors.amber;
-  Color get _bgAlt     =>
-      (_theme?.colorScheme.surfaceContainer ?? const Color(0xFF1A1D23))
-          .withValues(alpha: 0.4);
-  Color get _bgSel => _theme?.colorScheme.primaryContainer ?? const Color(0xFF2D2A1C);
-
-  Set<int> _pendingIds  = {};
-  Set<int> _conflictIds = {};
-  static const _kPendingColor  = Color(0x1ADDAA00); // 10% opacity amber
-  static const _kConflictColor = Color(0x1ACC3333); // 10% opacity red
-
-  void updateRevisionState(Set<int> pending, Set<int> conflicts) {
-    if (pending == _pendingIds && conflicts == _conflictIds) return;
-    _pendingIds  = pending;
-    _conflictIds = conflicts;
-    notifyListeners();
-  }
-
-  // ── Public API ──────────────────────────────────────────────────────────
-
-  void setVisibleCols(List<String> cols) => _visibleCols = cols;
-
-  void setSelectedCell(int? fixtureId, String? colName) {
-    _selectedFixtureId = fixtureId;
-    _selectedColName   = colName;
-    // No notifyListeners() — caller uses a separate ValueNotifier for sidebar
-    // so the DataGrid is never rebuilt on tap, keeping double-tap intact.
-  }
-
-  String? get selectedColName => _selectedColName;
-
-  FixtureRow? get selectedFixture => _selectedFixtureId == null
-      ? null
-      : _rowToFixture.values.where((f) => f.id == _selectedFixtureId).firstOrNull;
-
-  FixtureRow? fixtureForRow(DataGridRow row) => _rowToFixture[row];
-
-  String? get selectedCellValue {
-    final f   = selectedFixture;
-    final col = _selectedColName;
-    if (f == null || col == null) return null;
-    return _fixtureValueForCol(f, col);
-  }
-
-  void updateData(List<FixtureRow> fixtures) {
-    _rowToFixture.clear();
-    final built = <DataGridRow>[];
-    for (final f in fixtures) {
-      final row = DataGridRow(cells: [
-        DataGridCell<String>(columnName: '#',           value: ''),
-        DataGridCell<String>(columnName: 'chan',        value: f.channel ?? ''),
-        DataGridCell<String>(columnName: 'dimmer',      value: f.dimmer ?? ''),
-        DataGridCell<String>(columnName: 'position',    value: f.position ?? ''),
-        DataGridCell<String>(columnName: 'unit',        value: f.unitNumber?.toString() ?? ''),
-        DataGridCell<String>(columnName: 'type',        value: f.fixtureType ?? ''),
-        DataGridCell<String>(columnName: 'function',    value: f.function ?? ''),
-        DataGridCell<String>(columnName: 'focus',       value: f.focus ?? ''),
-        DataGridCell<String>(columnName: 'accessories', value: f.accessories ?? ''),
-        DataGridCell<String>(columnName: 'ip',          value: f.ipAddress ?? ''),
-        DataGridCell<String>(columnName: 'subnet',      value: f.subnet ?? ''),
-        DataGridCell<String>(columnName: 'mac',         value: f.macAddress ?? ''),
-        DataGridCell<String>(columnName: 'ipv6',        value: f.ipv6 ?? ''),
-        DataGridCell<String>(columnName: 'hung',        value: f.hung    ? '✓' : '—'),
-        DataGridCell<String>(columnName: 'patch',       value: f.patched ? '✓' : '—'),
-        DataGridCell<String>(columnName: 'focused',     value: f.focused ? '✓' : '—'),
-        DataGridCell<String>(columnName: 'circuit',     value: f.circuit ?? ''),
-        DataGridCell<String>(columnName: 'notes',       value: ''),
-      ]);
-      built.add(row);
-      _rowToFixture[row] = f;
-    }
-    _baseRows = built;
-    _rows     = List.of(_baseRows);
-    _applySortInPlace();
-    _rebuildFiltered();
-    notifyListeners();
-  }
-
-  void applyFilters({required String search, String? filterCol, String? filterValue}) {
-    _searchQuery  = search;
-    _filterCol    = filterCol;
-    _filterValue  = filterValue;
-    _rebuildFiltered();
-    notifyListeners();
-  }
-
-  void _rebuildFiltered() {
-    var list = _rows;
-
-    if (_filterCol != null && _filterValue != null && _filterValue!.isNotEmpty) {
-      final q = _filterValue!.toLowerCase();
-      list = list.where((row) =>
-          _cellStr(row, _filterCol!).toLowerCase() == q).toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      final q = _searchQuery.toLowerCase();
-      list = list.where((row) => row.getCells().any(
-            (cell) => (cell.value?.toString() ?? '').toLowerCase().contains(q),
-          )).toList();
-    }
-
-    _filtered = list;
-  }
-
-  // ── DataGridSource overrides ────────────────────────────────────────────
-
-  @override
-  List<DataGridRow> get rows => _filtered;
-
-  @override
-  DataGridRowAdapter? buildRow(DataGridRow row) {
-    final fixture = _rowToFixture[row];
-    if (fixture == null) return null;
-
-    final index  = _filtered.indexOf(row);
-    final sel    = fixture.id == _selectedFixtureId;
-    final isEven = index.isEven;
-    final isPending  = _pendingIds.contains(fixture.id);
-    final isConflict = _conflictIds.contains(fixture.id);
-    Color bg;
-    if (isConflict) {
-      bg = _kConflictColor;
-    } else if (isPending) {
-      bg = _kPendingColor;
-    } else {
-      bg = isEven ? Colors.transparent : _bgAlt;
-    }
-
-    Widget cell(String colName, String text, Color color, {bool bold = false}) {
-      final isSelectedCell = sel && colName == _selectedColName;
-      return Container(
-        color: bg,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Text(
-          text,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.jetBrainsMono(
-            fontSize: 13,
-            fontWeight: bold || isSelectedCell ? FontWeight.bold : FontWeight.normal,
-            color: isSelectedCell ? Colors.orange : color,
-          ),
-        ),
-      );
-    }
-
-    return DataGridRowAdapter(
-      cells: [
-        for (final name in _visibleCols)
-          _buildCellWidget(name, fixture, cell, sel),
-      ],
-    );
-  }
-
-  Widget _buildCellWidget(
-    String name,
-    FixtureRow f,
-    Widget Function(String, String, Color, {bool bold}) cell,
-    bool sel,
-  ) {
-    switch (name) {
-      case '#':
-        final idx = _filtered.indexWhere((r) => _rowToFixture[r]?.id == f.id);
-        return cell('#', '${idx + 1}', sel ? _textMain : _textMuted, bold: sel);
-      case 'chan':
-        return cell('chan', f.channel ?? '', _accent, bold: true);
-      case 'dimmer':
-        return cell('dimmer', f.dimmer ?? '', _textMuted);
-      case 'position':
-        return cell('position', f.position ?? 'Unspecified', _textMain);
-      case 'unit':
-        return cell('unit', f.unitNumber?.toString() ?? '', _textMain);
-      case 'type':
-        return cell('type', f.fixtureType ?? '', _textMain);
-      case 'function':
-        return cell('function', f.function ?? '', _textMain);
-      case 'focus':
-        return cell('focus', f.focus ?? '', _textMain);
-      case 'accessories':
-        return cell('accessories', f.accessories ?? '', _textMain);
-      case 'ip':
-        return cell('ip', f.ipAddress ?? '', _textMain);
-      case 'subnet':
-        return cell('subnet', f.subnet ?? '', _textMain);
-      case 'mac':
-        return cell('mac', f.macAddress ?? '', _textMain);
-      case 'ipv6':
-        return cell('ipv6', f.ipv6 ?? '', _textMain);
-      case 'hung':
-        return cell('hung', f.hung ? '✓' : '—',
-            f.hung ? Colors.green : _textMuted);
-      case 'patch':
-        return cell('patch', f.patched ? '✓' : '—',
-            f.patched ? Colors.green : _textMuted);
-      case 'focused':
-        return cell('focused', f.focused ? '✓' : '—',
-            f.focused ? Colors.green : _textMuted);
-      case 'circuit':
-        return cell('circuit', f.circuit ?? '', _textMuted);
-      case 'notes':
-        return cell('notes', '', _textMain);
-      default:
-        return cell(name, '', _textMain);
-    }
-  }
-
-  // ── Sorting ─────────────────────────────────────────────────────────────
-
-  @override
-  Future<void> performSorting(List<DataGridRow> dataGridRows) async {
-    _rows = List.of(_baseRows);
-    _applySortInPlace();
-    _rebuildFiltered();
-    onSortChanged?.call();
-  }
-
-  void _applySortInPlace() {
-    if (sortedColumns.isEmpty) return;
-    final sort = sortedColumns.first;
-    final asc  = sort.sortDirection == DataGridSortDirection.ascending;
-    _rows.sort((a, b) {
-      final aStr = _cellStr(a, sort.name);
-      final bStr = _cellStr(b, sort.name);
-      int cmp;
-      if (_kNumericCols.contains(sort.name)) {
-        final an = int.tryParse(aStr);
-        final bn = int.tryParse(bStr);
-        cmp = (an != null && bn != null) ? an.compareTo(bn) : aStr.compareTo(bStr);
-      } else {
-        cmp = aStr.compareTo(bStr);
-      }
-      return asc ? cmp : -cmp;
-    });
-  }
-
-  String _cellStr(DataGridRow row, String col) =>
-      row.getCells().firstWhere((c) => c.columnName == col,
-              orElse: () => const DataGridCell<String>(columnName: '', value: ''))
-          .value
-          ?.toString() ??
-      '';
-
-  String? _fixtureValueForCol(FixtureRow f, String col) {
-    switch (col) {
-      case 'chan':         return f.channel;
-      case 'position':    return f.position;
-      case 'unit':        return f.unitNumber?.toString();
-      case 'type':        return f.fixtureType;
-      case 'function':    return f.function;
-      case 'focus':       return f.focus;
-      case 'accessories': return f.accessories;
-      case 'ip':          return f.ipAddress;
-      case 'subnet':      return f.subnet;
-      case 'mac':         return f.macAddress;
-      case 'ipv6':        return f.ipv6;
-      default:            return null;
-    }
-  }
-
-  @override
-  Widget? buildEditWidget(
-    DataGridRow row,
-    RowColumnIndex rowColumnIndex,
-    GridColumn column,
-    CellSubmit submitCell,
-  ) {
-    final colName = column.columnName;
-    if (_kReadOnlyCols.contains(colName)) return null;
-    final fixture = fixtureForRow(row);
-    if (fixture == null) return null;
-    onNativeEditStart(fixture, colName);
-
-    final initial = _fixtureValueForCol(fixture, colName) ?? '';
-    _editingController?.dispose();
-    _editingFocusNode?.dispose();
-    _editingController = TextEditingController(text: initial);
-    _newCellValue = null;
-    _editingFocusNode = FocusNode();
-
-    _editingFocusNode?.requestFocus();
-    Future.microtask(() => _editingFocusNode?.requestFocus());
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _editingFocusNode?.requestFocus();
-      final c = _editingController;
-      if (c != null) {
-        c.selection =
-            TextSelection(baseOffset: 0, extentOffset: c.text.length);
-      }
-    });
-
-    return Container(
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: TextField(
-        controller: _editingController,
-        focusNode: _editingFocusNode,
-        autofocus: true,
-        showCursor: true,
-        enableInteractiveSelection: true,
-        textInputAction: TextInputAction.done,
-        onChanged: (value) {
-          _newCellValue = value;
-        },
-        onTap: () {
-          _editingFocusNode?.requestFocus();
-        },
-        onSubmitted: (_) => submitCell(),
-      ),
-    );
-  }
-
-  @override
-  Future<void> onCellSubmit(
-    DataGridRow dataGridRow,
-    RowColumnIndex rowColumnIndex,
-    GridColumn column,
-  ) async {
-    final colName = column.columnName;
-    if (_kReadOnlyCols.contains(colName)) return;
-
-    final fixture = fixtureForRow(dataGridRow);
-    if (fixture == null) return;
-
-    final oldValue = (_fixtureValueForCol(fixture, colName) ?? '').trim();
-    final nextText = (_newCellValue ?? _editingController?.text ?? '').trim();
-    _editingController?.dispose();
-    _editingController = null;
-    _editingFocusNode?.dispose();
-    _editingFocusNode = null;
-    _newCellValue = null;
-
-    try {
-      if (nextText == oldValue) return;
-      await onCellEditCommit(
-        fixture,
-        colName,
-        nextText.isEmpty ? null : nextText,
-        null, // _FixtureDataSource is always single-part
-      );
-    } finally {
-      onNativeEditComplete();
-    }
-  }
-}
-
 // ── SpreadsheetTab ────────────────────────────────────────────────────────────
 
+/// The main Spreadsheet screen. 
+/// Handles the high-level layout (Sidebar + Toolbar + Grid) and coordinates 
+/// between the DataGridSource and the Repository.
 class SpreadsheetTab extends ConsumerStatefulWidget {
   const SpreadsheetTab({super.key});
 
@@ -491,16 +141,14 @@ class SpreadsheetTab extends ConsumerStatefulWidget {
 }
 
 class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
-  late final _FixtureDataSource _source;
-  late final _MinimalFixtureSource _minimalSource;
+  late final FixtureDataSource _source;
   StreamSubscription<List<FixtureRow>>? _fixtureRowsSub;
 
   // Separate notifier for sidebar selection — never triggers a DataGrid rebuild.
   final ValueNotifier<FixtureRow?> _sidebarSelection = ValueNotifier(null);
 
   final GlobalKey _dataGridKey = GlobalKey();
-  final DataGridController _minimalGridCtrl = DataGridController();
-  final DataGridController _mainGridCtrl = DataGridController();
+  final DataGridController _gridCtrl = DataGridController();
 
   double _lastNotesWidth = 120.0;
   bool _isEditingGridCell = false;
@@ -521,21 +169,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   @override
   void initState() {
     super.initState();
-    _source = _FixtureDataSource(
-      onCellEditCommit: _onEdit,
-      onNativeEditComplete: () {
-        _isEditingGridCell = false;
-        final deferred = _deferredRowsWhileEditing;
-        if (deferred != null) {
-          _deferredRowsWhileEditing = null;
-          _source.updateData(deferred);
-        }
-      },
-      onNativeEditStart: (fixture, colName) {
-        _isEditingGridCell = true;
-      },
-    );
-    _minimalSource = _MinimalFixtureSource(
+    _source = FixtureDataSource(
       onCellEditCommit: _onEdit,
       onBooleanSet: (fixture, col, value) async {
         final repo = ref.read(fixtureRepoProvider);
@@ -546,8 +180,19 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
           case 'focused': await repo.setFocused(fixture.id, value: value);
         }
       },
+      onNativeEditStart: (fixture, colName) {
+        _isEditingGridCell = true;
+      },
+      onNativeEditComplete: () {
+        _isEditingGridCell = false;
+        final deferred = _deferredRowsWhileEditing;
+        if (deferred != null) {
+          _deferredRowsWhileEditing = null;
+          _source.updateRows(deferred);
+        }
+      },
     );
-    _minimalSource.onSortChanged = () {
+    _source.onSortChanged = () {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
       });
@@ -562,12 +207,11 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     });
 
     _fixtureRowsSub = ref.read(fixtureRowsProvider.stream).listen((rows) {
-      _minimalSource.updateRows(rows);
       if (_isEditingGridCell) {
         _deferredRowsWhileEditing = rows;
         return;
       }
-      _source.updateData(rows);
+      _source.updateRows(rows);
     });
   }
 
@@ -576,8 +220,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     _fixtureRowsSub?.cancel();
     _searchCtrl.dispose();
     _sidebarSelection.dispose();
-    _minimalGridCtrl.dispose();
-    _mainGridCtrl.dispose();
+    _gridCtrl.dispose();
     super.dispose();
   }
 
@@ -608,29 +251,19 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   // ── Search ────────────────────────────────────────────────────────────────
 
   void _onSearchChanged() {
-    if (_kMinimalSpreadsheetMode) {
-      _minimalSource.applyFilters(
-        search: _searchCtrl.text,
-        filterCol: _filterCol,
-        filterValue: _filterValue,
-      );
-    } else {
-      _source.applyFilters(
-        search: _searchCtrl.text,
-        filterCol: _filterCol,
-        filterValue: _filterValue,
-      );
-    }
+    _source.applyFilters(
+      search: _searchCtrl.text,
+      filterCol: _filterCol,
+      filterValue: _filterValue,
+    );
     setState(() {});
   }
 
   // ── Quick filter ──────────────────────────────────────────────────────────
 
   void _applyQuickFilter() {
-    final colName =
-        _kMinimalSpreadsheetMode ? _minimalSource.selectedColName : _source._selectedColName;
-    final value =
-        _kMinimalSpreadsheetMode ? _minimalSource.selectedCellValue : _source.selectedCellValue;
+    final colName = _source.selectedColName;
+    final value = _source.selectedCellValue;
     if (colName == null || value == null || value.isEmpty) return;
 
     if (_filterCol == colName && _filterValue == value) {
@@ -638,28 +271,16 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     } else {
       setState(() { _filterCol = colName; _filterValue = value; });
     }
-    if (_kMinimalSpreadsheetMode) {
-      _minimalSource.applyFilters(
-        search: _searchCtrl.text,
-        filterCol: _filterCol,
-        filterValue: _filterValue,
-      );
-    } else {
-      _source.applyFilters(
-        search: _searchCtrl.text,
-        filterCol: _filterCol,
-        filterValue: _filterValue,
-      );
-    }
+    _source.applyFilters(
+      search: _searchCtrl.text,
+      filterCol: _filterCol,
+      filterValue: _filterValue,
+    );
   }
 
   void _clearFilter() {
     setState(() { _filterCol = null; _filterValue = null; });
-    if (_kMinimalSpreadsheetMode) {
-      _minimalSource.applyFilters(search: _searchCtrl.text);
-    } else {
-      _source.applyFilters(search: _searchCtrl.text);
-    }
+    _source.applyFilters(search: _searchCtrl.text);
   }
 
   // ── Column picker (anchored dropdown) ─────────────────────────────────────
@@ -770,7 +391,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     final repo = ref.read(fixtureRepoProvider);
     if (repo == null) return;
     await repo.deleteFixture(fixture.id);
-    _minimalSource.setSelectedCell(null, null);
+    _source.setSelectedCell(null, null);
     _sidebarSelection.value = null;
   }
 
@@ -813,31 +434,21 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   Future<void> _addFixture() async {
     final repo = ref.read(fixtureRepoProvider);
     if (repo == null) return;
-    final selected =
-        _kMinimalSpreadsheetMode ? _minimalSource.selectedFixture : _source.selectedFixture;
+    final selected = _source.selectedFixture;
     final newId = await repo.addFixture(afterSortOrder: selected?.sortOrder);
     if (mounted) {
-      if (_kMinimalSpreadsheetMode) {
-        _minimalSource.setSelectedCell(newId, null);
-      } else {
-        _source.setSelectedCell(newId, null);
-      }
+      _source.setSelectedCell(newId, null);
     }
   }
 
   Future<void> _cloneFixture() async {
     final repo = ref.read(fixtureRepoProvider);
     if (repo == null) return;
-    final sel =
-        _kMinimalSpreadsheetMode ? _minimalSource.selectedFixture : _source.selectedFixture;
+    final sel = _source.selectedFixture;
     if (sel == null) return;
     final newId = await repo.cloneFixture(sel.id);
     if (mounted) {
-      if (_kMinimalSpreadsheetMode) {
-        _minimalSource.setSelectedCell(newId, null);
-      } else {
-        _source.setSelectedCell(newId, null);
-      }
+      _source.setSelectedCell(newId, null);
     }
   }
 
@@ -902,7 +513,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   void _setPrimarySortFromHeaderClick(String column) {
     setState(() {
       _sortSpecs = [SortSpec(column: column, ascending: true)];
-      _minimalSource.setSortSpecs(_sortSpecs);
+      _source.setSortSpecs(_sortSpecs);
       _isPresetDirty = true;
     });
   }
@@ -922,7 +533,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
         }
         _normalizeSortSpecs();
       }
-      _minimalSource.setSortSpecs(_sortSpecs);
+      _source.setSortSpecs(_sortSpecs);
       _isPresetDirty = true;
     });
   }
@@ -931,7 +542,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     if (level >= _sortSpecs.length) return;
     setState(() {
       _sortSpecs[level] = _sortSpecs[level].toggle();
-      _minimalSource.setSortSpecs(_sortSpecs);
+      _source.setSortSpecs(_sortSpecs);
       _isPresetDirty = true;
     });
   }
@@ -1036,7 +647,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
       if (data.containsKey('sorts')) {
         final specs = (data['sorts'] as List).map((s) => SortSpec.fromJson(s as Map<String, dynamic>)).toList();
         _sortSpecs = specs.where((s) => _kColLabels.containsKey(s.column)).toList();
-        _minimalSource.setSortSpecs(_sortSpecs);
+        _source.setSortSpecs(_sortSpecs);
       }
     });
   }
@@ -1092,13 +703,10 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     final theme = Theme.of(context);
     _source.setTheme(theme);
     _source.setVisibleCols(_visibleColOrder);
-    _minimalSource.setTheme(theme);
-    _minimalSource.setVisibleCols(_visibleColOrder);
 
     // ── Revision highlights ────────────────────────────────────────────────
     final pendingIds  = ref.watch(pendingFixtureIdsProvider).valueOrNull ?? {};
     final conflictIds = ref.watch(conflictFixtureIdsProvider).valueOrNull ?? {};
-    _minimalSource.updateRevisionState(pendingIds, conflictIds);
     _source.updateRevisionState(pendingIds, conflictIds);
     // ────────────────────────────────────────────────────────────────────────
 
@@ -1109,313 +717,182 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     final outline     = theme.colorScheme.outlineVariant;
     final filterActive = _filterCol != null;
 
-    if (_kMinimalSpreadsheetMode) {
-      final cardColor = theme.colorScheme.surfaceContainerLow;
-      final borderColor = theme.colorScheme.outlineVariant;
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+    final cardColor = theme.colorScheme.surfaceContainerLow;
+    final borderColor = theme.colorScheme.outlineVariant;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+          child: Container(
+            width: 220,
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ListenableBuilder(
+              listenable: Listenable.merge([_source, _sidebarSelection]),
+              builder: (ctx, _) {
+                final sel = _source.selectedFixture;
+                return _Sidebar(
+                  theme: theme,
+                  selected: sel,
+                  canClone: sel != null,
+                  onAdd: _addFixture,
+                  onClone: _cloneFixture,
+                  onDelete: () { if (sel != null) _deleteFixture(sel); },
+                  onEdit: (col, val) =>
+                      sel != null ? _onEdit(sel, col, val, null) : Future.value(),
+                );
+              },
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 16, 16, 16),
             child: Container(
-              width: 220,
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: borderColor),
               ),
               clipBehavior: Clip.antiAlias,
-              child: ListenableBuilder(
-                listenable: Listenable.merge([_minimalSource, _sidebarSelection]),
-                builder: (ctx, _) {
-                  final sel = _minimalSource.selectedFixture;
-                  return _Sidebar(
+              child: Column(
+                children: [
+                  _Toolbar(
                     theme: theme,
-                    selected: sel,
-                    canClone: sel != null,
-                    onAdd: _addFixture,
-                    onClone: _cloneFixture,
-                    onDelete: () { if (sel != null) _deleteFixture(sel); },
-                    onEdit: (col, val) =>
-                        sel != null ? _onEdit(sel, col, val, null) : Future.value(),
-                  );
-                },
+                    searchCtrl: _searchCtrl,
+                    sortSpecs: _sortSpecs,
+                    onSortLevel: _setSortLevel,
+                    onToggleDirection: _toggleSortDirection,
+                    availableCols: _kColOrder.where((c) => !_hiddenCols.contains(c) && c != '#').toList(),
+                    onColumnsPressed: _showColumnPicker,
+                  ),
+                  _FilterStrip(
+                    theme: theme,
+                    filterActive: filterActive,
+                    filterLabel: filterActive
+                        ? '${_kColLabels[_filterCol!] ?? _filterCol!}: $_filterValue'
+                        : null,
+                    onQuickFilter: _applyQuickFilter,
+                    onClearFilter: _clearFilter,
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (ctx, constraints) {
+                        final cols = _buildColumns(theme, constraints.maxWidth);
+                        return SfDataGridTheme(
+                          data: SfDataGridThemeData(
+                            headerColor: surfaceLow,
+                            gridLineColor: outline,
+                            sortIconColor: Colors.transparent,
+                          ),
+                          child: SfDataGrid(
+                            key: _dataGridKey,
+                            controller: _gridCtrl,
+                            source: _source,
+                            columns: cols,
+                            rowHeight: 32,
+                            headerRowHeight: 32,
+                            selectionMode: SelectionMode.single,
+                            navigationMode: GridNavigationMode.cell,
+                            allowSorting: true,
+                            allowEditing: true,
+                            editingGestureType: EditingGestureType.doubleTap,
+                            allowColumnsResizing: true,
+                            allowColumnsDragging: true,
+                            columnWidthMode: ColumnWidthMode.none,
+                            gridLinesVisibility: GridLinesVisibility.horizontal,
+                            headerGridLinesVisibility: GridLinesVisibility.horizontal,
+                            onColumnResizeUpdate: (details) {
+                              _colWidths[details.column.columnName] = details.width;
+                              if (mounted) setState(() {});
+                              return true;
+                            },
+                            onColumnResizeEnd: (details) {
+                              setState(() {
+                                _isPresetDirty = true;
+                              });
+                              _saveColWidths();
+                            },
+                            onColumnDragging: (details) {
+                              if (details.action == DataGridColumnDragAction.dropped) {
+                                final from = details.from;
+                                final to = details.to;
+                                if (from == null || to == null || from == to) return true;
+
+                                final visible = List<String>.from(_visibleColOrder);
+                                if (from < visible.length && to < visible.length) {
+                                  final moved = visible.removeAt(from);
+                                  visible.insert(to, moved);
+                                  final hidden = _colOrder.where(_hiddenCols.contains).toList();
+                                  setState(() {
+                                    _colOrder = [...visible, ...hidden];
+                                    _isPresetDirty = true;
+                                  });
+                                }
+                              }
+                              return true;
+                            },
+                            onColumnSortChanging: (col, details) {
+                              if (col != null) {
+                                _setPrimarySortFromHeaderClick(col.name);
+                              }
+                              return false; 
+                            },
+                            onCellTap: (details) {
+                              final rci = details.rowColumnIndex;
+                              final colIdx = rci.columnIndex;
+                              String? colName;
+                              if (colIdx >= 0 && colIdx < _visibleColOrder.length) {
+                                colName = _visibleColOrder[colIdx];
+                              }
+                              final rowIdx = rci.rowIndex - 1;
+                              final fixture = rowIdx >= 0 && rowIdx < _source.rows.length
+                                  ? _source.fixtureForRow(_source.rows[rowIdx])
+                                  : null;
+
+                              final wasSelected = fixture != null &&
+                                  _source.selectedFixture?.id == fixture.id &&
+                                  _source.selectedColName == colName;
+
+                              _syncSelectionFromRowCol(rci);
+
+                              if (wasSelected) {
+                                _gridCtrl.beginEdit(rci);
+                              }
+                            },
+                            onCurrentCellActivated: (_, current) {
+                              _syncSelectionFromRowCol(current);
+                            },
+                            onCellSecondaryTap: (details) {
+                              _syncSelectionFromRowCol(details.rowColumnIndex);
+                              final rowIdx = details.rowColumnIndex.rowIndex - 1;
+                              if (rowIdx < 0 || rowIdx >= _source.rows.length) return;
+                              final fixture = _source.fixtureForRow(_source.rows[rowIdx]);
+                              if (fixture == null) return;
+                              _showFixtureContextMenu(details.globalPosition, fixture);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  _buildPresetsStrip(theme, presets),
+                  _StatusBar(
+                    totalFixtures: fixtures.length,
+                    visibleCount: _source.rows.length,
+                    filterActive: filterActive,
+                    showName:
+                        ref.watch(currentShowMetaProvider).valueOrNull?.showName ?? '',
+                    theme: theme,
+                  ),
+                ],
               ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 16, 16, 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: borderColor),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
-                    _Toolbar(
-                      theme: theme,
-                      searchCtrl: _searchCtrl,
-                      sortSpecs: _sortSpecs,
-                      onSortLevel: _setSortLevel,
-                      onToggleDirection: _toggleSortDirection,
-                      availableCols: _kColOrder.where((c) => !_hiddenCols.contains(c) && c != '#').toList(),
-                      onColumnsPressed: _showColumnPicker,
-                    ),
-                    _FilterStrip(
-                      theme: theme,
-                      filterActive: filterActive,
-                      filterLabel: filterActive
-                          ? '${_kColLabels[_filterCol!] ?? _filterCol!}: $_filterValue'
-                          : null,
-                      onQuickFilter: _applyQuickFilter,
-                      onClearFilter: _clearFilter,
-                    ),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (ctx, constraints) {
-                          final cols = _buildColumns(theme, constraints.maxWidth);
-                          return SfDataGridTheme(
-                            data: SfDataGridThemeData(
-                              headerColor: surfaceLow,
-                              gridLineColor: outline,
-                              sortIconColor: Colors.transparent,
-                            ),
-                            child: SfDataGrid(
-                              key: _dataGridKey,
-                              controller: _minimalGridCtrl,
-                              source: _minimalSource,
-                              columns: cols,
-                              rowHeight: 32,
-                              headerRowHeight: 32,
-                              selectionMode: SelectionMode.single,
-                              navigationMode: GridNavigationMode.cell,
-                              allowSorting: true,
-                              allowEditing: true,
-                              editingGestureType: EditingGestureType.doubleTap,
-                              allowColumnsResizing: true,
-                              allowColumnsDragging: true,
-                              columnWidthMode: ColumnWidthMode.none,
-                              gridLinesVisibility: GridLinesVisibility.horizontal,
-                              headerGridLinesVisibility: GridLinesVisibility.horizontal,
-                              onColumnResizeUpdate: (details) {
-                                _colWidths[details.column.columnName] = details.width;
-                                if (mounted) setState(() {});
-                                return true;
-                              },
-                              onColumnResizeEnd: (details) {
-                                setState(() {
-                                  _isPresetDirty = true;
-                                });
-                                _saveColWidths();
-                              },
-                              onColumnDragging: (details) {
-                                if (details.action == DataGridColumnDragAction.dropped) {
-                                  final from = details.from;
-                                  final to = details.to;
-                                  if (from == null || to == null || from == to) return true;
-
-                                  final visible = List<String>.from(_visibleColOrder);
-                                  if (from < visible.length && to < visible.length) {
-                                    final moved = visible.removeAt(from);
-                                    visible.insert(to, moved);
-                                    final hidden = _colOrder.where(_hiddenCols.contains).toList();
-                                    setState(() {
-                                      _colOrder = [...visible, ...hidden];
-                                      _isPresetDirty = true;
-                                    });
-                                  }
-                                }
-                                return true;
-                              },
-                              onColumnSortChanging: (col, details) {
-                                if (col != null) {
-                                  _setPrimarySortFromHeaderClick(col.name);
-                                }
-                                return false; 
-                              },
-                              onCellTap: (details) {
-                                final rci = details.rowColumnIndex;
-                                final colIdx = rci.columnIndex;
-                                String? colName;
-                                if (colIdx >= 0 && colIdx < _visibleColOrder.length) {
-                                  colName = _visibleColOrder[colIdx];
-                                }
-                                final rowIdx = rci.rowIndex - 1;
-                                final fixture = rowIdx >= 0 && rowIdx < _minimalSource.rows.length
-                                    ? _minimalSource.fixtureForRow(_minimalSource.rows[rowIdx])
-                                    : null;
-
-                                final wasSelected = fixture != null &&
-                                    _minimalSource.selectedFixture?.id == fixture.id &&
-                                    _minimalSource.selectedColName == colName;
-
-                                _syncMinimalSelectionFromRowCol(rci);
-
-                                if (wasSelected) {
-                                  _minimalGridCtrl.beginEdit(rci);
-                                }
-                              },
-                              onCurrentCellActivated: (_, current) {
-                                _syncMinimalSelectionFromRowCol(current);
-                              },
-                              onCellSecondaryTap: (details) {
-                                _syncMinimalSelectionFromRowCol(details.rowColumnIndex);
-                                final rowIdx = details.rowColumnIndex.rowIndex - 1;
-                                if (rowIdx < 0 || rowIdx >= _minimalSource.rows.length) return;
-                                final fixture = _minimalSource.fixtureForRow(_minimalSource.rows[rowIdx]);
-                                if (fixture == null) return;
-                                _showFixtureContextMenu(details.globalPosition, fixture);
-                              },
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    _buildPresetsStrip(theme, presets),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Sidebar listens to _sidebarSelection (tap updates) AND _source (data updates).
-        ListenableBuilder(
-          listenable: Listenable.merge([_source, _sidebarSelection]),
-          builder: (ctx, _) {
-            // Always read from _source so data stays fresh after DB updates.
-            final sel = _source.selectedFixture;
-            return _Sidebar(
-              theme: theme,
-              selected: sel,
-              canClone: sel != null,
-              onAdd: _addFixture,
-              onClone: _cloneFixture,
-              onDelete: () { if (sel != null) _deleteFixture(sel); },
-              onEdit: (col, val) =>
-                  sel != null ? _onEdit(sel, col, val, null) : Future.value(),
-            );
-          },
-        ),
-        Expanded(
-          child: Column(
-            children: [
-              _Toolbar(
-                theme: theme,
-                searchCtrl: _searchCtrl,
-                sortSpecs: _sortSpecs,
-                onSortLevel: _setSortLevel,
-                onToggleDirection: _toggleSortDirection,
-                availableCols: _kColOrder.where((c) => !_hiddenCols.contains(c) && c != '#').toList(),
-                onColumnsPressed: _showColumnPicker,
-              ),
-              _FilterStrip(
-                theme: theme,
-                filterActive: filterActive,
-                filterLabel: filterActive
-                    ? '${_kColLabels[_filterCol!] ?? _filterCol!}: $_filterValue'
-                    : null,
-                onQuickFilter: _applyQuickFilter,
-                onClearFilter: _clearFilter,
-              ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (ctx, constraints) {
-                    final cols = _buildColumns(theme, constraints.maxWidth);
-                    return SfDataGridTheme(
-                      data: SfDataGridThemeData(
-                        headerColor: surfaceLow,
-                        gridLineColor: outline,
-                        sortIconColor: Colors.transparent,
-                        selectionColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-                        rowHoverColor: Colors.purple.withValues(alpha: 0.1),
-                        currentCellStyle: DataGridCurrentCellStyle(
-                          borderColor: theme.colorScheme.primary.withValues(alpha: 0.6),
-                          borderWidth: 1,
-                        ),
-                      ),
-                      child: SfDataGrid(
-                        key: _dataGridKey,
-                        controller: _mainGridCtrl,
-                        source: _source,
-                        columns: cols,
-                        rowHeight: 32,
-                        headerRowHeight: 32,
-                        selectionMode: SelectionMode.single,
-                        navigationMode: GridNavigationMode.cell,
-                        allowSorting: false,
-                        allowColumnsResizing: true,
-                        allowColumnsDragging: false,
-                        columnWidthMode: ColumnWidthMode.none,
-                        gridLinesVisibility: GridLinesVisibility.horizontal,
-                        headerGridLinesVisibility: GridLinesVisibility.horizontal,
-                        onColumnResizeUpdate: (details) {
-                          _colWidths[details.column.columnName] = details.width;
-                          if (mounted) setState(() {});
-                          return true;
-                        },
-                        onColumnResizeEnd: (details) {
-                          setState(() {});
-                          _saveColWidths();
-                        },
-                        allowEditing: true,
-                        editingGestureType: EditingGestureType.doubleTap,
-                        onCellTap: (details) {
-                          final rci = details.rowColumnIndex;
-                          final colIdx = rci.columnIndex;
-                          String? colName;
-                          if (colIdx >= 0 && colIdx < _visibleColOrder.length) {
-                            colName = _visibleColOrder[colIdx];
-                          }
-                          final rowIdx = rci.rowIndex - 1;
-                          final fixture = rowIdx >= 0 && rowIdx < _source.rows.length
-                              ? _source.fixtureForRow(_source.rows[rowIdx])
-                              : null;
-
-                          final wasSelected = fixture != null &&
-                              _source.selectedFixture?.id == fixture.id &&
-                              _source.selectedColName == colName;
-
-                          _syncMainSelectionFromRowCol(rci);
-
-                          if (wasSelected) {
-                            _mainGridCtrl.beginEdit(rci);
-                          }
-                        },
-                        onCurrentCellActivated: (_, current) {
-                          _syncMainSelectionFromRowCol(current);
-                        },
-                        onCellSecondaryTap: (details) {
-                          _syncMainSelectionFromRowCol(details.rowColumnIndex);
-                          final rowIdx = details.rowColumnIndex.rowIndex - 1;
-                          if (rowIdx < 0 || rowIdx >= _source.rows.length) return;
-                          final fixture = _source.fixtureForRow(_source.rows[rowIdx]);
-                          if (fixture == null) return;
-                          _showFixtureContextMenu(details.globalPosition, fixture);
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
-              _buildPresetsStrip(theme, presets),
-              _StatusBar(
-                totalFixtures: fixtures.length,
-                visibleCount: _minimalSource.rows.length,
-                filterActive: filterActive,
-                showName:
-                    ref.watch(currentShowMetaProvider).valueOrNull?.showName ?? '',
-                theme: theme,
-              ),
-            ],
           ),
         ),
       ],
@@ -1434,24 +911,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
         ),
       );
 
-  void _syncMinimalSelectionFromRowCol(RowColumnIndex rci) {
-    final rowIdx = rci.rowIndex - 1;
-    if (rowIdx < 0 || rowIdx >= _minimalSource.rows.length) return;
-    final row = _minimalSource.rows[rowIdx];
-    final fixture = _minimalSource.fixtureForRow(row);
-    if (fixture == null) return;
-
-    String? colName;
-    final colIdx = rci.columnIndex;
-    if (colIdx >= 0 && colIdx < _visibleColOrder.length) {
-      colName = _visibleColOrder[colIdx];
-    }
-
-    _minimalSource.setSelectedCell(fixture.id, colName);
-    _sidebarSelection.value = fixture;
-  }
-
-  void _syncMainSelectionFromRowCol(RowColumnIndex rci) {
+  void _syncSelectionFromRowCol(RowColumnIndex rci) {
     final rowIdx = rci.rowIndex - 1;
     if (rowIdx < 0 || rowIdx >= _source.rows.length) return;
     final row = _source.rows[rowIdx];
@@ -1468,14 +928,19 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     _sidebarSelection.value = fixture;
   }
 }
+}
 
-class _MinimalFixtureSource extends DataGridSource {
-  _MinimalFixtureSource({
+class FixtureDataSource extends DataGridSource {
+  FixtureDataSource({
     required this.onCellEditCommit,
     required this.onBooleanSet,
+    required this.onNativeEditStart,
+    required this.onNativeEditComplete,
   });
 
   VoidCallback? onSortChanged;
+  final void Function(FixtureRow fixture, String col) onNativeEditStart;
+  final VoidCallback onNativeEditComplete;
 
   void setVisibleCols(List<String> cols) {
     _visibleCols = cols;
@@ -1875,6 +1340,8 @@ class _MinimalFixtureSource extends DataGridSource {
     final col = column.columnName;
     final partOrder = _rowToPartOrder[row];
 
+    onNativeEditStart(fixture, col);
+
     String initial;
     if (partOrder != null) {
       final part = fixture.parts.where((p) => p.partOrder == partOrder).firstOrNull;
@@ -1939,26 +1406,30 @@ class _MinimalFixtureSource extends DataGridSource {
 
     final val = nextText.isEmpty ? null : nextText;
 
-    if (partOrder != null) {
-      if (col == 'chan')   await onCellEditCommit(fixture, 'chan',   val, partOrder);
-      if (col == 'dimmer') await onCellEditCommit(fixture, 'dimmer', val, partOrder);
-      return;
-    }
+    try {
+      if (partOrder != null) {
+        if (col == 'chan')   await onCellEditCommit(fixture, 'chan',   val, partOrder);
+        if (col == 'dimmer') await onCellEditCommit(fixture, 'dimmer', val, partOrder);
+        return;
+      }
 
-    if (_kReadOnlyCols.contains(col)) return;
-    switch (col) {
-      case 'chan':        await onCellEditCommit(fixture, col, val, null);
-      case 'dimmer':     await onCellEditCommit(fixture, col, val, null);
-      case 'position':   await onCellEditCommit(fixture, col, val, null);
-      case 'unit':       await onCellEditCommit(fixture, col, val, null);
-      case 'type':       await onCellEditCommit(fixture, col, val, null);
-      case 'function':   await onCellEditCommit(fixture, col, val, null);
-      case 'focus':      await onCellEditCommit(fixture, col, val, null);
-      case 'accessories':await onCellEditCommit(fixture, col, val, null);
-      case 'ip':         await onCellEditCommit(fixture, col, val, null);
-      case 'subnet':     await onCellEditCommit(fixture, col, val, null);
-      case 'mac':        await onCellEditCommit(fixture, col, val, null);
-      case 'ipv6':       await onCellEditCommit(fixture, col, val, null);
+      if (_kReadOnlyCols.contains(col)) return;
+      switch (col) {
+        case 'chan':        await onCellEditCommit(fixture, col, val, null);
+        case 'dimmer':     await onCellEditCommit(fixture, col, val, null);
+        case 'position':   await onCellEditCommit(fixture, col, val, null);
+        case 'unit':       await onCellEditCommit(fixture, col, val, null);
+        case 'type':       await onCellEditCommit(fixture, col, val, null);
+        case 'function':   await onCellEditCommit(fixture, col, val, null);
+        case 'focus':      await onCellEditCommit(fixture, col, val, null);
+        case 'accessories':await onCellEditCommit(fixture, col, val, null);
+        case 'ip':         await onCellEditCommit(fixture, col, val, null);
+        case 'subnet':     await onCellEditCommit(fixture, col, val, null);
+        case 'mac':        await onCellEditCommit(fixture, col, val, null);
+        case 'ipv6':       await onCellEditCommit(fixture, col, val, null);
+      }
+    } finally {
+      onNativeEditComplete();
     }
   }
 

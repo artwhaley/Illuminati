@@ -1,3 +1,30 @@
+/// ── SERVICE REGISTRY & DEPENDENCY INJECTION ──────────────────────────────────
+///
+/// This file is the "Central Nervous System" of the PaperTek application. It 
+/// uses Riverpod to manage application state, service lifecycles, and 
+/// dependency injection.
+///
+/// KEY CONCEPTS:
+/// 1. The Root (databaseProvider): 
+///    Everything starts here. When a .papertek file is opened, this provider 
+///    is populated. Almost every other provider in the app "watches" this. 
+///    When it becomes null, the app reverts to the Start Screen.
+///
+/// 2. Layered Architecture:
+///    - Core: Low-level database and file services.
+///    - Repositories: High-level APIs for interacting with specific data 
+///      (Fixtures, Channels, etc.). These encapsulate the "Tracked Write" logic.
+///    - Streams: Reactive data sources that the UI binds to.
+///
+/// 3. autoDispose vs. Persistent:
+///    - autoDispose: Used for UI-bound data (like a list of fixtures). When 
+///      no screen is looking at the data, Riverpod closes the stream to 
+///      save memory and CPU.
+///    - Persistent: Used for core services (like TrackedWriteRepository). 
+///      These must stay alive as long as the show is open because they 
+///      maintain critical state like the Undo/Redo stack.
+/// ─────────────────────────────────────────────────────────────────────────────
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/database.dart';
 import '../repositories/tracked_write_repository.dart';
@@ -13,39 +40,45 @@ import '../repositories/spreadsheet_view_preset_repository.dart';
 import '../services/import/import_service.dart';
 import '../services/commit_service.dart';
 
-// ── Core ─────────────────────────────────────────────────────────────────────
+// ── CORE PROVIDERS ───────────────────────────────────────────────────────────
 
-/// The currently open show database. Setting this switches the app between
-/// StartScreen and MainShell.
+/// The currently open show database. 
+/// Setting this to non-null triggers the app to switch from the Start Screen 
+/// to the Main Shell. Setting it to null closes the show.
 final databaseProvider = StateProvider<AppDatabase?>((ref) => null);
 
-/// Stateless service for creating / opening .papertek files.
+/// Stateless service responsible for file-system operations like creating,
+/// opening, and saving .papertek (SQLite) files.
 final showFileServiceProvider =
     Provider<ShowFileService>((ref) => ShowFileService());
 
-// ── Derived from the open database ───────────────────────────────────────────
+// ── REPOSITORIES (The Business Logic Layer) ──────────────────────────────────
 
-// NOT autoDispose — the undo stack and designer-mode state must survive
-// tab switches and widget rebuilds for the entire lifetime of the open show.
+/// The central write-coordinator for the app.
+/// This repository is NOT autoDispose because it holds the application's
+/// Undo/Redo stack and current "Designer Mode" transaction state.
 final trackedWriteProvider =
     Provider<TrackedWriteRepository?>((ref) {
   final db = ref.watch(databaseProvider);
   return db != null ? TrackedWriteRepository(db) : null;
 });
 
-/// Designer mode flag. True = TrackedWriteRepository writes without revision
-/// rows. Flipping requires committing pending revisions first.
+/// Global flag for "Designer Mode".
+/// - TRUE: Writes are committed immediately to the database (No Undo/Redo).
+/// - FALSE: Writes create "Pending Revisions" that must be committed later.
 final designerModeProvider = StateProvider<bool>((ref) => false);
 
-// ── Revision query layer ──────────────────────────────────────────────────────
-
+/// Repository for querying and managing the audit trail (Pending Revisions).
 final revisionRepoProvider =
     Provider.autoDispose<RevisionRepository?>((ref) {
   final db = ref.watch(databaseProvider);
   return db != null ? RevisionRepository(db) : null;
 });
 
-/// Set of fixture IDs with at least one pending revision → yellow highlight.
+// ── REACTIVE UI DATA STREAMS ──────────────────────────────────────────────────
+
+/// Provides a set of Fixture IDs that have uncommitted changes.
+/// Used to highlight rows in yellow on the spreadsheet.
 final pendingFixtureIdsProvider =
     StreamProvider.autoDispose<Set<int>>((ref) {
   final repo = ref.watch(revisionRepoProvider);
@@ -53,7 +86,8 @@ final pendingFixtureIdsProvider =
   return repo.watchPendingFixtureIds();
 });
 
-/// Set of fixture IDs with conflicting pending revisions → red highlight.
+/// Provides a set of Fixture IDs where multiple users/devices have 
+/// edited the same data, creating a conflict. Drives the red highlights.
 final conflictFixtureIdsProvider =
     StreamProvider.autoDispose<Set<int>>((ref) {
   final repo = ref.watch(revisionRepoProvider);
@@ -61,7 +95,8 @@ final conflictFixtureIdsProvider =
   return repo.watchConflictingFixtureIds();
 });
 
-/// Pending revisions grouped by fixture ID (for the review queue).
+/// The raw list of pending revisions grouped by fixture, used in the
+/// "Review Changes" queue on the Maintenance tab.
 final pendingGroupedRevisionsProvider =
     StreamProvider.autoDispose<Map<int?, List<RevisionView>>>((ref) {
   final repo = ref.watch(revisionRepoProvider);
@@ -69,13 +104,19 @@ final pendingGroupedRevisionsProvider =
   return repo.watchPendingGroupedByFixture();
 });
 
-/// Total pending revision count — drives badge on Maintenance tab icon.
+/// Total number of uncommitted changes across the entire show.
+/// Drives the notification badge on the Maintenance tab icon.
 final pendingCountProvider = StreamProvider.autoDispose<int>((ref) {
   final repo = ref.watch(revisionRepoProvider);
   if (repo == null) return Stream.value(0);
   return repo.watchPendingCount();
 });
 
+// ── DOMAIN REPOSITORIES ──────────────────────────────────────────────────────
+// These providers expose specialized repositories for different parts of
+// the lighting data model (Positions, Types, Venues, etc.)
+
+/// Handles high-level show metadata (Show Name, Designer Name, Date).
 final showMetaRepoProvider =
     Provider.autoDispose<ShowMetaRepository?>((ref) {
   final db = ref.watch(databaseProvider);
@@ -84,6 +125,7 @@ final showMetaRepoProvider =
   return ShowMetaRepository(db, tracked);
 });
 
+/// Streams the current show metadata row.
 final currentShowMetaProvider =
     StreamProvider.autoDispose<ShowMetaData?>((ref) {
   final db = ref.watch(databaseProvider);
@@ -91,6 +133,7 @@ final currentShowMetaProvider =
   return (db.select(db.showMeta)..limit(1)).watchSingleOrNull();
 });
 
+/// Service for importing CSV/Lightwright data.
 final importServiceProvider = Provider.autoDispose<ImportService?>((ref) {
   final db = ref.watch(databaseProvider);
   final tracked = ref.watch(trackedWriteProvider);
@@ -98,6 +141,7 @@ final importServiceProvider = Provider.autoDispose<ImportService?>((ref) {
   return ImportService(db: db, tracked: tracked);
 });
 
+/// Service for committing pending revisions into the permanent "Revision History".
 final commitServiceProvider = Provider.autoDispose<CommitService?>((ref) {
   final db = ref.watch(databaseProvider);
   final tracked = ref.watch(trackedWriteProvider);
@@ -105,6 +149,7 @@ final commitServiceProvider = Provider.autoDispose<CommitService?>((ref) {
   return CommitService(db: db, tracked: tracked);
 });
 
+/// Repository for "Lighting Positions" (e.g. Electric 1, FOH Pipe).
 final positionRepoProvider =
     Provider.autoDispose<PositionRepository?>((ref) {
   final db = ref.watch(databaseProvider);
@@ -113,6 +158,7 @@ final positionRepoProvider =
   return PositionRepository(db, tracked);
 });
 
+/// Streams all defined lighting positions.
 final lightingPositionsProvider =
     StreamProvider.autoDispose<List<LightingPosition>>((ref) {
   final repo = ref.watch(positionRepoProvider);
@@ -120,6 +166,7 @@ final lightingPositionsProvider =
   return repo.watchAll();
 });
 
+/// Streams positions grouped into hierarchy (e.g. Overhead vs Deck).
 final positionGroupsProvider =
     StreamProvider.autoDispose<List<PositionGroup>>((ref) {
   final repo = ref.watch(positionRepoProvider);
@@ -127,6 +174,7 @@ final positionGroupsProvider =
   return repo.watchGroups();
 });
 
+/// Repository for the show's contact list (ME, ALD, Production Electricians).
 final roleContactRepoProvider =
     Provider.autoDispose<RoleContactRepository?>((ref) {
   final db = ref.watch(databaseProvider);
@@ -135,6 +183,7 @@ final roleContactRepoProvider =
   return RoleContactRepository(db, tracked);
 });
 
+/// Repository for "Fixture Types" (e.g. S4 26deg, Mac Aura).
 final fixtureTypeRepoProvider =
     Provider.autoDispose<FixtureTypeRepository?>((ref) {
   final db = ref.watch(databaseProvider);
@@ -143,6 +192,7 @@ final fixtureTypeRepoProvider =
   return FixtureTypeRepository(db, tracked);
 });
 
+/// Streams all unique fixture types defined in the show.
 final fixtureTypesProvider =
     StreamProvider.autoDispose<List<FixtureType>>((ref) {
   final repo = ref.watch(fixtureTypeRepoProvider);
@@ -150,6 +200,7 @@ final fixtureTypesProvider =
   return repo.watchAll();
 });
 
+/// Repository for venue-specific infrastructure (Dimmers, Circuits, Addresses).
 final venueRepoProvider = Provider.autoDispose<VenueRepository?>((ref) {
   final db = ref.watch(databaseProvider);
   final tracked = ref.watch(trackedWriteProvider);
@@ -157,12 +208,14 @@ final venueRepoProvider = Provider.autoDispose<VenueRepository?>((ref) {
   return VenueRepository(db, tracked);
 });
 
+/// Streams the list of console channels.
 final channelsProvider = StreamProvider.autoDispose<List<Channel>>((ref) {
   final repo = ref.watch(venueRepoProvider);
   if (repo == null) return Stream.value([]);
   return repo.watchChannels();
 });
 
+/// Streams the raw DMX/Network address patch.
 final addressesProvider =
     StreamProvider.autoDispose<List<AddressesData>>((ref) {
   final repo = ref.watch(venueRepoProvider);
@@ -170,18 +223,21 @@ final addressesProvider =
   return repo.watchAddresses();
 });
 
+/// Streams venue dimmer data.
 final dimmersProvider = StreamProvider.autoDispose<List<Dimmer>>((ref) {
   final repo = ref.watch(venueRepoProvider);
   if (repo == null) return Stream.value([]);
   return repo.watchDimmers();
 });
 
+/// Streams venue circuit data.
 final circuitsProvider = StreamProvider.autoDispose<List<Circuit>>((ref) {
   final repo = ref.watch(venueRepoProvider);
   if (repo == null) return Stream.value([]);
   return repo.watchCircuits();
 });
 
+/// THE PRIMARY REPOSITORY: Manages all Fixture data.
 final fixtureRepoProvider = Provider.autoDispose<FixtureRepository?>((ref) {
   final db = ref.watch(databaseProvider);
   final tracked = ref.watch(trackedWriteProvider);
@@ -189,6 +245,8 @@ final fixtureRepoProvider = Provider.autoDispose<FixtureRepository?>((ref) {
   return FixtureRepository(db, tracked);
 });
 
+/// The reactive stream of all fixtures in the show. 
+/// This is what powers the main Spreadsheet tab.
 final fixtureRowsProvider =
     StreamProvider.autoDispose<List<FixtureRow>>((ref) {
   final repo = ref.watch(fixtureRepoProvider);
@@ -196,6 +254,7 @@ final fixtureRowsProvider =
   return repo.watchRows();
 });
 
+/// Repository for Spreadsheet layout presets (column order, hidden cols, etc).
 final spreadsheetViewPresetRepoProvider =
     Provider.autoDispose<SpreadsheetViewPresetRepository?>((ref) {
   final db = ref.watch(databaseProvider);
@@ -204,6 +263,7 @@ final spreadsheetViewPresetRepoProvider =
   return SpreadsheetViewPresetRepository(db, tracked);
 });
 
+/// Streams the list of saved spreadsheet view presets.
 final spreadsheetViewPresetsProvider =
     StreamProvider.autoDispose<List<SpreadsheetViewPreset>>((ref) {
   final repo = ref.watch(spreadsheetViewPresetRepoProvider);

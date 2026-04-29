@@ -1,3 +1,27 @@
+/// ── DATABASE ARCHITECTURE ──────────────────────────────────────────────────
+///
+/// This file defines the core persistence layer using the 'Drift' (formerly Moor)
+/// library. It encapsulates the SQLite schema, migrations, and low-level 
+/// database queries.
+///
+/// THE SCHEMA:
+/// The database is designed for a relational lighting design workflow. It 
+/// includes tables for Fixtures, Channels, Addresses, Gels, and Gobos. 
+/// It also includes a specialized "Revisions" table that acts as an audit trail.
+///
+/// FULL TEXT SEARCH (FTS5):
+/// To support fast global searching across thousands of fixtures, we use 
+/// SQLite's FTS5 virtual table engine. 
+/// - Table: `fixtures_fts`
+/// - Logic: We maintain this table via SQL Triggers. Every time a fixture is 
+///   added or updated, the triggers automatically update the search index.
+///
+/// SCHEMA VERSIONING:
+/// As the app evolves, we increment `currentSchemaVersion`. The `onUpgrade` 
+/// block handles the structural transformations required to keep old show 
+/// files compatible with newer versions of the app.
+/// ─────────────────────────────────────────────────────────────────────────────
+
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -18,39 +42,39 @@ import 'tables/notes.dart';
 part 'database.g.dart';
 
 @DriftDatabase(tables: [
-  // Migration 1
+  // Migration 1: Base show and user data
   ShowMeta,
   UsersLocal,
-  // Migration 2
+  // Migration 2: Venue infrastructure
   LightingPositions,
   Circuits,
   Channels,
   Addresses,
   Dimmers,
-  // Migration 3
+  // Migration 3: Fixture definitions
   FixtureTypes,
   Fixtures,
   FixtureParts,
-  // Migration 4
+  // Migration 4: Accessories and notes
   Gels,
   Gobos,
   Accessories,
   WorkNotes,
   MaintenanceLog,
-  // Migration 5
+  // Migration 5: User-defined custom fields
   CustomFields,
   CustomFieldValues,
   Reports,
-  // Migration 6
+  // Migration 6: Revision logging and multi-user sync
   Commits,
   Revisions,
-  // Migration 7
+  // Migration 7: Grouping logic
   PositionGroups,
-  // Migration 8
+  // Migration 8: Contact management
   RoleContacts,
-  // Migration 14
+  // Migration 14: UI State persistence
   SpreadsheetViewPresets,
-  // Migration 15
+  // Migration 15+: Advanced Note system
   Notes,
   NoteActions,
   NoteFixtures,
@@ -61,11 +85,13 @@ class AppDatabase extends _$AppDatabase {
 
   AppDatabase.forTesting(NativeDatabase connection) : super(connection);
 
+  /// Opens a specific .papertek file at the given path.
   static AppDatabase openFile(String path) =>
       AppDatabase(NativeDatabase(File(path)));
 
   static const currentSchemaVersion = 19;
 
+  /// Utility to open the default show file in the system's documents directory.
   static Future<AppDatabase> openDefault(String showName) async {
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, '$showName.papertek'));
@@ -78,10 +104,15 @@ class AppDatabase extends _$AppDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
+          // Initialize all tables defined in the @DriftDatabase annotation.
           await m.createAll();
+          // Initialize the specialized search index.
           await _createFts5Table();
         },
         onUpgrade: (m, from, to) async {
+          // PRO-TIP: We use incremental 'if' blocks so an old file (e.g. v2) 
+          // can "walk up" the migrations one by one until it reaches v19.
+          
           if (from < 2) {
             await m.createTable(lightingPositions);
             await m.createTable(circuits);
@@ -112,9 +143,7 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 7) {
             await m.createTable(positionGroups);
-            // Phase 2 show files (schema v6) may already have these columns
-            // if they were in the ShowMeta class definition before migration 7
-            // was written. Wrap each addColumn to be idempotent.
+            // Wrap column additions in try/catch to handle development-drift.
             await _tryAddColumn(m, lightingPositions, lightingPositions.sortOrder);
             await _tryAddColumn(m, lightingPositions, lightingPositions.groupId);
             await _tryAddColumn(m, showMeta, showMeta.asstDesigner);
@@ -164,6 +193,7 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(spreadsheetViewPresets);
           }
           if (from < 19) {
+            // Rebuild FTS5 to include new columns/logic.
             await _createFts5Table();
             
             try {
@@ -176,19 +206,24 @@ class AppDatabase extends _$AppDatabase {
               await customStatement(
                 'CREATE UNIQUE INDEX IF NOT EXISTS idx_note_positions_unique ON note_positions(note_id, position_name);');
             } catch (_) {
-              // Tables might already exist
+              // Tables might already exist if we are upgrading from a beta build.
             }
           }
         },
         beforeOpen: (details) async {
+          // Enforce foreign key constraints.
           await customStatement('PRAGMA foreign_keys = ON');
         },
       );
 
+  /// ── SEARCH INDEX (FTS5) ────────────────────────────────────────────────────
+  /// We use an external content table approach for FTS5, but manually maintain 
+  /// it via triggers for performance. This allows for lightning-fast keyword
+  /// searches (e.g. typing "101 front wash" finds fixture 101 at the Front Wash position).
   Future<void> _createFts5Table() async {
     await customStatement('DROP TABLE IF EXISTS fixtures_fts;');
 
-    // Standard FTS5 table. Stores its own index data for maximum reliability.
+    // Define the virtual table with the columns we want to index.
     await customStatement('''
       CREATE VIRTUAL TABLE fixtures_fts USING fts5(
         channel,
@@ -199,7 +234,7 @@ class AppDatabase extends _$AppDatabase {
       );
     ''');
 
-    // Initial population
+    // Initial population: Populate the index with current database content.
     await customStatement('''
       INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
       SELECT
@@ -214,8 +249,11 @@ class AppDatabase extends _$AppDatabase {
       WHERE (f.deleted IS NULL OR f.deleted = 0);
     ''');
 
-    // Triggers to keep FTS in sync
+    // ── SYNC TRIGGERS ──
+    // These triggers ensure that whenever data changes in 'fixtures' or 
+    // 'fixture_parts', the 'fixtures_fts' index stays updated automatically.
     
+    // 1. Update index after a new fixture is inserted.
     await customStatement('''
       CREATE TRIGGER IF NOT EXISTS fixtures_after_insert AFTER INSERT ON fixtures BEGIN
         INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
@@ -230,6 +268,7 @@ class AppDatabase extends _$AppDatabase {
       END;
     ''');
 
+    // 2. Update index when a fixture's metadata (position, type, etc) changes.
     await customStatement('''
       CREATE TRIGGER IF NOT EXISTS fixtures_after_update AFTER UPDATE ON fixtures BEGIN
         DELETE FROM fixtures_fts WHERE rowid = old.id;
@@ -247,6 +286,8 @@ class AppDatabase extends _$AppDatabase {
       END;
     ''');
 
+    // 3. Update index when a fixture_part (Channel or Address) changes.
+    // This is critical because Channel data lives in a different table.
     await customStatement('''
       CREATE TRIGGER IF NOT EXISTS fixture_parts_after_update AFTER UPDATE ON fixture_parts 
       WHEN new.part_type = 'intensity' OR old.part_type = 'intensity'
@@ -268,6 +309,7 @@ class AppDatabase extends _$AppDatabase {
     ''');
   }
 
+  /// Helper to safely add columns without crashing if they already exist.
   static Future<void> _tryAddColumn(
     Migrator m,
     TableInfo table,
@@ -280,6 +322,9 @@ class AppDatabase extends _$AppDatabase {
     }
   }
 
+  // ── SPECIALIZED QUERIES ─────────────────────────────────────────────────────
+
+  /// Returns the show patch ordered by Channel.
   Future<List<Map<String, dynamic>>> patchByChannel() => customSelect(
         '''
         SELECT c.name AS channel_name, c.notes, a.name AS address_name, a.type AS address_type
@@ -290,6 +335,7 @@ class AppDatabase extends _$AppDatabase {
         readsFrom: {channels, addresses},
       ).map((row) => row.data).get();
 
+  /// Returns the show patch ordered by Address.
   Future<List<Map<String, dynamic>>> patchByAddress() => customSelect(
         '''
         SELECT a.name AS address_name, a.type, a.channel AS channel_name, c.notes

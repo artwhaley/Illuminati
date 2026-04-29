@@ -1,3 +1,31 @@
+/// ── TRACKED WRITE ARCHITECTURE ──────────────────────────────────────────────
+///
+/// This repository is the "Gatekeeper" for all mutations to show data. Instead 
+/// of writing directly to tables, every other repository in the app calls 
+/// into this one.
+///
+/// THE "SPECIAL SAUCE":
+/// 1. Tracked Mode (Standard):
+///    Every time you edit a field, this repo does three things:
+///    - Pushes an Undo frame to the local stack.
+///    - Updates the "Live" data in the database immediately.
+///    - Creates a row in the `revisions` table marked as 'pending'.
+///    This allows the UI to show uncommitted changes (yellow highlights) and
+///    allows other users to see what you've changed without it being "final".
+///
+/// 2. Designer Mode:
+///    When a designer is working alone and wants maximum speed, they enter 
+///    Designer Mode. Writes go straight to the database WITHOUT creating 
+///    thousands of `revisions` rows. Undo still works, but the "Audit Trail"
+///    is condensed into a single summary entry when they exit the mode.
+///
+/// 3. Undo/Redo via Snapshots:
+///    Unlike standard undo systems that store "Reverse SQL", we store JSON 
+///    Snapshots of the affected rows. If you delete a fixture, we store the 
+///    entire fixture + its parts in the Undo frame. Undo-ing simply re-inserts 
+///    from that snapshot.
+/// ─────────────────────────────────────────────────────────────────────────────
+
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -14,24 +42,6 @@ class _DesignerSessionStats {
 }
 
 /// Single mutation API for all revision-tracked design/show data.
-///
-/// **Two operating modes:**
-///
-/// - **Tracked mode** (default, [designerMode] = false):
-///   Every write creates a pending `revisions` row AND pushes an [UndoFrame].
-///
-/// - **Designer mode** ([designerMode] = true):
-///   Writes happen immediately with no revision rows. Undo still works via
-///   [UndoFrame] (snapshots carried in the frame). A brief summary revision is
-///   written when switching back to tracked mode.
-///
-/// **What is NOT tracked here:**
-///   Operational tables: `work_notes`, `maintenance_log`, `fixtures.flagged`.
-///   Import batches are tracked for audit but excluded from the undo stack.
-///
-/// **TODO(auth):** Replace [currentUserId] with a real identity once Phase 9
-/// auth is wired. The designer-mode toggle and the approve/reject permissions
-/// will also hook into the auth layer here.
 class TrackedWriteRepository {
   TrackedWriteRepository(this._db) : undoStack = UndoStack();
 
@@ -55,8 +65,9 @@ class TrackedWriteRepository {
   /// Whether the repository is currently in designer (non-tracking) mode.
   bool get designerMode => _designerMode;
 
-  /// Switch to designer mode. Caller is responsible for ensuring pending
-  /// revisions have been committed before calling this (see [hasPendingRevisions]).
+  /// Switch to designer mode. 
+  /// In this mode, writes are committed immediately without creating individual 
+  /// 'pending' revision rows for every single field edit.
   void enterDesignerMode() {
     if (_designerMode) return;
     _designerMode = true;
@@ -64,12 +75,9 @@ class TrackedWriteRepository {
     _pendingBatchFrame = null; // clear any dangling batch
   }
 
-  /// Switch back to tracked mode. Writes a single summary revision capturing
-  /// what changed during the designer session, then returns the summary string
-  /// so the caller can surface it in the UI if desired.
-  ///
-  /// The summary revision has operation = 'designer_session' and is immediately
-  /// committed (not pending) — it is an audit log entry, not a reviewable change.
+  /// Switch back to tracked mode. 
+  /// Writes a single summary revision capturing what changed during the 
+  /// designer session (e.g. "10 fixtures added, 50 fields edited").
   Future<String> exitDesignerMode() async {
     if (!_designerMode) return '';
     _designerMode = false;
@@ -109,11 +117,13 @@ class TrackedWriteRepository {
   }
 
   // ── Field-level update ────────────────────────────────────────────────────
-  //
-  // Reads current value, updates the live row, inserts a pending revision
-  // (tracked mode) or just applies the update (designer mode).
-  // Returns the revision ID (or -1 in designer mode) and pushes an UndoFrame.
 
+  /// Updates a single field in a row.
+  /// 
+  /// 1. Reads current value (for Undo).
+  /// 2. Applies the update to the live table.
+  /// 3. In Tracked Mode: Creates a 'pending' revision row.
+  /// 4. Pushes an Undo frame.
   Future<int> updateField<T>({
     required String table,
     required int id,
@@ -169,10 +179,11 @@ class TrackedWriteRepository {
   }
 
   // ── Insert a row ──────────────────────────────────────────────────────────
-  //
-  // Inserts the row, then records an insert revision with a JSON snapshot.
-  // Returns a record with the new row ID and the revision ID.
 
+  /// Inserts a new row and captures its initial state in a revision.
+  /// 
+  /// The [buildSnapshot] callback should return a Map of the newly created 
+  /// row's data. This snapshot is used for Undo and for the Review Queue.
   Future<({int rowId, int revisionId})> insertRow({
     required String table,
     required Future<int> Function() doInsert,
@@ -217,14 +228,11 @@ class TrackedWriteRepository {
   }
 
   // ── Delete a row ──────────────────────────────────────────────────────────
-  //
-  // Captures a JSON snapshot BEFORE deleting, hard-deletes the row (cascade
-  // handles children), then records a delete revision.
-  // Returns the revision ID (or -1 in designer mode).
-  //
-  // The snapshot stored in oldValueJson inside the UndoFrame is sufficient
-  // to restore on undo — we re-insert from it without needing a separate table.
 
+  /// Deletes a row after capturing a full snapshot of its state.
+  /// 
+  /// IMPORTANT: This is a "Hard Delete" in the database. Undo works by 
+  /// re-inserting the row from the snapshot captured in the Undo frame.
   Future<int> deleteRow({
     required String table,
     required int id,
@@ -268,13 +276,11 @@ class TrackedWriteRepository {
   }
 
   // ── Bulk import batch ─────────────────────────────────────────────────────
-  //
-  // Import operations are NOT pushed to the undo stack (per spec). They use
-  // the supervisor reject flow for rollback. The isImport flag on insertRow
-  // enforces this.
 
+  /// Generates a unique ID for a bulk import operation.
   String beginImportBatch() => const Uuid().v4();
 
+  /// Records a summary of a bulk import (e.g. "Imported 100 fixtures from plot.csv").
   Future<int> endImportBatch({
     required String batchId,
     required Map<String, dynamic> summary,
@@ -292,16 +298,11 @@ class TrackedWriteRepository {
   }
 
   // ── Batched undo grouping ─────────────────────────────────────────────────
-  //
-  // For operations that produce multiple sub-operations that must undo
-  // atomically (e.g. reorder positions, merge fixture types), the caller
-  // calls beginBatchFrame() before the operations and endBatchFrame() after.
-  // All sub-operations accumulate into ONE UndoFrame.
 
   UndoFrame? _pendingBatchFrame;
 
   /// Start accumulating sub-operations into a single undo frame.
-  /// Returns a description string that will label the frame.
+  /// Useful for complex UI actions (like reordering) that affect multiple rows.
   void beginBatchFrame(String description) {
     _pendingBatchFrame = UndoFrame(description: description, operations: []);
   }
@@ -317,8 +318,7 @@ class TrackedWriteRepository {
 
   // ── Undo / Redo ───────────────────────────────────────────────────────────
 
-  /// Undo the most recent operation. Returns the description of what was undone,
-  /// or null if the stack is empty.
+  /// Undo the most recent operation. Returns the description of what was undone.
   Future<String?> undo() async {
     final frame = undoStack.popUndo();
     if (frame == null) return null;
@@ -433,10 +433,6 @@ class TrackedWriteRepository {
   }
 
   // ── Snapshot restore ──────────────────────────────────────────────────────
-  //
-  // Restores a hard-deleted row from a JSON snapshot. Currently handles
-  // fixtures (the most complex case — fixture + parts). Venue table restores
-  // are simpler (single row) and delegated to generic table logic.
 
   Future<void> _restoreFromSnapshot(
       String table, Map<String, dynamic> snapshot) async {

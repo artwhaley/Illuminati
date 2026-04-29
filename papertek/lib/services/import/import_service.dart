@@ -1,3 +1,25 @@
+/// ── IMPORT PIPELINE & DATA PERSISTENCE ──────────────────────────────────────
+///
+/// This service is the final stage of the PaperTek Import Pipeline. It takes 
+/// data that has been parsed and normalized and "materializes" it into the 
+/// database.
+///
+/// THE PIPELINE:
+/// 1. Detector: identifies which column is which (e.g. "Ch" vs "Chan").
+/// 2. Parser: Reads the raw CSV rows.
+/// 3. Normalizer: Maps the CSV columns to internal PaperTek data fields.
+/// 4. Service (This File): Writes the rows to the DB using the 
+///    TrackedWriteRepository.
+///
+/// THE "ROW GROUPING" LOGIC:
+/// Some lighting fixtures have multiple parts (e.g. a LED wash with 3 pixels). 
+/// In a Lightwright CSV, these often appear as multiple rows with the same 
+/// Channel/Unit number but different "Part" numbers.
+/// 
+/// `importRows` automatically detects these duplicates and merges them into 
+/// a single parent Fixture in the database with multiple FixturePart children.
+/// ─────────────────────────────────────────────────────────────────────────────
+
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../../database/database.dart';
@@ -33,9 +55,6 @@ class ImportResult {
 ///   - Write fixtures, parts, gels, and gobos in a single transaction.
 ///   - Record per-fixture insert revisions and one import_batch summary,
 ///     all sharing a single [batchId] for the supervisor queue.
-///
-/// This class is intentionally unaware of CSV structure; swap the upstream
-/// parser or detector without touching this class.
 class ImportService {
   ImportService({required AppDatabase db, required TrackedWriteRepository tracked})
       : _db = db,
