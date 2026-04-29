@@ -14,6 +14,23 @@ Future<Uint8List> buildFromTemplate(
   ReportTemplate template,
   ReportTheme theme,
 ) async {
+  try {
+    final pdf = _buildPdf(format, fixtures, template, theme);
+    return await pdf.save();
+  } catch (e, st) {
+    // ignore: avoid_print
+    print('CRITICAL: PDF Generation Failed with theme fonts. Falling back to Helvetica. Error: $e');
+    final pdf = _buildPdf(format, fixtures, template, ReportTheme.fallback());
+    return await pdf.save();
+  }
+}
+
+pw.Document _buildPdf(
+  PdfPageFormat format,
+  List<FixtureRow> fixtures,
+  ReportTemplate template,
+  ReportTheme theme,
+) {
   final pdf = pw.Document(theme: theme.themeData);
 
   final pageFormat = template.orientation == 'landscape'
@@ -69,6 +86,7 @@ Future<Uint8List> buildFromTemplate(
             'No fixtures in current show.',
             style: pw.TextStyle(
               font: theme.plexSansRegular,
+              fontFallback: theme.fallbackFonts,
               fontSize: 12,
               color: ReportTheme.textMuted,
             ),
@@ -106,11 +124,23 @@ Future<Uint8List> buildFromTemplate(
       ),
       header: (context) => _buildPageHeader(context, template, theme),
       footer: (context) => _buildPageFooter(context, template, theme),
-      build: (context) => widgets,
+      build: (context) => [
+        pw.DefaultTextStyle(
+          style: pw.TextStyle(
+            font: theme.plexSansRegular,
+            fontFallback: theme.fallbackFonts,
+            fontSize: template.dataFontSize,
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: widgets,
+          ),
+        ),
+      ],
     ),
   );
 
-  return pdf.save();
+  return pdf;
 }
 
 pw.Widget _buildPageHeader(pw.Context context, ReportTemplate template, ReportTheme theme) {
@@ -132,6 +162,7 @@ pw.Widget _buildPageHeader(pw.Context context, ReportTemplate template, ReportTh
               'THEATRICAL LIGHTING DOCUMENTATION',
               style: pw.TextStyle(
                 font: theme.plexMonoRegular,
+                fontFallback: theme.fallbackFonts,
                 fontSize: 8,
                 color: ReportTheme.textMuted,
                 letterSpacing: 1.2,
@@ -141,6 +172,7 @@ pw.Widget _buildPageHeader(pw.Context context, ReportTemplate template, ReportTh
               template.name.toUpperCase(),
               style: pw.TextStyle(
                 font: theme.cormorantSemiBold,
+                fontFallback: theme.fallbackFonts,
                 fontSize: 24,
                 color: ReportTheme.textMain,
                 letterSpacing: 1,
@@ -155,6 +187,7 @@ pw.Widget _buildPageHeader(pw.Context context, ReportTemplate template, ReportTh
               '${context.pageNumber} / ${context.pagesCount}',
               style: pw.TextStyle(
                 font: theme.plexMonoRegular,
+                fontFallback: theme.fallbackFonts,
                 fontSize: 10,
                 color: ReportTheme.textMain,
               ),
@@ -163,6 +196,7 @@ pw.Widget _buildPageHeader(pw.Context context, ReportTemplate template, ReportTh
               DateTime.now().toIso8601String().split('T').first,
               style: pw.TextStyle(
                 font: theme.plexMonoLight,
+                fontFallback: theme.fallbackFonts,
                 fontSize: 8,
                 color: ReportTheme.textMuted,
               ),
@@ -189,6 +223,7 @@ pw.Widget _buildPageFooter(pw.Context context, ReportTemplate template, ReportTh
           template.name.toUpperCase(),
           style: pw.TextStyle(
             font: theme.plexMonoRegular,
+            fontFallback: theme.fallbackFonts,
             fontSize: 7,
             color: ReportTheme.textMuted,
           ),
@@ -197,6 +232,7 @@ pw.Widget _buildPageFooter(pw.Context context, ReportTemplate template, ReportTh
           'Printed ${DateTime.now().toIso8601String().split('T').first}',
           style: pw.TextStyle(
             font: theme.plexMonoRegular,
+            fontFallback: theme.fallbackFonts,
             fontSize: 7,
             color: ReportTheme.textMuted,
           ),
@@ -242,6 +278,7 @@ pw.Widget _buildGroupHeader(String groupName, ReportTheme theme) {
             groupName.toUpperCase(),
             style: pw.TextStyle(
               font: theme.cormorantMedium,
+              fontFallback: theme.fallbackFonts,
               fontSize: 10,
               color: ReportTheme.textMuted,
               letterSpacing: 1.5,
@@ -284,6 +321,7 @@ pw.Widget _buildHeaderCellContent(ReportColumn col, ReportTheme theme) {
       col.label,
       style: pw.TextStyle(
         font: theme.plexMonoRegular,
+        fontFallback: theme.fallbackFonts,
         fontSize: 7,
         color: ReportTheme.textMuted,
       ),
@@ -312,6 +350,7 @@ pw.Widget _buildSimpleCellContent(FixtureRow f, ReportColumn col, ReportTemplate
                   value,
                   style: pw.TextStyle(
                     font: col.isBold ? theme.plexSansMedium : theme.plexSansRegular,
+                    fontFallback: theme.fallbackFonts,
                     fontSize: tmpl.dataFontSize,
                     color: ReportTheme.textMain,
                   ),
@@ -353,6 +392,7 @@ pw.Widget _buildStackedCellContent(FixtureRow f, ReportColumn col, ReportTemplat
                       value,
                       style: pw.TextStyle(
                         font: theme.plexSansRegular,
+                        fontFallback: theme.fallbackFonts,
                         fontSize: subFontSize,
                         color: ReportTheme.textMain,
                       ),

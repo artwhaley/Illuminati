@@ -13,6 +13,7 @@ class ReportTheme {
     required this.plexSansLight,
     required this.plexSansRegular,
     required this.plexSansMedium,
+    required this.interRegular,
   });
 
   final pw.Font cormorantRegular;
@@ -27,6 +28,8 @@ class ReportTheme {
   final pw.Font plexSansRegular;
   final pw.Font plexSansMedium;
 
+  final pw.Font interRegular;
+
   // v3 HTML Colors
   static const PdfColor pageBackground = PdfColor.fromInt(0xFFFAF9F6);
   static const PdfColor textMain = PdfColor.fromInt(0xFF111111);
@@ -38,23 +41,34 @@ class ReportTheme {
     return pw.ThemeData.withFont(
       base: plexSansRegular,
       bold: plexSansMedium,
-      italic: plexSansLight, // Fallback for light if needed
+      italic: plexSansLight,
+      fontFallback: fallbackFonts,
     );
   }
 
+  List<pw.Font> get fallbackFonts => [interRegular, plexSansRegular];
+
   static Future<ReportTheme> load() async {
-    // Fonts are downloaded from Google Fonts CDN (fonts.gstatic.com) via the
-    // exact URLs used by PdfGoogleFonts in the printing package. This ensures
-    // the TTF files are in the simplified format the pdf package can subset.
-    // They are bundled as assets — no internet connection required at runtime.
+    Future<pw.Font> loadFont(String path) async {
+      try {
+        final data = await rootBundle.load(path);
+        return pw.Font.ttf(data);
+      } catch (e) {
+        // ignore: avoid_print
+        print('CRITICAL: Failed to load font at $path: $e');
+        rethrow;
+      }
+    }
 
-    final cormorantRegular = pw.Font.ttf(await rootBundle.load('assets/google_fonts/CormorantGaramond-Regular.ttf'));
-    final cormorantMedium = pw.Font.ttf(await rootBundle.load('assets/google_fonts/CormorantGaramond-Medium.ttf'));
-    final cormorantSemiBold = pw.Font.ttf(await rootBundle.load('assets/google_fonts/CormorantGaramond-SemiBold.ttf'));
+    final cormorantRegular = await loadFont('assets/google_fonts/CormorantGaramond-Regular.ttf');
+    final cormorantMedium = await loadFont('assets/google_fonts/CormorantGaramond-Medium.ttf');
+    final cormorantSemiBold = await loadFont('assets/google_fonts/CormorantGaramond-SemiBold.ttf');
 
-    final plexSansLight = pw.Font.ttf(await rootBundle.load('assets/google_fonts/IBMPlexSans-Light.ttf'));
-    final plexSansRegular = pw.Font.ttf(await rootBundle.load('assets/google_fonts/IBMPlexSans-Regular.ttf'));
-    final plexSansMedium = pw.Font.ttf(await rootBundle.load('assets/google_fonts/IBMPlexSans-Medium.ttf'));
+    final plexSansLight = await loadFont('assets/google_fonts/IBMPlexSans-Light.ttf');
+    final plexSansRegular = await loadFont('assets/google_fonts/IBMPlexSans-Regular.ttf');
+    final plexSansMedium = await loadFont('assets/google_fonts/IBMPlexSans-Medium.ttf');
+
+    final interRegular = await loadFont('assets/google_fonts/Inter-Regular.ttf');
 
     // Temporary substitution: Use Sans for Mono to bypass subsetter crash
     final plexMonoLight = plexSansLight;
@@ -71,6 +85,7 @@ class ReportTheme {
       plexSansLight: plexSansLight,
       plexSansRegular: plexSansRegular,
       plexSansMedium: plexSansMedium,
+      interRegular: interRegular,
     );
   }
 
@@ -87,6 +102,7 @@ class ReportTheme {
       plexSansLight: pw.Font.helvetica(),
       plexSansRegular: pw.Font.helvetica(),
       plexSansMedium: pw.Font.helveticaBold(),
+      interRegular: pw.Font.helvetica(),
     );
   }
 }
