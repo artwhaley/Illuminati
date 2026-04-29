@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Channel Hookup — Premium</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Cormorant+Garamond:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #b8b8b8;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: #111;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+
+  .screen-label {
+    color: #666;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-family: 'IBM Plex Mono', monospace;
+    align-self: flex-start;
+    margin-left: 2px;
+  }
+
+  /* ── PAGE ─────────────────────────────────────────── */
+  .page {
+    width: 816px;
+    min-height: 1056px;
+    background: #faf9f6;  /* warm stock feel */
+    box-shadow: 0 8px 48px rgba(0,0,0,0.28);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+  }
+
+  /* ── MASTHEAD — white with strong rule, no ink fill ── */
+  .masthead {
+    background: #faf9f6;
+    padding: 24px 52px 18px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-bottom: 2px solid #111;
+  }
+
+  .masthead-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .masthead-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7.5px;
+    font-weight: 300;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #aaa;
+  }
+
+  .masthead-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    color: #111;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .masthead-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-end;
+    padding-bottom: 2px;
+  }
+
+  .masthead-page {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 300;
+    color: #aaa;
+    letter-spacing: 0.12em;
+  }
+
+  .masthead-page strong {
+    font-weight: 500;
+    color: #333;
+    letter-spacing: 0.06em;
+  }
+
+  .masthead-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    font-weight: 300;
+    color: #aaa;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── CONTENT AREA ──────────────────────────────────── */
+  .page-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 52px 40px;
+  }
+
+  /* ── TABLE ─────────────────────────────────────────── */
+  .hookup-table {
+    width: 100%;
+    border-collapse: collapse;
+    flex: 1;
+    margin-top: 0;
+  }
+
+  /* Column headers */
+  .hookup-table thead th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #999;
+    padding: 14px 7px 10px;
+    text-align: left;
+    vertical-align: bottom;
+    border-bottom: 0.5px solid #aaa;
+    line-height: 1.6;
+    background: #faf9f6;
+  }
+
+  th.col-channel { width: 50px;  text-align: center; padding-left: 0; padding-right: 0; }
+  th.col-dim     { width: 64px;  padding-left: 22px; }
+  th.col-pos     { width: 74px; }
+  th.col-u       { width: 28px; }
+  th.col-purpose { width: 120px; text-align: center; }
+  th.col-type    { width: 160px; }
+  th.col-clr     { width: 112px; text-align: left; padding-left: 14px; border-left: 0.5px solid #ccc; }
+
+  .th-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    line-height: 1.7;
+  }
+  .th-label-main { color: #888; }
+  .th-label-sub  { color: #bbb; }
+  .th-label-focus { color: #bbb; }
+
+  /* Data rows */
+  .hookup-table tbody tr {
+    border-bottom: 0.5px solid #e2e0db;
+  }
+
+  .hookup-table tbody tr:nth-child(even) td {
+    background: #f0efeb;
+  }
+
+  .hookup-table tbody td {
+    padding: 0;
+    font-size: 9px;
+    vertical-align: middle;
+    color: #1a1a1a;
+    line-height: 1.35;
+    background: #faf9f6;
+  }
+
+  .hookup-table tbody tr:nth-child(even) td {
+    background: #f0efeb;
+  }
+
+  /* Channel number — large, anchoring */
+  td.col-channel {
+    text-align: center;
+    padding: 0;
+    width: 50px;
+  }
+
+  .channel-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 8px 0;
+  }
+
+  .channel-num span {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #111;
+    display: block;
+    width: 32px;
+    text-align: center;
+    border-bottom: 1.5px solid #111;
+    padding-bottom: 1px;
+    line-height: 1;
+  }
+
+  /* Dim — wide, medium weight mono */
+  td.col-dim {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: #111;
+    padding: 8px 7px 8px 22px;
+    letter-spacing: 0.04em;
+  }
+
+  td.col-pos {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 9px;
+    font-weight: 400;
+    color: #333;
+    padding: 8px 7px;
+    letter-spacing: 0.02em;
+  }
+
+  td.col-u {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 300;
+    color: #777;
+    padding: 8px 7px;
+  }
+
+  /* Purpose + Focus — centered */
+  td.col-purpose {
+    padding: 7px 7px;
+    vertical-align: middle;
+    text-align: center;
+  }
+
+  .purpose-main {
+    font-size: 9px;
+    font-weight: 500;
+    color: #111;
+    letter-spacing: 0.02em;
+    display: block;
+  }
+
+  .purpose-focus {
+    font-size: 7.5px;
+    font-weight: 300;
+    color: #888;
+    display: block;
+    margin-top: 2px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  td.col-type {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 8.5px;
+    font-weight: 300;
+    color: #444;
+    padding: 8px 7px;
+    line-height: 1.45;
+    border-left: 0.5px solid #ddd;
+  }
+
+  /* Clr + Gbo stacked */
+  td.col-clr {
+    padding: 7px 7px 7px 14px;
+    border-left: 0.5px solid #ccc;
+    vertical-align: middle;
+  }
+
+  .clr-row {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+
+  .clr-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 6.5px;
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #bbb;
+    width: 20px;
+    flex-shrink: 0;
+  }
+
+  .clr-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 400;
+    color: #222;
+  }
+
+  .clr-empty .clr-value { color: #ccc; }
+
+  .clr-divider {
+    height: 0.5px;
+    background: #ddd;
+    margin: 3px 0;
+  }
+
+  /* ── GROUP DIVIDER — elegant, not a black bar ──────── */
+  .group-row td {
+    padding: 18px 0 6px;
+    border-bottom: none;
+    background: #faf9f6 !important;
+    vertical-align: bottom;
+  }
+
+  .group-row td:nth-child(even) {
+    background: #faf9f6 !important;
+  }
+
+  .group-label-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 0 0 0;
+  }
+
+  .group-rule-left {
+    height: 0.5px;
+    background: #111;
+    width: 50px;
+    flex-shrink: 0;
+  }
+
+  .group-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #111;
+    white-space: nowrap;
+  }
+
+  .group-rule-right {
+    height: 0.5px;
+    background: #ccc;
+    flex: 1;
+  }
+
+  /* ── FOOTER ─────────────────────────────────────────── */
+  .page-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 0.5px solid #ccc;
+    padding: 10px 52px 0;
+    margin-top: 0;
+    flex-shrink: 0;
+    padding-bottom: 28px;
+  }
+
+  .footer-range {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7.5px;
+    font-weight: 300;
+    color: #bbb;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .footer-center {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 9px;
+    font-weight: 300;
+    color: #ccc;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .footer-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7.5px;
+    font-weight: 300;
+    color: #bbb;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── PRINT ──────────────────────────────────────────── */
+  @media print {
+    @page { size: 8.5in 11in; margin: 0; }
+    body { background: none; padding: 0; gap: 0; }
+    .screen-label { display: none; }
+    .page {
+      width: 8.5in;
+      min-height: 11in;
+      box-shadow: none;
+      page-break-after: always;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="screen-label">Channel Hookup v2 — Premium · 8.5 × 11 in · Greyscale</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE 1
+═══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="masthead">
+    <div class="masthead-left">
+      <span class="masthead-eyebrow">Theatrical Lighting Documentation</span>
+      <span class="masthead-title">Channel Hookup</span>
+    </div>
+    <div class="masthead-right">
+      <span class="masthead-page"><strong>01</strong> &thinsp;/&thinsp; 16</span>
+      <span class="masthead-date">9 · 22 · 17</span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <table class="hookup-table">
+      <thead>
+        <tr>
+          <th class="col-channel">Ch</th>
+          <th class="col-dim">Dim</th>
+          <th class="col-pos">Position</th>
+          <th class="col-u">U#</th>
+          <th class="col-purpose">
+            <div class="th-stack">
+              <span class="th-label-main">Purpose</span>
+              <span class="th-label-focus">Focus Area</span>
+            </div>
+          </th>
+          <th class="col-type">Type &amp; Acc &amp; Load</th>
+          <th class="col-clr">
+            <div class="th-stack">
+              <span class="th-label-main">Color</span>
+              <span class="th-label-sub">Gobo</span>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- GROUP -->
+        <tr class="group-row">
+          <td colspan="7">
+            <div class="group-label-cell">
+              <div class="group-rule-left"></div>
+              <span class="group-name">Pipe 7</span>
+              <div class="group-rule-right"></div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>1</span></div></td>
+          <td class="col-dim">126</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">1</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">DS Center Pool</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>2</span></div></td>
+          <td class="col-dim">124</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">3</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">DS Center Pool</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>3</span></div></td>
+          <td class="col-dim">122</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">5</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">SL Wing</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>4</span></div></td>
+          <td class="col-dim">113</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">13</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">SR Wing</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>5</span></div></td>
+          <td class="col-dim">108</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">15</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">US Center Pool</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>6</span></div></td>
+          <td class="col-dim">106</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">17</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">US Center Pool</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>11</span></div></td>
+          <td class="col-dim">125</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">2</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">DS Center Pool</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>12</span></div></td>
+          <td class="col-dim">123</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">4</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">DS Center Pool</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>13</span></div></td>
+          <td class="col-dim">121</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">6</td>
+          <td class="col-purpose"><span class="purpose-main"></span><span class="purpose-focus"></span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>14</span></div></td>
+          <td class="col-dim">114</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">12</td>
+          <td class="col-purpose"><span class="purpose-main"></span><span class="purpose-focus"></span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>15</span></div></td>
+          <td class="col-dim">112</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">14</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">SL Wing</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>16</span></div></td>
+          <td class="col-dim">107</td>
+          <td class="col-pos">Pipe 7</td>
+          <td class="col-u">16</td>
+          <td class="col-purpose"><span class="purpose-main">Deck FL</span><span class="purpose-focus">SR Wing</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R53 + R132</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+
+        <!-- GROUP -->
+        <tr class="group-row">
+          <td colspan="7">
+            <div class="group-label-cell">
+              <div class="group-rule-left"></div>
+              <span class="group-name">Pipe 2</span>
+              <div class="group-rule-right"></div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>21</span></div></td>
+          <td class="col-dim">524</td>
+          <td class="col-pos">Pipe 2</td>
+          <td class="col-u">4</td>
+          <td class="col-purpose"><span class="purpose-main">Wash – Prefocused</span><span class="purpose-focus">Full Stage</span></td>
+          <td class="col-type">Wybron Cygnus VN200 RGBW 200w</td>
+          <td class="col-clr">
+            <div class="clr-row clr-empty"><span class="clr-label">Clr</span><span class="clr-value">—</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>22</span></div></td>
+          <td class="col-dim">535</td>
+          <td class="col-pos">Pipe 2</td>
+          <td class="col-u">9</td>
+          <td class="col-purpose"><span class="purpose-main">Wash – Prefocused</span><span class="purpose-focus">Full Stage</span></td>
+          <td class="col-type">Wybron Cygnus VN200 RGBW 200w</td>
+          <td class="col-clr">
+            <div class="clr-row clr-empty"><span class="clr-label">Clr</span><span class="clr-value">—</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>23</span></div></td>
+          <td class="col-dim">546</td>
+          <td class="col-pos">Pipe 2</td>
+          <td class="col-u">13</td>
+          <td class="col-purpose"><span class="purpose-main">Wash – Prefocused</span><span class="purpose-focus">Full Stage</span></td>
+          <td class="col-type">Wybron Cygnus VN200 RGBW 200w</td>
+          <td class="col-clr">
+            <div class="clr-row clr-empty"><span class="clr-label">Clr</span><span class="clr-value">—</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>24</span></div></td>
+          <td class="col-dim">557</td>
+          <td class="col-pos">Pipe 2</td>
+          <td class="col-u">18</td>
+          <td class="col-purpose"><span class="purpose-main">Wash – Prefocused</span><span class="purpose-focus">Full Stage</span></td>
+          <td class="col-type">Wybron Cygnus VN200 RGBW 200w</td>
+          <td class="col-clr">
+            <div class="clr-row clr-empty"><span class="clr-label">Clr</span><span class="clr-value">—</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>25</span></div></td>
+          <td class="col-dim">568</td>
+          <td class="col-pos">Pipe 2</td>
+          <td class="col-u">23</td>
+          <td class="col-purpose"><span class="purpose-main">Wash – Prefocused</span><span class="purpose-focus">Full Stage</span></td>
+          <td class="col-type">Wybron Cygnus VN200 RGBW 200w</td>
+          <td class="col-clr">
+            <div class="clr-row clr-empty"><span class="clr-label">Clr</span><span class="clr-value">—</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span class="footer-range">Ch (1) thru (25)</span>
+    <span class="footer-center">Channel Hookup</span>
+    <span class="footer-date">Printed 4 · 29 · 26</span>
+  </div>
+</div><!-- /page 1 -->
+
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE 2
+═══════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="masthead">
+    <div class="masthead-left">
+      <span class="masthead-eyebrow">Theatrical Lighting Documentation</span>
+      <span class="masthead-title">Channel Hookup</span>
+    </div>
+    <div class="masthead-right">
+      <span class="masthead-page"><strong>02</strong> &thinsp;/&thinsp; 16</span>
+      <span class="masthead-date">9 · 22 · 17</span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <table class="hookup-table">
+      <thead>
+        <tr>
+          <th class="col-channel">Ch</th>
+          <th class="col-dim">Dim</th>
+          <th class="col-pos">Position</th>
+          <th class="col-u">U#</th>
+          <th class="col-purpose">
+            <div class="th-stack">
+              <span class="th-label-main">Purpose</span>
+              <span class="th-label-focus">Focus Area</span>
+            </div>
+          </th>
+          <th class="col-type">Type &amp; Acc &amp; Load</th>
+          <th class="col-clr">
+            <div class="th-stack">
+              <span class="th-label-main">Color</span>
+              <span class="th-label-sub">Gobo</span>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr class="group-row">
+          <td colspan="7">
+            <div class="group-label-cell">
+              <div class="group-rule-left"></div>
+              <span class="group-name">Box Boom Left</span>
+              <div class="group-rule-right"></div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>31</span></div></td>
+          <td class="col-dim">201</td>
+          <td class="col-pos">Box Boom L</td>
+          <td class="col-u">1</td>
+          <td class="col-purpose"><span class="purpose-main">Boom Shin SR</span><span class="purpose-focus">DS Apron SR</span></td>
+          <td class="col-type">Source 4 36deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R02</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>32</span></div></td>
+          <td class="col-dim">202</td>
+          <td class="col-pos">Box Boom L</td>
+          <td class="col-u">2</td>
+          <td class="col-purpose"><span class="purpose-main">Boom Shin SR</span><span class="purpose-focus">DS Apron SR</span></td>
+          <td class="col-type">Source 4 36deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">L201</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>33</span></div></td>
+          <td class="col-dim">203</td>
+          <td class="col-pos">Box Boom L</td>
+          <td class="col-u">3</td>
+          <td class="col-purpose"><span class="purpose-main">Boom Special A</span><span class="purpose-focus">Center Stage</span></td>
+          <td class="col-type">Source 4 26deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R52</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row"><span class="clr-label">Gbo</span><span class="clr-value">G945</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>34</span></div></td>
+          <td class="col-dim">204</td>
+          <td class="col-pos">Box Boom L</td>
+          <td class="col-u">4</td>
+          <td class="col-purpose"><span class="purpose-main">Boom Special A</span><span class="purpose-focus">Center Stage</span></td>
+          <td class="col-type">Source 4 26deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R52</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row"><span class="clr-label">Gbo</span><span class="clr-value">G945</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>35</span></div></td>
+          <td class="col-dim">205</td>
+          <td class="col-pos">Box Boom L</td>
+          <td class="col-u">5</td>
+          <td class="col-purpose"><span class="purpose-main">Stage Wash</span><span class="purpose-focus">Full Width SR</span></td>
+          <td class="col-type">Source 4 50deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R02</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+
+        <tr class="group-row">
+          <td colspan="7">
+            <div class="group-label-cell">
+              <div class="group-rule-left"></div>
+              <span class="group-name">Box Boom Right</span>
+              <div class="group-rule-right"></div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>41</span></div></td>
+          <td class="col-dim">211</td>
+          <td class="col-pos">Box Boom R</td>
+          <td class="col-u">1</td>
+          <td class="col-purpose"><span class="purpose-main">Boom Shin SL</span><span class="purpose-focus">DS Apron SL</span></td>
+          <td class="col-type">Source 4 36deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R02</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>42</span></div></td>
+          <td class="col-dim">212</td>
+          <td class="col-pos">Box Boom R</td>
+          <td class="col-u">2</td>
+          <td class="col-purpose"><span class="purpose-main">Boom Shin SL</span><span class="purpose-focus">DS Apron SL</span></td>
+          <td class="col-type">Source 4 36deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">L201</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>43</span></div></td>
+          <td class="col-dim">213</td>
+          <td class="col-pos">Box Boom R</td>
+          <td class="col-u">3</td>
+          <td class="col-purpose"><span class="purpose-main">Boom Special B</span><span class="purpose-focus">Center Stage</span></td>
+          <td class="col-type">Source 4 26deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R52</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row"><span class="clr-label">Gbo</span><span class="clr-value">G945</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>44</span></div></td>
+          <td class="col-dim">214</td>
+          <td class="col-pos">Box Boom R</td>
+          <td class="col-u">4</td>
+          <td class="col-purpose"><span class="purpose-main">Boom Special B</span><span class="purpose-focus">Center Stage</span></td>
+          <td class="col-type">Source 4 26deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R52</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row"><span class="clr-label">Gbo</span><span class="clr-value">G945</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>45</span></div></td>
+          <td class="col-dim">215</td>
+          <td class="col-pos">Box Boom R</td>
+          <td class="col-u">5</td>
+          <td class="col-purpose"><span class="purpose-main">Stage Wash</span><span class="purpose-focus">Full Width SL</span></td>
+          <td class="col-type">Source 4 50deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R02</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+
+        <tr class="group-row">
+          <td colspan="7">
+            <div class="group-label-cell">
+              <div class="group-rule-left"></div>
+              <span class="group-name">Front of House — Balcony Rail</span>
+              <div class="group-rule-right"></div>
+            </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>51</span></div></td>
+          <td class="col-dim">301</td>
+          <td class="col-pos">Bal Rail</td>
+          <td class="col-u">1</td>
+          <td class="col-purpose"><span class="purpose-main">DS Special – Ctr</span><span class="purpose-focus">Downstage Center</span></td>
+          <td class="col-type">Source 4 19deg 750w w/ Top Hat</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">NC</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>52</span></div></td>
+          <td class="col-dim">302</td>
+          <td class="col-pos">Bal Rail</td>
+          <td class="col-u">2</td>
+          <td class="col-purpose"><span class="purpose-main">DS Special – Ctr</span><span class="purpose-focus">Downstage Center</span></td>
+          <td class="col-type">Source 4 19deg 750w w/ Top Hat</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">NC</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>53</span></div></td>
+          <td class="col-dim">303</td>
+          <td class="col-pos">Bal Rail</td>
+          <td class="col-u">3</td>
+          <td class="col-purpose"><span class="purpose-main">Apron Wash SL</span><span class="purpose-focus">Apron SL</span></td>
+          <td class="col-type">Source 4 26deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R55</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>54</span></div></td>
+          <td class="col-dim">304</td>
+          <td class="col-pos">Bal Rail</td>
+          <td class="col-u">4</td>
+          <td class="col-purpose"><span class="purpose-main">Apron Wash SR</span><span class="purpose-focus">Apron SR</span></td>
+          <td class="col-type">Source 4 26deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">R55</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>55</span></div></td>
+          <td class="col-dim">305</td>
+          <td class="col-pos">Bal Rail</td>
+          <td class="col-u">5</td>
+          <td class="col-purpose"><span class="purpose-main">Follow – Pos A</span><span class="purpose-focus">Full Stage</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">NC</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+        <tr>
+          <td class="col-channel"><div class="channel-num"><span>56</span></div></td>
+          <td class="col-dim">306</td>
+          <td class="col-pos">Bal Rail</td>
+          <td class="col-u">6</td>
+          <td class="col-purpose"><span class="purpose-main">Follow – Pos B</span><span class="purpose-focus">Full Stage</span></td>
+          <td class="col-type">Source 4 19deg 750w</td>
+          <td class="col-clr">
+            <div class="clr-row"><span class="clr-label">Clr</span><span class="clr-value">NC</span></div>
+            <div class="clr-divider"></div>
+            <div class="clr-row clr-empty"><span class="clr-label">Gbo</span><span class="clr-value">—</span></div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span class="footer-range">Ch (31) thru (56)</span>
+    <span class="footer-center">Channel Hookup</span>
+    <span class="footer-date">Printed 4 · 29 · 26</span>
+  </div>
+</div><!-- /page 2 -->
+
+</body>
+</html>
