@@ -4,7 +4,6 @@ import 'package:pdf/widgets.dart' as pw;
 
 class ReportTheme {
   ReportTheme({
-    required this.cormorantRegular,
     required this.cormorantMedium,
     required this.cormorantSemiBold,
     required this.plexMonoLight,
@@ -16,7 +15,6 @@ class ReportTheme {
     required this.interRegular,
   });
 
-  final pw.Font cormorantRegular;
   final pw.Font cormorantMedium;
   final pw.Font cormorantSemiBold;
   
@@ -60,7 +58,6 @@ class ReportTheme {
       }
     }
 
-    final cormorantRegular = await loadFont('assets/google_fonts/CormorantGaramond-Regular.ttf');
     final cormorantMedium = await loadFont('assets/google_fonts/CormorantGaramond-Medium.ttf');
     final cormorantSemiBold = await loadFont('assets/google_fonts/CormorantGaramond-SemiBold.ttf');
 
@@ -70,13 +67,13 @@ class ReportTheme {
 
     final interRegular = await loadFont('assets/google_fonts/Inter-Regular.ttf');
 
-    // Temporary substitution: Use Sans for Mono to bypass subsetter crash
+    // IBMPlexMono assets are corrupt in the Google Fonts wrapper format;
+    // IBMPlexSans is used for all mono roles as a permanent substitution.
     final plexMonoLight = plexSansLight;
     final plexMonoRegular = plexSansRegular;
     final plexMonoMedium = plexSansMedium;
 
     return ReportTheme(
-      cormorantRegular: cormorantRegular,
       cormorantMedium: cormorantMedium,
       cormorantSemiBold: cormorantSemiBold,
       plexMonoLight: plexMonoLight,
@@ -93,7 +90,6 @@ class ReportTheme {
   /// if custom TTF loading fails.
   factory ReportTheme.fallback() {
     return ReportTheme(
-      cormorantRegular: pw.Font.times(),
       cormorantMedium: pw.Font.timesBold(),
       cormorantSemiBold: pw.Font.timesBold(),
       plexMonoLight: pw.Font.courier(),

@@ -7,7 +7,6 @@ import '../../features/reports/report_theme.dart';
 import '../../features/reports/template_renderer.dart';
 import '../../repositories/report_template_repository.dart';
 import 'template_editor_panel.dart';
-import 'font_specimen_tab.dart';
 
 class ReportsTab extends ConsumerStatefulWidget {
   const ReportsTab({super.key});
@@ -23,7 +22,7 @@ class _ReportsTabState extends ConsumerState<ReportsTab> {
   void initState() {
     super.initState();
     _loadTheme();
-    
+
     // Seed default templates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(reportTemplateRepoProvider)?.seedDefaults();
@@ -33,7 +32,7 @@ class _ReportsTabState extends ConsumerState<ReportsTab> {
     ref.listenManual(reportTemplatesProvider, (previous, next) {
       final rows = next.valueOrNull ?? [];
       final selectedId = ref.read(activeReportTemplateIdProvider);
-      
+
       if (rows.isNotEmpty && selectedId == null) {
         final first = rows.first;
         ref.read(activeReportTemplateIdProvider.notifier).state = first.id;
@@ -73,57 +72,36 @@ class _ReportsTabState extends ConsumerState<ReportsTab> {
       );
     }
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 0,
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Report Editor'),
-              Tab(text: 'Font Specimen'),
-            ],
+    return Row(
+      children: [
+        // Left panel: template editor
+        SizedBox(
+          width: 320,
+          child: TemplateEditorPanel(theme: _theme),
+        ),
+        const VerticalDivider(width: 1),
+        // Right panel: live PDF preview
+        Expanded(
+          child: Container(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            child: template.columns.isEmpty
+              ? const Center(child: Text('Add at least one column to generate a report.'))
+              : PdfPreview(
+                  build: (format) => buildFromTemplate(
+                    format,
+                    fixtures,
+                    template,
+                    _theme ?? ReportTheme.fallback(),
+                  ),
+                  canChangeOrientation: false,
+                  canChangePageFormat: false,
+                  initialPageFormat: PdfPageFormat.letter,
+                  canDebug: false,
+                  actions: const [],
+                ),
           ),
         ),
-        body: TabBarView(
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            Row(
-              children: [
-                // Left panel: editor
-                SizedBox(
-                  width: 320,
-                  child: TemplateEditorPanel(theme: _theme),
-                ),
-                const VerticalDivider(width: 1),
-                // Right panel: PDF preview
-                Expanded(
-                  child: Container(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
-                    child: template.columns.isEmpty
-                      ? const Center(child: Text('Add at least one column to generate a report.'))
-                      : PdfPreview(
-                          build: (format) => buildFromTemplate(
-                            format, 
-                            fixtures, 
-                            template, 
-                            _theme ?? ReportTheme.fallback(),
-                          ),
-                          canChangeOrientation: false,
-                          canChangePageFormat: false,
-                          initialPageFormat: PdfPageFormat.letter,
-                          // Hide some UI elements for a cleaner look
-                          canDebug: false,
-                          actions: const [],
-                        ),
-                  ),
-                ),
-              ],
-            ),
-            const FontSpecimenTab(),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
