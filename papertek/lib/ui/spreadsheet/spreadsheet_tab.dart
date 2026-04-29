@@ -268,10 +268,8 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                               _controller.updateColumnWidth(args.column.columnName, args.width);
                               return true;
                             },
-                            onSortColumnChanging: (args) {
-                              // We use a post-frame callback because sortedColumns isn't updated yet
-                              Future.microtask(() => _controller.syncFromGridSort());
-                              return true;
+                            onColumnSortChanged: (newCol, oldCol) {
+                              _controller.syncFromGridSort();
                             },
                             onColumnDragging: (args) {
                               if (args.action == DataGridColumnDragAction.dropped) {
