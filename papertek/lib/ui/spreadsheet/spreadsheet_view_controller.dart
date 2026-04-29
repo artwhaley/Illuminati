@@ -99,6 +99,40 @@ class SpreadsheetViewController extends ChangeNotifier {
   String? get filterLabel => _filterCol != null ? '${kColumnById[_filterCol!]?.label ?? _filterCol}: $_filterValue' : null;
 
   // ── Sorting ────────────────────────────────────────────────────────────────
+  bool _isSyncingSort = false;
+
+  void _syncGridSort() {
+    if (_isSyncingSort) return;
+    _isSyncingSort = true;
+    try {
+      dataSource.sortedColumns.clear();
+      for (final s in sortSpecs) {
+        dataSource.sortedColumns.add(SortColumnDetails(
+          name: s.column,
+          sortDirection: s.ascending ? DataGridSortDirection.ascending : DataGridSortDirection.descending,
+        ));
+      }
+    } finally {
+      _isSyncingSort = false;
+    }
+    notifyListeners();
+  }
+
+  void syncFromGridSort() {
+    if (_isSyncingSort) return;
+    _isSyncingSort = true;
+    try {
+      sortSpecs = dataSource.sortedColumns.map((s) => SortSpec(
+        column: s.name,
+        ascending: s.sortDirection == DataGridSortDirection.ascending,
+      )).toList();
+      isPresetDirty = true;
+    } finally {
+      _isSyncingSort = false;
+    }
+    notifyListeners();
+  }
+
   void setSortLevel(int level, String? column) {
     if (column == null) {
       if (level < sortSpecs.length) {
@@ -115,17 +149,15 @@ class SpreadsheetViewController extends ChangeNotifier {
         sortSpecs.add(newSpec);
       }
     }
-    dataSource.setSortSpecs(sortSpecs);
+    _syncGridSort();
     isPresetDirty = true;
-    notifyListeners();
   }
 
   void toggleSortDirection(int level) {
     if (level < sortSpecs.length) {
       sortSpecs[level] = sortSpecs[level].toggle();
-      dataSource.setSortSpecs(sortSpecs);
+      _syncGridSort();
       isPresetDirty = true;
-      notifyListeners();
     }
   }
 
@@ -206,11 +238,10 @@ class SpreadsheetViewController extends ChangeNotifier {
     if (data.containsKey('sorts')) {
       final specs = (data['sorts'] as List).map((s) => SortSpec.fromJson(s as Map<String, dynamic>)).toList();
       sortSpecs = specs.where((s) => kColumnById.containsKey(s.column)).toList();
-      dataSource.setSortSpecs(sortSpecs);
     }
     
     dataSource.setVisibleCols(visibleColOrder);
-    notifyListeners();
+    _syncGridSort();
   }
 
   Map<String, dynamic> captureCurrentState() {

@@ -259,12 +259,18 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                           child: SfDataGrid(
                             controller: _controller.gridController,
                             source: _source,
-                            allowSorting: false, 
+                            allowSorting: true, 
+                            allowMultiColumnSorting: true,
                             allowFiltering: false,
                             allowColumnsResizing: true,
                             allowColumnsDragging: true,
                             onColumnResizeUpdate: (args) {
                               _controller.updateColumnWidth(args.column.columnName, args.width);
+                              return true;
+                            },
+                            onSortColumnChanging: (args) {
+                              // We use a post-frame callback because sortedColumns isn't updated yet
+                              Future.microtask(() => _controller.syncFromGridSort());
                               return true;
                             },
                             onColumnDragging: (args) {

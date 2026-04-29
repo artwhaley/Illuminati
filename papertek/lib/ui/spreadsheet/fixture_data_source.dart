@@ -50,7 +50,6 @@ class FixtureDataSource extends DataGridSource {
 
   List<FixtureRow> _allFixtures = [];
   List<FixtureRow> _filteredFixtures = [];
-  List<SortSpec> _sortSpecs = [];
 
   final Map<DataGridRow, FixtureRow> _rowToFixture = {};
   // null = parent/single row; non-null = child row for that part order
@@ -120,13 +119,6 @@ class FixtureDataSource extends DataGridSource {
     notifyListeners();
   }
 
-  void setSortSpecs(List<SortSpec> specs) {
-    _sortSpecs = specs;
-    _rebuildFilteredRows();
-    onSortChanged?.call();
-    notifyListeners();
-  }
-
   void applyFilters({required String search, String? filterCol, String? filterValue}) {
     _searchQuery = search;
     _filterCol = filterCol;
@@ -136,6 +128,35 @@ class FixtureDataSource extends DataGridSource {
   }
 
   FixtureRow? fixtureForRow(DataGridRow row) => _rowToFixture[row];
+
+  @override
+  Future<void> handleSort() async {
+    _rebuildFilteredRows();
+    notifyListeners();
+  }
+
+  @override
+  int compare(DataGridRow? a, DataGridRow? b, SortColumnDetails sortColumn) {
+    final spec = kColumnById[sortColumn.name];
+    if (spec == null) return 0;
+
+    final va = a?.getCells().firstWhere((c) => c.columnName == sortColumn.name).value;
+    final vb = b?.getCells().firstWhere((c) => c.columnName == sortColumn.name).value;
+
+    int cmp;
+    if (spec.isNumeric) {
+      final na = double.tryParse(va?.toString() ?? '') ?? 0.0;
+      final nb = double.tryParse(vb?.toString() ?? '') ?? 0.0;
+      cmp = na.compareTo(nb);
+    } else {
+      cmp = (va?.toString() ?? '').toLowerCase().compareTo((vb?.toString() ?? '').toLowerCase());
+    }
+
+    if (cmp != 0) {
+      return sortColumn.sortDirection == DataGridSortDirection.ascending ? cmp : -cmp;
+    }
+    return 0;
+  }
 
   void _rebuildFilteredRows() {
     Iterable<FixtureRow> list = _allFixtures;
@@ -161,11 +182,12 @@ class FixtureDataSource extends DataGridSource {
       });
     }
 
-    if (_sortSpecs.isNotEmpty) {
+    // ── Native Sorting Integration ───────────────────────────────────────────
+    if (sortedColumns.isNotEmpty) {
       final sortedList = list.toList();
       sortedList.sort((a, b) {
-        for (final sortSpec in _sortSpecs) {
-          final spec = kColumnById[sortSpec.column];
+        for (final sortCol in sortedColumns) {
+          final spec = kColumnById[sortCol.name];
           if (spec == null) continue;
           final va = spec.getValue(a);
           final vb = spec.getValue(b);
@@ -179,7 +201,9 @@ class FixtureDataSource extends DataGridSource {
             cmp = (va ?? '').toLowerCase().compareTo((vb ?? '').toLowerCase());
           }
 
-          if (cmp != 0) return sortSpec.ascending ? cmp : -cmp;
+          if (cmp != 0) {
+            return sortCol.sortDirection == DataGridSortDirection.ascending ? cmp : -cmp;
+          }
         }
         return a.id.compareTo(b.id);
       });
