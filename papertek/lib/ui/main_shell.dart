@@ -12,6 +12,7 @@ import 'import/column_mapping_screen.dart';
 import 'show_tab.dart';
 import 'spreadsheet/spreadsheet_tab.dart';
 import 'maintenance/maintenance_tab.dart';
+import 'reports/reports_tab.dart';
 import 'settings/settings_dialog.dart';
 import '../services/commit_service.dart';
 import 'work_notes/work_notes_shell.dart';
@@ -590,7 +591,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       SpreadsheetTab(),
       WorkNotesShell(),
       MaintenanceTab(),
-      _StubTab('Reports'),
+      ReportsTab(),
     ];
     final index = _selectedIndex < 0 || _selectedIndex >= tabs.length
         ? 0
