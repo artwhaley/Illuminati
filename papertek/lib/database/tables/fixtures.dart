@@ -5,6 +5,8 @@ class FixtureTypes extends Table {
   TextColumn get name => text()();
   TextColumn get wattage => text().nullable()();
   IntColumn get partCount => integer().withDefault(const Constant(1))();
+  /// WARNING: Do not embed gel, gobo, or accessory defaults here.
+  /// Those are handled by the collection tables, not part rows.
   TextColumn get defaultPartsJson => text().nullable()();
 }
 
@@ -22,7 +24,6 @@ class Fixtures extends Table {
   // Display order — float so midpoint insertion never requires shifting other rows.
   RealColumn get sortOrder => real().withDefault(const Constant(0.0))();
   // v11 additions
-  TextColumn get accessories => text().nullable()();
   IntColumn get hung => integer().withDefault(const Constant(0))();
   IntColumn get focused => integer().withDefault(const Constant(0))();
   // v12 additions
@@ -35,7 +36,7 @@ class FixtureParts extends Table {
   IntColumn get fixtureId => integer().references(Fixtures, #id, onDelete: KeyAction.cascade)();
   IntColumn get partOrder => integer()();
   TextColumn get partType => text().nullable().customConstraint(
-      "CHECK (part_type IN ('intensity','gel','x','y','x_high','x_low','y_high','y_low','gobo','gobo_feature','color_feature'))")();
+      "CHECK (part_type IN ('intensity','x','y','x_high','x_low','y_high','y_low','gobo_feature','color_feature'))")();
   TextColumn get partName => text().nullable()();
   // Soft-links
   TextColumn get channel => text().nullable()();

@@ -72,6 +72,9 @@ class LightwrightColumnDetector implements ColumnDetector {
     PaperTekImportField.partNumber: [
       'part', 'part#', 'part #', 'part num', 'part number', 'cell', 'cell#', 'cell #', 'cell num',
     ],
+    PaperTekImportField.accessories: [
+      'accessories', 'accessory', 'acc', 'accs', 'accessory type', 'extra',
+    ],
   };
 
   @override

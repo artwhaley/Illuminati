@@ -89,7 +89,7 @@ class AppDatabase extends _$AppDatabase {
   static AppDatabase openFile(String path) =>
       AppDatabase(NativeDatabase(File(path)));
 
-  static const currentSchemaVersion = 20;
+  static const currentSchemaVersion = 21;
 
   /// Utility to open the default show file in the system's documents directory.
   static Future<AppDatabase> openDefault(String showName) async {
@@ -108,109 +108,22 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
           // Initialize the specialized search index.
           await _createFts5Table();
+          // Initialize attachable indexes.
+          await customStatement('CREATE INDEX idx_gels_part ON gels(fixture_part_id);');
+          await customStatement('CREATE INDEX idx_gels_fixture ON gels(fixture_id);');
+          await customStatement('CREATE INDEX idx_gobos_part ON gobos(fixture_part_id);');
+          await customStatement('CREATE INDEX idx_gobos_fixture ON gobos(fixture_id);');
+          await customStatement('CREATE INDEX idx_acc_part ON accessories(fixture_part_id);');
+          await customStatement('CREATE INDEX idx_acc_fixture ON accessories(fixture_id);');
         },
         onUpgrade: (m, from, to) async {
-          // PRO-TIP: We use incremental 'if' blocks so an old file (e.g. v2) 
-          // can "walk up" the migrations one by one until it reaches v19.
+          // ── REWORK CUTOVER (v21) ──
+          // Earlier .papertek show files are no longer supported due to the
+          // Fixture Parts rework. Users must create new show files.
+          // Historical migration steps (v1-v20) have been collapsed.
           
-          if (from < 2) {
-            await m.createTable(lightingPositions);
-            await m.createTable(circuits);
-            await m.createTable(channels);
-            await m.createTable(addresses);
-            await m.createTable(dimmers);
-          }
-          if (from < 3) {
-            await m.createTable(fixtureTypes);
-            await m.createTable(fixtures);
-            await m.createTable(fixtureParts);
-          }
-          if (from < 4) {
-            await m.createTable(gels);
-            await m.createTable(gobos);
-            await m.createTable(accessories);
-            await m.createTable(workNotes);
-            await m.createTable(maintenanceLog);
-          }
-          if (from < 5) {
-            await m.createTable(customFields);
-            await m.createTable(customFieldValues);
-            await m.createTable(reports);
-          }
-          if (from < 6) {
-            await m.createTable(commits);
-            await m.createTable(revisions);
-          }
-          if (from < 7) {
-            await m.createTable(positionGroups);
-            // Wrap column additions in try/catch to handle development-drift.
-            await _tryAddColumn(m, lightingPositions, lightingPositions.sortOrder);
-            await _tryAddColumn(m, lightingPositions, lightingPositions.groupId);
-            await _tryAddColumn(m, showMeta, showMeta.asstDesigner);
-            await _tryAddColumn(m, showMeta, showMeta.stageManager);
-            await _tryAddColumn(m, showMeta, showMeta.techDate);
-          }
-          if (from < 8) {
-            await m.createTable(roleContacts);
-            await _tryAddColumn(m, showMeta, showMeta.labelDesigner);
-            await _tryAddColumn(m, showMeta, showMeta.labelAsstDesigner);
-            await _tryAddColumn(m, showMeta, showMeta.labelMasterElectrician);
-            await _tryAddColumn(m, showMeta, showMeta.labelProducer);
-            await _tryAddColumn(m, showMeta, showMeta.labelAsstMasterElectrician);
-            await _tryAddColumn(m, showMeta, showMeta.labelStageManager);
-          }
-          if (from < 9) {
-            // Make fixtures.position nullable (recreates table, data preserved).
-            await m.alterTable(TableMigration(fixtures));
-          }
-          if (from < 10) {
-            await m.addColumn(fixtures, fixtures.sortOrder);
-            await customStatement(
-                'UPDATE fixtures SET sort_order = CAST(id AS REAL)');
-          }
-          if (from < 11) {
-            await m.addColumn(fixtures, fixtures.accessories);
-            await m.addColumn(fixtures, fixtures.hung);
-            await m.addColumn(fixtures, fixtures.focused);
-          }
-          if (from < 12) {
-            await m.addColumn(fixtures, fixtures.patched);
-            await m.addColumn(fixtureParts, fixtureParts.circuit);
-            // Seed patched from the old derived rule: patched if channel or address was set.
-            await customStatement('''
-              UPDATE fixtures SET patched = 1 WHERE id IN (
-                SELECT DISTINCT fixture_id FROM fixture_parts
-                WHERE part_type = 'intensity'
-                  AND (channel IS NOT NULL OR address IS NOT NULL)
-              )
-            ''');
-          }
-          if (from < 13) {
-            await m.addColumn(fixtures, fixtures.deleted);
-            await m.addColumn(fixtureParts, fixtureParts.deleted);
-          }
-          if (from < 14) {
-            await m.createTable(spreadsheetViewPresets);
-          }
-          if (from < 19) {
-            // Rebuild FTS5 to include new columns/logic.
-            await _createFts5Table();
-            
-            try {
-              await m.createTable(notes);
-              await m.createTable(noteActions);
-              await m.createTable(noteFixtures);
-              await m.createTable(notePositions);
-              await customStatement(
-                'CREATE UNIQUE INDEX IF NOT EXISTS idx_note_fixtures_unique ON note_fixtures(note_id, fixture_id);');
-              await customStatement(
-                'CREATE UNIQUE INDEX IF NOT EXISTS idx_note_positions_unique ON note_positions(note_id, position_name);');
-            } catch (_) {
-              // Tables might already exist if we are upgrading from a beta build.
-            }
-          }
-          if (from < 20) {
-            await m.addColumn(reports, reports.isSystem);
+          if (from < 21) {
+            // No-op for now as we are abandoning old files.
           }
         },
         beforeOpen: (details) async {

@@ -218,9 +218,10 @@ class ImportService {
             ));
 
         // Intensity parts — one per row in the group (partOrder = row index).
+        int? firstPartId;
         for (var i = 0; i < rowGroup.length; i++) {
           final partRow = rowGroup[i];
-          await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+          final partId = await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
                 fixtureId: Value(fixtureId),
                 partOrder: Value(i),
                 partType: const Value('intensity'),
@@ -228,26 +229,49 @@ class ImportService {
                 address: Value(partRow.get(PaperTekImportField.circuit)),
                 extrasJson: _buildExtrasJson(partRow),
               ));
+          if (i == 0) firstPartId = partId;
         }
+        firstPartId ??= 0; // Should not happen
 
         // Gel and gobo records are sourced from the primary row only.
+        // We attach them to the first part created above.
         final color = primary.get(PaperTekImportField.color);
         if (color != null && !_isNoColor(color)) {
-          await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+          await _db.into(_db.gels).insert(GelsCompanion(
                 fixtureId: Value(fixtureId),
-                partOrder: Value(rowGroup.length),
-                partType: const Value('gel'),
-                partName: Value(color),
+                fixturePartId: Value(firstPartId),
+                color: Value(color),
+                sortOrder: const Value(0),
               ));
         }
 
         final gobo1 = primary.get(PaperTekImportField.gobo1);
-        if (gobo1 != null) {
-          await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+        if (gobo1 != null && gobo1.isNotEmpty) {
+          await _db.into(_db.gobos).insert(GobosCompanion(
                 fixtureId: Value(fixtureId),
-                partOrder: Value(rowGroup.length + 1),
-                partType: const Value('gobo'),
-                partName: Value(gobo1),
+                fixturePartId: Value(firstPartId),
+                goboNumber: Value(gobo1),
+                sortOrder: const Value(0),
+              ));
+        }
+
+        final gobo2 = primary.get(PaperTekImportField.gobo2);
+        if (gobo2 != null && gobo2.isNotEmpty) {
+          await _db.into(_db.gobos).insert(GobosCompanion(
+                fixtureId: Value(fixtureId),
+                fixturePartId: Value(firstPartId),
+                goboNumber: Value(gobo2),
+                sortOrder: const Value(1),
+              ));
+        }
+
+        final acc = primary.get(PaperTekImportField.accessories);
+        if (acc != null && acc.isNotEmpty) {
+          await _db.into(_db.accessories).insert(AccessoriesCompanion(
+                fixtureId: Value(fixtureId),
+                fixturePartId: Value(firstPartId),
+                name: Value(acc),
+                sortOrder: const Value(0),
               ));
         }
 
@@ -257,9 +281,16 @@ class ImportService {
         final fixture = await (_db.select(_db.fixtures)..where((t) => t.id.equals(id))).getSingle();
         final parts =
             await (_db.select(_db.fixtureParts)..where((t) => t.fixtureId.equals(id))).get();
+        final gels = await (_db.select(_db.gels)..where((t) => t.fixtureId.equals(id))).get();
+        final gobos = await (_db.select(_db.gobos)..where((t) => t.fixtureId.equals(id))).get();
+        final accs = await (_db.select(_db.accessories)..where((t) => t.fixtureId.equals(id))).get();
+
         return {
           'fixture': fixture.toJson(),
           'parts': parts.map((p) => p.toJson()).toList(),
+          'gels': gels.map((g) => g.toJson()).toList(),
+          'gobos': gobos.map((g) => g.toJson()).toList(),
+          'accessories': accs.map((a) => a.toJson()).toList(),
         };
       },
       batchId: batchId,

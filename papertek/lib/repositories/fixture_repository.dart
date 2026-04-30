@@ -2,11 +2,13 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 import 'tracked_write_repository.dart';
+import 'custom_field_repository.dart';
 import '../ui/spreadsheet/fixture_draft.dart';
 
 /// One intensity part of a multi-part fixture (e.g. one cell of a cyc).
 class FixturePartRow {
   const FixturePartRow({
+    required this.id,
     required this.partOrder,
     this.channel,
     this.address,
@@ -15,8 +17,12 @@ class FixturePartRow {
     this.subnet,
     this.macAddress,
     this.ipv6,
+    this.color = '',
+    this.gobo = '',
+    this.accessories = '',
   });
 
+  final int id;
   final int partOrder;
   final String? channel;
   final String? address;
@@ -25,6 +31,9 @@ class FixturePartRow {
   final String? subnet;
   final String? macAddress;
   final String? ipv6;
+  final String color;
+  final String gobo;
+  final String accessories;
 }
 
 class FixtureRow {
@@ -37,15 +46,14 @@ class FixtureRow {
     this.unitNumber,
     this.fixtureType,
     this.wattage,
-    this.color,
-    this.gobo1,
-    this.gobo2,
+    this.color = '',
+    this.gobo = '',
     this.function,
     this.focus,
     required this.flagged,
     required this.patched,
     required this.sortOrder,
-    this.accessories,
+    this.accessories = '',
     this.ipAddress,
     this.subnet,
     this.macAddress,
@@ -53,6 +61,10 @@ class FixtureRow {
     required this.hung,
     required this.focused,
     this.parts = const [],
+    this.colorByPart = const {},
+    this.goboByPart = const {},
+    this.accessoriesByPart = const {},
+    this.customFieldValues = const {},
   });
 
   final int id;
@@ -63,15 +75,14 @@ class FixtureRow {
   final int? unitNumber;
   final String? fixtureType;
   final String? wattage;
-  final String? color;
-  final String? gobo1;
-  final String? gobo2;
+  final String color;
+  final String gobo;
   final String? function;
   final String? focus;
   final bool flagged;
   final bool patched;
   final double sortOrder;
-  final String? accessories;
+  final String accessories;
   final String? ipAddress;
   final String? subnet;
   final String? macAddress;
@@ -80,20 +91,26 @@ class FixtureRow {
   final bool focused;
   final List<FixturePartRow> parts;
 
+  final Map<int, String> colorByPart;
+  final Map<int, String> goboByPart;
+  final Map<int, String> accessoriesByPart;
+  final Map<int, String?> customFieldValues;
+
   bool get isMultiPart => parts.length > 1;
 }
 
 class FixtureRepository {
-  FixtureRepository(this._db, this._tracked);
+  FixtureRepository(this._db, this._tracked, {this.customFields});
   final AppDatabase _db;
   final TrackedWriteRepository _tracked;
+  final CustomFieldRepository? customFields;
 
   // ── Watch ─────────────────────────────────────────────────────────────────
 
   Stream<List<FixtureRow>> watchRows() {
     return _db.customSelect(
       'SELECT 1',
-      readsFrom: { _db.fixtures, _db.fixtureParts },
+      readsFrom: { _db.fixtures, _db.fixtureParts, _db.gels, _db.gobos, _db.accessories, _db.customFieldValues },
     ).watch().asyncMap((_) async {
       final fixtures = await (_db.select(_db.fixtures)
             ..where((f) => f.deleted.equals(0))
@@ -102,6 +119,16 @@ class FixtureRepository {
       final parts = await (_db.select(_db.fixtureParts)
             ..where((p) => p.deleted.equals(0)))
           .get();
+      final gels = await (_db.select(_db.gels)
+            ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+          .get();
+      final gobos = await (_db.select(_db.gobos)
+            ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+          .get();
+      final accs = await (_db.select(_db.accessories)
+            ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+          .get();
+      final customValues = await _db.select(_db.customFieldValues).get();
 
       return fixtures.map((f) {
         final fParts = parts.where((p) => p.fixtureId == f.id).toList()
@@ -112,8 +139,34 @@ class FixtureRepository {
             .toList()
           ..sort((a, b) => a.partOrder.compareTo(b.partOrder));
         final intensityPart = intensityParts.firstOrNull;
-        final gelPart  = fParts.where((p) => p.partType == 'gel').firstOrNull;
-        final goboParts = fParts.where((p) => p.partType == 'gobo').toList();
+
+        // Aggregate strings for the parent row
+        final fixtureGels = gels.where((g) => g.fixtureId == f.id).toList();
+        final fixtureGobos = gobos.where((g) => g.fixtureId == f.id).toList();
+        final fixtureAccs = accs.where((a) => a.fixtureId == f.id).toList();
+
+        final colorStr = fixtureGels.map((g) => g.color).join(' + ');
+        final goboStr = fixtureGobos.map((g) => g.goboNumber).join(' + ');
+        final accStr = fixtureAccs.map((a) => a.name).join(' + ');
+
+        // Per-part maps
+        final colorByPart = <int, String>{};
+        final goboByPart = <int, String>{};
+        final accessoriesByPart = <int, String>{};
+
+        for (final p in fParts) {
+          final pGels = fixtureGels.where((g) => g.fixturePartId == p.id).map((g) => g.color).join(' + ');
+          final pGobos = fixtureGobos.where((g) => g.fixturePartId == p.id).map((g) => g.goboNumber).join(' + ');
+          final pAccs = fixtureAccs.where((a) => a.fixturePartId == p.id).map((a) => a.name).join(' + ');
+          if (pGels.isNotEmpty) colorByPart[p.id] = pGels;
+          if (pGobos.isNotEmpty) goboByPart[p.id] = pGobos;
+          if (pAccs.isNotEmpty) accessoriesByPart[p.id] = pAccs;
+        }
+
+        final fCustomValues = {
+          for (final cv in customValues.where((cv) => cv.fixtureId == f.id))
+            cv.customFieldId: cv.value
+        };
 
         return FixtureRow(
           id: f.id,
@@ -124,22 +177,26 @@ class FixtureRepository {
           unitNumber: f.unitNumber,
           fixtureType: f.fixtureType,
           wattage: f.wattage,
-          color: gelPart?.partName,
-          gobo1: goboParts.isNotEmpty ? goboParts[0].partName : null,
-          gobo2: goboParts.length > 1 ? goboParts[1].partName : null,
+          color: colorStr,
+          gobo: goboStr,
+          accessories: accStr,
           function: f.function,
           focus: f.focus,
           flagged: f.flagged != 0,
           patched: f.patched != 0,
           sortOrder: f.sortOrder,
-          accessories: f.accessories,
           ipAddress: intensityPart?.ipAddress,
           subnet: intensityPart?.subnet,
           macAddress: intensityPart?.macAddress,
           ipv6: intensityPart?.ipv6,
           hung: f.hung != 0,
           focused: f.focused != 0,
+          colorByPart: colorByPart,
+          goboByPart: goboByPart,
+          accessoriesByPart: accessoriesByPart,
+          customFieldValues: fCustomValues,
           parts: intensityParts.map((p) => FixturePartRow(
+            id: p.id,
             partOrder: p.partOrder,
             channel: p.channel,
             address: p.address,
@@ -148,6 +205,9 @@ class FixtureRepository {
             subnet: p.subnet,
             macAddress: p.macAddress,
             ipv6: p.ipv6,
+            color: colorByPart[p.id] ?? '',
+            gobo: goboByPart[p.id] ?? '',
+            accessories: accessoriesByPart[p.id] ?? '',
           )).toList(),
         );
       }).toList();
@@ -207,25 +267,24 @@ class FixtureRepository {
     _tracked.beginBatchFrame('Add fixture');
     try {
       // 1. Fixture row
-      final fixtureRes = await _tracked.insertRow(
-        table: 'fixtures',
-        doInsert: () => _db.into(_db.fixtures).insert(FixturesCompanion(
-          position:    Value(draft.position),
-          unitNumber:  Value(draft.unitNumber),
-          fixtureType: Value(draft.fixtureType),
-          wattage:     Value(draft.wattage),
-          function:    Value(draft.function),
-          focus:       Value(draft.focus),
-          accessories: Value(draft.accessories),
-          flagged:     const Value(0),
-          sortOrder:   Value(sort),
-        )),
-        buildSnapshot: _buildSnapshot,
-      );
+        final fixtureRes = await _tracked.insertRow(
+          table: 'fixtures',
+          doInsert: () => _db.into(_db.fixtures).insert(FixturesCompanion(
+            position:    Value(draft.position),
+            unitNumber:  Value(draft.unitNumber),
+            fixtureType: Value(draft.fixtureType),
+            wattage:     Value(draft.wattage),
+            function:    Value(draft.function),
+            focus:       Value(draft.focus),
+            flagged:     const Value(0),
+            sortOrder:   Value(sort),
+          )),
+          buildSnapshot: _buildSnapshot,
+        );
       final fixtureId = fixtureRes.rowId;
 
       // 2. Intensity part
-      await _tracked.insertRow(
+      final partRes = await _tracked.insertRow(
         table: 'fixture_parts',
         doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
           fixtureId:  Value(fixtureId),
@@ -243,42 +302,21 @@ class FixtureRepository {
             (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
                 .getSingle()).toJson(),
       );
+      final partId = partRes.rowId;
 
-      // 3. Gel part (optional)
+      // 3. Gel (optional)
       if (draft.color != null && draft.color!.isNotEmpty) {
-        final maxOrder = await _maxPartOrder(fixtureId);
-        await _tracked.insertRow(
-          table: 'fixture_parts',
-          doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
-            fixtureId: Value(fixtureId),
-            partOrder: Value(maxOrder + 1),
-            partType:  const Value('gel'),
-            partName:  Value(draft.color),
-          )),
-          buildSnapshot: (id) async =>
-              (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
-                  .getSingle()).toJson(),
-        );
+        await addGel(fixtureId: fixtureId, partId: partId, color: draft.color!);
       }
 
-      // 4. Gobo parts (optional)
-      for (final entry in [draft.gobo1, draft.gobo2].indexed) {
-        final name = entry.$2;
-        if (name != null && name.isNotEmpty) {
-          final maxOrder = await _maxPartOrder(fixtureId);
-          await _tracked.insertRow(
-            table: 'fixture_parts',
-            doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
-              fixtureId: Value(fixtureId),
-              partOrder: Value(maxOrder + 1),
-              partType:  const Value('gobo'),
-              partName:  Value(name),
-            )),
-            buildSnapshot: (id) async =>
-                (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
-                    .getSingle()).toJson(),
-          );
-        }
+      // 4. Gobo (optional)
+      if (draft.gobo != null && draft.gobo!.isNotEmpty) {
+        await addGobo(fixtureId: fixtureId, partId: partId, goboNumber: draft.gobo!);
+      }
+
+      // 5. Accessories (optional)
+      if (draft.accessories != null && draft.accessories!.isNotEmpty) {
+        await addAccessory(fixtureId: fixtureId, partId: partId, name: draft.accessories!);
       }
 
       return sort;
@@ -310,7 +348,6 @@ class FixtureRepository {
               flagged: const Value(0),
               patched: Value(source.patched),
               sortOrder: Value(sort),
-              accessories: Value(source.accessories),
               hung: Value(source.hung),
               focused: Value(source.focused),
             ));
@@ -319,19 +356,78 @@ class FixtureRepository {
               ..where((p) => p.fixtureId.equals(sourceId)))
             .get();
         for (final part in sourceParts) {
-          await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
-                fixtureId: Value(newId),
-                partOrder: Value(part.partOrder),
-                partType: Value(part.partType),
-                partName: Value(part.partName),
-                channel: Value(part.channel),
-                address: Value(part.address),
-                circuit: Value(part.circuit),
-                ipAddress: Value(part.ipAddress),
-                subnet: Value(part.subnet),
-                macAddress: Value(part.macAddress),
-                ipv6: Value(part.ipv6),
-              ));
+          final partRes = await _tracked.insertRow(
+            table: 'fixture_parts',
+            doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
+                  fixtureId: Value(newId),
+                  partOrder: Value(part.partOrder),
+                  partType: Value(part.partType),
+                  partName: Value(part.partName),
+                  channel: Value(part.channel),
+                  address: Value(part.address),
+                  circuit: Value(part.circuit),
+                  ipAddress: Value(part.ipAddress),
+                  subnet: Value(part.subnet),
+                  macAddress: Value(part.macAddress),
+                  ipv6: Value(part.ipv6),
+                )),
+            buildSnapshot: (id) async =>
+                (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
+                    .getSingle()).toJson(),
+          );
+          final newPartId = partRes.rowId;
+          
+          // Clone Gels
+          final sourceGels = await (_db.select(_db.gels)..where((g) => g.fixturePartId.equals(part.id))).get();
+          for (final gel in sourceGels) {
+            await _tracked.insertRow(
+              table: 'gels',
+              doInsert: () => _db.into(_db.gels).insert(GelsCompanion(
+                    fixtureId: Value(newId),
+                    fixturePartId: Value(newPartId),
+                    color: Value(gel.color),
+                    size: Value(gel.size),
+                    maker: Value(gel.maker),
+                    sortOrder: Value(gel.sortOrder),
+                  )),
+              buildSnapshot: (id) async =>
+                  (await (_db.select(_db.gels)..where((t) => t.id.equals(id))).getSingle()).toJson(),
+            );
+          }
+
+          // Clone Gobos
+          final sourceGobos = await (_db.select(_db.gobos)..where((g) => g.fixturePartId.equals(part.id))).get();
+          for (final gobo in sourceGobos) {
+            await _tracked.insertRow(
+              table: 'gobos',
+              doInsert: () => _db.into(_db.gobos).insert(GobosCompanion(
+                    fixtureId: Value(newId),
+                    fixturePartId: Value(newPartId),
+                    goboNumber: Value(gobo.goboNumber),
+                    size: Value(gobo.size),
+                    maker: Value(gobo.maker),
+                    sortOrder: Value(gobo.sortOrder),
+                  )),
+              buildSnapshot: (id) async =>
+                  (await (_db.select(_db.gobos)..where((t) => t.id.equals(id))).getSingle()).toJson(),
+            );
+          }
+
+          // Clone Accessories
+          final sourceAccs = await (_db.select(_db.accessories)..where((a) => a.fixturePartId.equals(part.id))).get();
+          for (final acc in sourceAccs) {
+            await _tracked.insertRow(
+              table: 'accessories',
+              doInsert: () => _db.into(_db.accessories).insert(AccessoriesCompanion(
+                    fixtureId: Value(newId),
+                    fixturePartId: Value(newPartId),
+                    name: Value(acc.name),
+                    sortOrder: Value(acc.sortOrder),
+                  )),
+              buildSnapshot: (id) async =>
+                  (await (_db.select(_db.accessories)..where((t) => t.id.equals(id))).getSingle()).toJson(),
+            );
+          }
         }
         return newId;
       },
@@ -360,8 +456,6 @@ class FixtureRepository {
   Future<void> updateFocus(int id, String? focus) => _updateField(
       id, 'focus', focus, (f) => f.focus, (v) => FixturesCompanion(focus: Value(v)));
 
-  Future<void> updateAccessories(int id, String? accessories) => _updateField(
-      id, 'accessories', accessories, (f) => f.accessories, (v) => FixturesCompanion(accessories: Value(v)));
 
   Future<void> toggleFlag(int id) async {
     // Flagged is operational - not tracked.
@@ -379,7 +473,6 @@ class FixtureRepository {
   Future<void> setFocused(int id, {required bool value}) => _updateField(
       id, 'focused', value ? 1 : 0, (f) => f.focused, (v) => FixturesCompanion(focused: Value(v)));
 
-  // ── Part-level updates ────────────────────────────────────────────────────
 
   Future<void> updateIntensityChannel(int fixtureId, String? channel) async {
     final existing = await _intensityPart(fixtureId);
@@ -448,57 +541,214 @@ class FixtureRepository {
     }
   }
 
-  Future<void> upsertGelColor(int fixtureId, String? color) async {
-    final existing = await (_db.select(_db.fixtureParts)
-          ..where((p) => p.fixtureId.equals(fixtureId) & p.partType.equals('gel')))
-        .getSingleOrNull();
+  // ── Gels ───────────────────────────────────────────────────────────────────
 
-    if (existing != null) {
-      await _updatePartField(fixtureId, existing.id, 'part_name', color,
-          (p) => p.partName, (v) => FixturePartsCompanion(partName: Value(v)));
-    } else if (color != null && color.isNotEmpty) {
-      final maxOrder = await _maxPartOrder(fixtureId);
-      await _tracked.insertRow(
-        table: 'fixture_parts',
-        doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
-              fixtureId: Value(fixtureId),
-              partOrder: Value(maxOrder + 1),
-              partType: const Value('gel'),
-              partName: Value(color),
-            )),
-        buildSnapshot: (id) async =>
-            (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
-                    .getSingle())
-                .toJson(),
-      );
-    }
+  Future<List<Gel>> listGelsByPart(int partId) => (_db.select(_db.gels)
+        ..where((t) => t.fixturePartId.equals(partId))
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+      .get();
+
+  Future<List<Gel>> listGelsByFixture(int fixtureId) => (_db.select(_db.gels)
+        ..where((t) => t.fixtureId.equals(fixtureId))
+        ..orderBy([
+          (t) => OrderingTerm.asc(t.fixturePartId),
+          (t) => OrderingTerm.asc(t.sortOrder)
+        ]))
+      .get();
+
+  Future<void> addGel({required int fixtureId, required int partId, required String color}) async {
+    final maxOrder = await _maxCollectionOrder(_db.gels, partId);
+    await _tracked.insertRow(
+      table: 'gels',
+      doInsert: () => _db.into(_db.gels).insert(GelsCompanion(
+            fixtureId: Value(fixtureId),
+            fixturePartId: Value(partId),
+            color: Value(color),
+            sortOrder: Value(maxOrder + 1.0),
+          )),
+      buildSnapshot: (id) async =>
+          (await (_db.select(_db.gels)..where((t) => t.id.equals(id))).getSingle()).toJson(),
+    );
   }
 
-  Future<void> upsertGobo(int fixtureId, int goboIndex, String? name) async {
-    final goboParts = await (_db.select(_db.fixtureParts)
-          ..where((p) => p.fixtureId.equals(fixtureId) & p.partType.equals('gobo'))
-          ..orderBy([(p) => OrderingTerm.asc(p.partOrder)]))
-        .get();
+  Future<void> updateGel(int id, {required String color}) async {
+    final g = await (_db.select(_db.gels)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.updateField(
+      table: 'gels',
+      id: id,
+      field: 'color',
+      newValue: color,
+      readCurrentValue: () async => g.color,
+      applyUpdate: (v) async =>
+          (_db.update(_db.gels)..where((t) => t.id.equals(id))).write(GelsCompanion(color: Value(v))),
+    );
+  }
 
-    if (goboIndex < goboParts.length) {
-      final part = goboParts[goboIndex];
-      await _updatePartField(fixtureId, part.id, 'part_name', name,
-          (p) => p.partName, (v) => FixturePartsCompanion(partName: Value(v)));
-    } else if (name != null && name.isNotEmpty) {
-      final maxOrder = await _maxPartOrder(fixtureId);
-      await _tracked.insertRow(
-        table: 'fixture_parts',
-        doInsert: () => _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
-              fixtureId: Value(fixtureId),
-              partOrder: Value(maxOrder + 1),
-              partType: const Value('gobo'),
-              partName: Value(name),
-            )),
-        buildSnapshot: (id) async =>
-            (await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(id)))
-                    .getSingle())
-                .toJson(),
-      );
+  Future<void> reorderGel(int id, double sortOrder) async {
+    final g = await (_db.select(_db.gels)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.updateField(
+      table: 'gels',
+      id: id,
+      field: 'sort_order',
+      newValue: sortOrder,
+      readCurrentValue: () async => g.sortOrder,
+      applyUpdate: (v) async => (_db.update(_db.gels)..where((t) => t.id.equals(id)))
+          .write(GelsCompanion(sortOrder: Value(v))),
+      undoDescription: 'reorder gel',
+    );
+  }
+
+  Future<void> deleteGel(int id) async {
+    final g = await (_db.select(_db.gels)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.deleteRow(
+      table: 'gels',
+      id: id,
+      buildSnapshot: () async => g.toJson(),
+      doDelete: () async => (_db.delete(_db.gels)..where((t) => t.id.equals(id))).go(),
+    );
+  }
+
+  // ── Gobos ──────────────────────────────────────────────────────────────────
+
+  Future<List<Gobo>> listGobosByPart(int partId) => (_db.select(_db.gobos)
+        ..where((t) => t.fixturePartId.equals(partId))
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+      .get();
+
+  Future<List<Gobo>> listGobosByFixture(int fixtureId) => (_db.select(_db.gobos)
+        ..where((t) => t.fixtureId.equals(fixtureId))
+        ..orderBy([
+          (t) => OrderingTerm.asc(t.fixturePartId),
+          (t) => OrderingTerm.asc(t.sortOrder)
+        ]))
+      .get();
+
+  Future<void> addGobo({required int fixtureId, required int partId, required String goboNumber}) async {
+    final maxOrder = await _maxCollectionOrder(_db.gobos, partId);
+    await _tracked.insertRow(
+      table: 'gobos',
+      doInsert: () => _db.into(_db.gobos).insert(GobosCompanion(
+            fixtureId: Value(fixtureId),
+            fixturePartId: Value(partId),
+            goboNumber: Value(goboNumber),
+            sortOrder: Value(maxOrder + 1.0),
+          )),
+      buildSnapshot: (id) async =>
+          (await (_db.select(_db.gobos)..where((t) => t.id.equals(id))).getSingle()).toJson(),
+    );
+  }
+
+  Future<void> updateGobo(int id, {required String goboNumber}) async {
+    final g = await (_db.select(_db.gobos)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.updateField(
+      table: 'gobos',
+      id: id,
+      field: 'gobo_number',
+      newValue: goboNumber,
+      readCurrentValue: () async => g.goboNumber,
+      applyUpdate: (v) async => (_db.update(_db.gobos)..where((t) => t.id.equals(id)))
+          .write(GobosCompanion(goboNumber: Value(v))),
+    );
+  }
+
+  Future<void> reorderGobo(int id, double sortOrder) async {
+    final g = await (_db.select(_db.gobos)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.updateField(
+      table: 'gobos',
+      id: id,
+      field: 'sort_order',
+      newValue: sortOrder,
+      readCurrentValue: () async => g.sortOrder,
+      applyUpdate: (v) async => (_db.update(_db.gobos)..where((t) => t.id.equals(id)))
+          .write(GobosCompanion(sortOrder: Value(v))),
+      undoDescription: 'reorder gobo',
+    );
+  }
+
+  Future<void> deleteGobo(int id) async {
+    final g = await (_db.select(_db.gobos)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.deleteRow(
+      table: 'gobos',
+      id: id,
+      buildSnapshot: () async => g.toJson(),
+      doDelete: () async => (_db.delete(_db.gobos)..where((t) => t.id.equals(id))).go(),
+    );
+  }
+
+  // ── Accessories ────────────────────────────────────────────────────────────
+
+  Future<List<Accessory>> listAccessoriesByPart(int partId) => (_db.select(_db.accessories)
+        ..where((t) => t.fixturePartId.equals(partId))
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
+      .get();
+
+  Future<List<Accessory>> listAccessoriesByFixture(int fixtureId) => (_db.select(_db.accessories)
+        ..where((t) => t.fixtureId.equals(fixtureId))
+        ..orderBy([
+          (t) => OrderingTerm.asc(t.fixturePartId),
+          (t) => OrderingTerm.asc(t.sortOrder)
+        ]))
+      .get();
+
+  Future<void> addAccessory({required int fixtureId, required int partId, required String name}) async {
+    final maxOrder = await _maxCollectionOrder(_db.accessories, partId);
+    await _tracked.insertRow(
+      table: 'accessories',
+      doInsert: () => _db.into(_db.accessories).insert(AccessoriesCompanion(
+            fixtureId: Value(fixtureId),
+            fixturePartId: Value(partId),
+            name: Value(name),
+            sortOrder: Value(maxOrder + 1.0),
+          )),
+      buildSnapshot: (id) async =>
+          (await (_db.select(_db.accessories)..where((t) => t.id.equals(id))).getSingle()).toJson(),
+    );
+  }
+
+  Future<void> updateAccessory(int id, {required String name}) async {
+    final a = await (_db.select(_db.accessories)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.updateField(
+      table: 'accessories',
+      id: id,
+      field: 'name',
+      newValue: name,
+      readCurrentValue: () async => a.name,
+      applyUpdate: (v) async => (_db.update(_db.accessories)..where((t) => t.id.equals(id)))
+          .write(AccessoriesCompanion(name: Value(v))),
+    );
+  }
+
+  Future<void> reorderAccessory(int id, double sortOrder) async {
+    final a = await (_db.select(_db.accessories)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.updateField(
+      table: 'accessories',
+      id: id,
+      field: 'sort_order',
+      newValue: sortOrder,
+      readCurrentValue: () async => a.sortOrder,
+      applyUpdate: (v) async => (_db.update(_db.accessories)..where((t) => t.id.equals(id)))
+          .write(AccessoriesCompanion(sortOrder: Value(v))),
+      undoDescription: 'reorder accessory',
+    );
+  }
+
+  Future<void> deleteAccessory(int id) async {
+    final a = await (_db.select(_db.accessories)..where((t) => t.id.equals(id))).getSingle();
+    await _tracked.deleteRow(
+      table: 'accessories',
+      id: id,
+      buildSnapshot: () async => a.toJson(),
+      doDelete: () async => (_db.delete(_db.accessories)..where((t) => t.id.equals(id))).go(),
+    );
+  }
+
+  /// Wraps a collection edit session in a single batch frame for undo/redo.
+  Future<void> runCollectionEdit(String description, Future<void> Function() action) async {
+    _tracked.beginBatchFrame(description);
+    try {
+      await action();
+    } finally {
+      _tracked.endBatchFrame();
     }
   }
 
@@ -536,6 +786,12 @@ class FixtureRepository {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  Future<List<FixturePart>> getPartsForFixture(int fixtureId) =>
+      (_db.select(_db.fixtureParts)
+            ..where((p) => p.fixtureId.equals(fixtureId))
+            ..orderBy([(p) => OrderingTerm.asc(p.partOrder)]))
+          .get();
+
   Future<FixturePart?> _intensityPart(int fixtureId) => (_db.select(_db.fixtureParts)
         ..where((p) => p.fixtureId.equals(fixtureId) & p.partType.equals('intensity')))
       .getSingleOrNull();
@@ -549,6 +805,14 @@ class FixtureRepository {
     final all = await (_db.select(_db.fixtureParts)..where((p) => p.fixtureId.equals(fixtureId)))
         .get();
     return all.isEmpty ? -1 : all.map((p) => p.partOrder).reduce((a, b) => a > b ? a : b);
+  }
+
+  Future<double> _maxCollectionOrder(Table table, int partId) async {
+    final rows = await (_db.select(table as ResultSetImplementation<HasResultSet, dynamic>)
+          ..where((t) => (t as dynamic).fixturePartId.equals(partId)))
+        .get();
+    if (rows.isEmpty) return 0.0;
+    return rows.map((r) => (r as dynamic).sortOrder as double).reduce((a, b) => a > b ? a : b);
   }
 
   Future<void> _updateField<T>(
@@ -595,13 +859,19 @@ class FixtureRepository {
               .write(buildCompanion(v));
         },
       );
-
   Future<Map<String, dynamic>> _buildSnapshot(int id) async {
     final fixture = await (_db.select(_db.fixtures)..where((t) => t.id.equals(id))).getSingle();
     final parts = await (_db.select(_db.fixtureParts)..where((t) => t.fixtureId.equals(id))).get();
+    final gels = await (_db.select(_db.gels)..where((t) => t.fixtureId.equals(id))).get();
+    final gobos = await (_db.select(_db.gobos)..where((t) => t.fixtureId.equals(id))).get();
+    final accs = await (_db.select(_db.accessories)..where((t) => t.fixtureId.equals(id))).get();
+
     return {
       'fixture': fixture.toJson(),
       'parts': parts.map((p) => p.toJson()).toList(),
+      'gels': gels.map((g) => g.toJson()).toList(),
+      'gobos': gobos.map((g) => g.toJson()).toList(),
+      'accessories': accs.map((a) => a.toJson()).toList(),
     };
   }
 }

@@ -35,6 +35,7 @@ import '../repositories/role_contact_repository.dart';
 import '../repositories/fixture_type_repository.dart';
 import '../repositories/venue_repository.dart';
 import '../repositories/fixture_repository.dart';
+import '../repositories/operational_repository.dart';
 import '../services/show_file_service.dart';
 import '../repositories/spreadsheet_view_preset_repository.dart';
 import '../services/import/import_service.dart';
@@ -42,6 +43,7 @@ import '../services/commit_service.dart';
 import '../repositories/report_template_repository.dart';
 import '../ui/reports/report_template_notifier.dart';
 import '../features/reports/report_template.dart';
+import '../repositories/custom_field_repository.dart';
 
 // ── CORE PROVIDERS ───────────────────────────────────────────────────────────
 
@@ -274,6 +276,21 @@ final spreadsheetViewPresetsProvider =
   return repo.watchPresets();
 });
 
+/// Repository for user-defined custom fields.
+final customFieldRepoProvider = Provider.autoDispose<CustomFieldRepository?>((ref) {
+  final db = ref.watch(databaseProvider);
+  final tracked = ref.watch(trackedWriteProvider);
+  if (db == null || tracked == null) return null;
+  return CustomFieldRepository(db, tracked);
+});
+
+/// Streams all defined custom fields.
+final customFieldsProvider = StreamProvider.autoDispose<List<CustomField>>((ref) {
+  final repo = ref.watch(customFieldRepoProvider);
+  if (repo == null) return Stream.value([]);
+  return repo.watchFields();
+});
+
 /// Repository for saved report templates.
 final reportTemplateRepoProvider = Provider.autoDispose<ReportTemplateRepository?>((ref) {
   final db = ref.watch(databaseProvider);
@@ -299,5 +316,27 @@ final activeReportTemplateIdProvider = StateProvider<int?>((ref) => null);
 
 /// Dirty flag for template editor state.
 final activeReportTemplateDirtyProvider = StateProvider<bool>((ref) => false);
+
+// ── OPERATIONAL PROVIDERS ───────────────────────────────────────────────────
+
+final operationalRepoProvider = Provider.autoDispose<OperationalRepository?>((ref) {
+  final db = ref.watch(databaseProvider);
+  if (db == null) return null;
+  return OperationalRepository(db);
+});
+
+final unresolvedMaintenanceProvider = StreamProvider.autoDispose<List<MaintenanceLogData>>((ref) {
+  final db = ref.watch(databaseProvider);
+  if (db == null) return Stream.value([]);
+  return (db.select(db.maintenanceLog)..where((t) => t.resolved.equals(0))).watch();
+});
+
+final flaggedFixturesProvider = StreamProvider.autoDispose<List<FixtureRow>>((ref) {
+  final repo = ref.watch(fixtureRepoProvider);
+  if (repo == null) return Stream.value([]);
+  // We can't filter flagged=1 directly in watchRows() without adding a param, 
+  // so we'll filter the stream here.
+  return repo.watchRows().map((list) => list.where((f) => f.flagged == 1).toList());
+});
 
 

@@ -2,10 +2,10 @@
 /// Contains CRUD actions (Add/Delete) and the [PropertiesPanel].
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../database/database.dart';
 import '../../../repositories/fixture_repository.dart';
 import '../column_spec.dart';
 import '../fixture_draft.dart';
+import 'collection_editor_dialog.dart';
 
 class SpreadsheetSidebar extends StatelessWidget {
   const SpreadsheetSidebar({
@@ -25,6 +25,8 @@ class SpreadsheetSidebar extends StatelessWidget {
     required this.onDraftEdit,    // void Function(String fieldId, String? value)
     required this.onDelete,       // VoidCallback
     required this.onEdit,         // Future<void> Function(String col, String? value)
+    required this.columns,
+    required this.repo,
   });
 
   final ThemeData theme;
@@ -42,6 +44,8 @@ class SpreadsheetSidebar extends StatelessWidget {
   final void Function(String fieldId, String? value) onDraftEdit;
   final VoidCallback onDelete;
   final Future<void> Function(String col, String? value) onEdit;
+  final List<ColumnSpec> columns;
+  final FixtureRepository repo;
 
   @override
   Widget build(BuildContext context) {
@@ -122,11 +126,14 @@ class SpreadsheetSidebar extends StatelessWidget {
                   lastEditedField: lastEditedAddField,
                   onEdit: onDraftEdit,
                   onSubmit: onSubmitAdd,
+                  columns: columns,
                 )
               : PropertiesPanel(
                   theme: theme,
                   fixture: selected,
                   onEdit: onEdit,
+                  columns: columns,
+                  repo: repo,
                 ),
         ),
 
@@ -225,6 +232,7 @@ class _DraftEditorPanel extends StatefulWidget {
     required this.lastEditedField,
     required this.onEdit,
     required this.onSubmit,
+    required this.columns,
   });
 
   final ThemeData theme;
@@ -232,6 +240,7 @@ class _DraftEditorPanel extends StatefulWidget {
   final String? lastEditedField;
   final void Function(String fieldId, String? value) onEdit;
   final VoidCallback onSubmit;
+  final List<ColumnSpec> columns;
 
   @override
   State<_DraftEditorPanel> createState() => _DraftEditorPanelState();
@@ -263,6 +272,8 @@ class _DraftEditorPanelState extends State<_DraftEditorPanel> {
       'function'    => widget.draft.function,
       'focus'       => widget.draft.focus,
       'accessories' => widget.draft.accessories,
+      'color'       => widget.draft.color,
+      'gobo'        => widget.draft.gobo,
       'ip'          => widget.draft.ipAddress,
       'subnet'      => widget.draft.subnet,
       'mac'         => widget.draft.macAddress,
@@ -285,7 +296,7 @@ class _DraftEditorPanelState extends State<_DraftEditorPanel> {
   @override
   Widget build(BuildContext context) {
     final grouped = <ColumnSection, List<ColumnSpec>>{};
-    for (final spec in kColumns) {
+    for (final spec in widget.columns) {
       if (spec.isReadOnly || spec.isBoolean || spec.id == '#') continue;
       grouped.putIfAbsent(spec.section, () => []).add(spec);
     }
@@ -331,11 +342,15 @@ class PropertiesPanel extends StatelessWidget {
     required this.theme,
     required this.fixture,
     required this.onEdit,
+    required this.columns,
+    required this.repo,
   });
 
   final ThemeData theme;
   final FixtureRow? fixture;
   final Future<void> Function(String col, String? value) onEdit;
+  final List<ColumnSpec> columns;
+  final FixtureRepository repo;
 
   @override
   Widget build(BuildContext context) {
@@ -400,12 +415,29 @@ class PropertiesPanel extends StatelessWidget {
           theme: theme,
           onSubmit: (v) => onEdit('focus', v),
         ),
-        PropertyEditRow(
-          key: ValueKey('acc-${f.id}'),
+        _CollectionPropertyRow(
+          label: 'Color',
+          value: f.color,
+          theme: theme,
+          fixtureId: f.id,
+          kind: CollectionKind.gel,
+          repo: repo,
+        ),
+        _CollectionPropertyRow(
+          label: 'Gobo',
+          value: f.gobo,
+          theme: theme,
+          fixtureId: f.id,
+          kind: CollectionKind.gobo,
+          repo: repo,
+        ),
+        _CollectionPropertyRow(
           label: 'Accessories',
           value: f.accessories,
           theme: theme,
-          onSubmit: (v) => onEdit('accessories', v),
+          fixtureId: f.id,
+          kind: CollectionKind.accessory,
+          repo: repo,
         ),
         _divider(),
         _section('NETWORK'),
@@ -437,6 +469,16 @@ class PropertiesPanel extends StatelessWidget {
           theme: theme,
           onSubmit: (v) => onEdit('ipv6', v),
         ),
+        _divider(),
+        _section('CUSTOM FIELDS'),
+        for (final spec in columns.where((c) => c.isCustomField))
+          PropertyEditRow(
+            key: ValueKey('custom-${spec.id}-${f.id}'),
+            label: spec.label,
+            value: f.customFieldValues[spec.customFieldId],
+            theme: theme,
+            onSubmit: (v) => onEdit(spec.id, v),
+          ),
         _divider(),
         _section('STATUS'),
         PropertyReadRow(
@@ -640,6 +682,45 @@ class _PropertyEditRowState extends State<PropertyEditRow> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CollectionPropertyRow extends StatelessWidget {
+  const _CollectionPropertyRow({
+    required this.label,
+    required this.value,
+    required this.theme,
+    required this.fixtureId,
+    required this.kind,
+    required this.repo,
+  });
+
+  final String label;
+  final String? value;
+  final ThemeData theme;
+  final int fixtureId;
+  final CollectionKind kind;
+  final FixtureRepository repo;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => showDialog(
+        context: context,
+        builder: (context) => CollectionEditorDialog(
+          fixtureId: fixtureId,
+          kind: kind,
+          repo: repo,
+        ),
+      ),
+      borderRadius: BorderRadius.circular(4),
+      child: PropertyReadRow(
+        label: label,
+        value: value,
+        theme: theme,
+        valueColor: theme.colorScheme.primary,
       ),
     );
   }

@@ -3833,6 +3833,9 @@ class FixtureType extends DataClass implements Insertable<FixtureType> {
   final String name;
   final String? wattage;
   final int partCount;
+
+  /// WARNING: Do not embed gel, gobo, or accessory defaults here.
+  /// Those are handled by the collection tables, not part rows.
   final String? defaultPartsJson;
   const FixtureType({
     required this.id,
@@ -4154,17 +4157,6 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0.0),
   );
-  static const VerificationMeta _accessoriesMeta = const VerificationMeta(
-    'accessories',
-  );
-  @override
-  late final GeneratedColumn<String> accessories = GeneratedColumn<String>(
-    'accessories',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _hungMeta = const VerificationMeta('hung');
   @override
   late final GeneratedColumn<int> hung = GeneratedColumn<int>(
@@ -4223,7 +4215,6 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     focus,
     flagged,
     sortOrder,
-    accessories,
     hung,
     focused,
     patched,
@@ -4304,15 +4295,6 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
     }
-    if (data.containsKey('accessories')) {
-      context.handle(
-        _accessoriesMeta,
-        accessories.isAcceptableOrUnknown(
-          data['accessories']!,
-          _accessoriesMeta,
-        ),
-      );
-    }
     if (data.containsKey('hung')) {
       context.handle(
         _hungMeta,
@@ -4386,10 +4368,6 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         DriftSqlType.double,
         data['${effectivePrefix}sort_order'],
       )!,
-      accessories: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}accessories'],
-      ),
       hung: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}hung'],
@@ -4426,7 +4404,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
   final String? focus;
   final int flagged;
   final double sortOrder;
-  final String? accessories;
   final int hung;
   final int focused;
   final int patched;
@@ -4442,7 +4419,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     this.focus,
     required this.flagged,
     required this.sortOrder,
-    this.accessories,
     required this.hung,
     required this.focused,
     required this.patched,
@@ -4475,9 +4451,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     }
     map['flagged'] = Variable<int>(flagged);
     map['sort_order'] = Variable<double>(sortOrder);
-    if (!nullToAbsent || accessories != null) {
-      map['accessories'] = Variable<String>(accessories);
-    }
     map['hung'] = Variable<int>(hung);
     map['focused'] = Variable<int>(focused);
     map['patched'] = Variable<int>(patched);
@@ -4511,9 +4484,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           : Value(focus),
       flagged: Value(flagged),
       sortOrder: Value(sortOrder),
-      accessories: accessories == null && nullToAbsent
-          ? const Value.absent()
-          : Value(accessories),
       hung: Value(hung),
       focused: Value(focused),
       patched: Value(patched),
@@ -4537,7 +4507,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       focus: serializer.fromJson<String?>(json['focus']),
       flagged: serializer.fromJson<int>(json['flagged']),
       sortOrder: serializer.fromJson<double>(json['sortOrder']),
-      accessories: serializer.fromJson<String?>(json['accessories']),
       hung: serializer.fromJson<int>(json['hung']),
       focused: serializer.fromJson<int>(json['focused']),
       patched: serializer.fromJson<int>(json['patched']),
@@ -4558,7 +4527,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       'focus': serializer.toJson<String?>(focus),
       'flagged': serializer.toJson<int>(flagged),
       'sortOrder': serializer.toJson<double>(sortOrder),
-      'accessories': serializer.toJson<String?>(accessories),
       'hung': serializer.toJson<int>(hung),
       'focused': serializer.toJson<int>(focused),
       'patched': serializer.toJson<int>(patched),
@@ -4577,7 +4545,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     Value<String?> focus = const Value.absent(),
     int? flagged,
     double? sortOrder,
-    Value<String?> accessories = const Value.absent(),
     int? hung,
     int? focused,
     int? patched,
@@ -4595,7 +4562,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     focus: focus.present ? focus.value : this.focus,
     flagged: flagged ?? this.flagged,
     sortOrder: sortOrder ?? this.sortOrder,
-    accessories: accessories.present ? accessories.value : this.accessories,
     hung: hung ?? this.hung,
     focused: focused ?? this.focused,
     patched: patched ?? this.patched,
@@ -4619,9 +4585,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       focus: data.focus.present ? data.focus.value : this.focus,
       flagged: data.flagged.present ? data.flagged.value : this.flagged,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
-      accessories: data.accessories.present
-          ? data.accessories.value
-          : this.accessories,
       hung: data.hung.present ? data.hung.value : this.hung,
       focused: data.focused.present ? data.focused.value : this.focused,
       patched: data.patched.present ? data.patched.value : this.patched,
@@ -4642,7 +4605,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           ..write('focus: $focus, ')
           ..write('flagged: $flagged, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('accessories: $accessories, ')
           ..write('hung: $hung, ')
           ..write('focused: $focused, ')
           ..write('patched: $patched, ')
@@ -4663,7 +4625,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     focus,
     flagged,
     sortOrder,
-    accessories,
     hung,
     focused,
     patched,
@@ -4683,7 +4644,6 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           other.focus == this.focus &&
           other.flagged == this.flagged &&
           other.sortOrder == this.sortOrder &&
-          other.accessories == this.accessories &&
           other.hung == this.hung &&
           other.focused == this.focused &&
           other.patched == this.patched &&
@@ -4701,7 +4661,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
   final Value<String?> focus;
   final Value<int> flagged;
   final Value<double> sortOrder;
-  final Value<String?> accessories;
   final Value<int> hung;
   final Value<int> focused;
   final Value<int> patched;
@@ -4717,7 +4676,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.focus = const Value.absent(),
     this.flagged = const Value.absent(),
     this.sortOrder = const Value.absent(),
-    this.accessories = const Value.absent(),
     this.hung = const Value.absent(),
     this.focused = const Value.absent(),
     this.patched = const Value.absent(),
@@ -4734,7 +4692,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.focus = const Value.absent(),
     this.flagged = const Value.absent(),
     this.sortOrder = const Value.absent(),
-    this.accessories = const Value.absent(),
     this.hung = const Value.absent(),
     this.focused = const Value.absent(),
     this.patched = const Value.absent(),
@@ -4751,7 +4708,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Expression<String>? focus,
     Expression<int>? flagged,
     Expression<double>? sortOrder,
-    Expression<String>? accessories,
     Expression<int>? hung,
     Expression<int>? focused,
     Expression<int>? patched,
@@ -4768,7 +4724,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       if (focus != null) 'focus': focus,
       if (flagged != null) 'flagged': flagged,
       if (sortOrder != null) 'sort_order': sortOrder,
-      if (accessories != null) 'accessories': accessories,
       if (hung != null) 'hung': hung,
       if (focused != null) 'focused': focused,
       if (patched != null) 'patched': patched,
@@ -4787,7 +4742,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Value<String?>? focus,
     Value<int>? flagged,
     Value<double>? sortOrder,
-    Value<String?>? accessories,
     Value<int>? hung,
     Value<int>? focused,
     Value<int>? patched,
@@ -4804,7 +4758,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       focus: focus ?? this.focus,
       flagged: flagged ?? this.flagged,
       sortOrder: sortOrder ?? this.sortOrder,
-      accessories: accessories ?? this.accessories,
       hung: hung ?? this.hung,
       focused: focused ?? this.focused,
       patched: patched ?? this.patched,
@@ -4845,9 +4798,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     if (sortOrder.present) {
       map['sort_order'] = Variable<double>(sortOrder.value);
     }
-    if (accessories.present) {
-      map['accessories'] = Variable<String>(accessories.value);
-    }
     if (hung.present) {
       map['hung'] = Variable<int>(hung.value);
     }
@@ -4876,7 +4826,6 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
           ..write('focus: $focus, ')
           ..write('flagged: $flagged, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('accessories: $accessories, ')
           ..write('hung: $hung, ')
           ..write('focused: $focused, ')
           ..write('patched: $patched, ')
@@ -4941,7 +4890,7 @@ class $FixturePartsTable extends FixtureParts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     $customConstraints:
-        'CHECK (part_type IN (\'intensity\',\'gel\',\'x\',\'y\',\'x_high\',\'x_low\',\'y_high\',\'y_low\',\'gobo\',\'gobo_feature\',\'color_feature\'))',
+        'CHECK (part_type IN (\'intensity\',\'x\',\'y\',\'x_high\',\'x_low\',\'y_high\',\'y_low\',\'gobo_feature\',\'color_feature\'))',
   );
   static const VerificationMeta _partNameMeta = const VerificationMeta(
     'partName',
@@ -5705,15 +5654,6 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _colorMeta = const VerificationMeta('color');
-  @override
-  late final GeneratedColumn<String> color = GeneratedColumn<String>(
-    'color',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _fixtureIdMeta = const VerificationMeta(
     'fixtureId',
   );
@@ -5735,12 +5675,21 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
   late final GeneratedColumn<int> fixturePartId = GeneratedColumn<int>(
     'fixture_part_id',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.int,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES fixture_parts (id) ON DELETE SET NULL',
+      'REFERENCES fixture_parts (id) ON DELETE CASCADE',
     ),
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _sizeMeta = const VerificationMeta('size');
   @override
@@ -5760,14 +5709,27 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<double> sortOrder = GeneratedColumn<double>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    color,
     fixtureId,
     fixturePartId,
+    color,
     size,
     maker,
+    sortOrder,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5783,14 +5745,6 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('color')) {
-      context.handle(
-        _colorMeta,
-        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_colorMeta);
     }
     if (data.containsKey('fixture_id')) {
       context.handle(
@@ -5808,6 +5762,16 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
           _fixturePartIdMeta,
         ),
       );
+    } else if (isInserting) {
+      context.missing(_fixturePartIdMeta);
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorMeta);
     }
     if (data.containsKey('size')) {
       context.handle(
@@ -5819,6 +5783,12 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
       context.handle(
         _makerMeta,
         maker.isAcceptableOrUnknown(data['maker']!, _makerMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
     }
     return context;
@@ -5834,10 +5804,6 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      color: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}color'],
-      )!,
       fixtureId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}fixture_id'],
@@ -5845,7 +5811,11 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
       fixturePartId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}fixture_part_id'],
-      ),
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      )!,
       size: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}size'],
@@ -5854,6 +5824,10 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
         DriftSqlType.string,
         data['${effectivePrefix}maker'],
       ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sort_order'],
+      )!,
     );
   }
 
@@ -5865,49 +5839,49 @@ class $GelsTable extends Gels with TableInfo<$GelsTable, Gel> {
 
 class Gel extends DataClass implements Insertable<Gel> {
   final int id;
-  final String color;
   final int fixtureId;
-  final int? fixturePartId;
+  final int fixturePartId;
+  final String color;
   final String? size;
   final String? maker;
+  final double sortOrder;
   const Gel({
     required this.id,
-    required this.color,
     required this.fixtureId,
-    this.fixturePartId,
+    required this.fixturePartId,
+    required this.color,
     this.size,
     this.maker,
+    required this.sortOrder,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['color'] = Variable<String>(color);
     map['fixture_id'] = Variable<int>(fixtureId);
-    if (!nullToAbsent || fixturePartId != null) {
-      map['fixture_part_id'] = Variable<int>(fixturePartId);
-    }
+    map['fixture_part_id'] = Variable<int>(fixturePartId);
+    map['color'] = Variable<String>(color);
     if (!nullToAbsent || size != null) {
       map['size'] = Variable<String>(size);
     }
     if (!nullToAbsent || maker != null) {
       map['maker'] = Variable<String>(maker);
     }
+    map['sort_order'] = Variable<double>(sortOrder);
     return map;
   }
 
   GelsCompanion toCompanion(bool nullToAbsent) {
     return GelsCompanion(
       id: Value(id),
-      color: Value(color),
       fixtureId: Value(fixtureId),
-      fixturePartId: fixturePartId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(fixturePartId),
+      fixturePartId: Value(fixturePartId),
+      color: Value(color),
       size: size == null && nullToAbsent ? const Value.absent() : Value(size),
       maker: maker == null && nullToAbsent
           ? const Value.absent()
           : Value(maker),
+      sortOrder: Value(sortOrder),
     );
   }
 
@@ -5918,11 +5892,12 @@ class Gel extends DataClass implements Insertable<Gel> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Gel(
       id: serializer.fromJson<int>(json['id']),
-      color: serializer.fromJson<String>(json['color']),
       fixtureId: serializer.fromJson<int>(json['fixtureId']),
-      fixturePartId: serializer.fromJson<int?>(json['fixturePartId']),
+      fixturePartId: serializer.fromJson<int>(json['fixturePartId']),
+      color: serializer.fromJson<String>(json['color']),
       size: serializer.fromJson<String?>(json['size']),
       maker: serializer.fromJson<String?>(json['maker']),
+      sortOrder: serializer.fromJson<double>(json['sortOrder']),
     );
   }
   @override
@@ -5930,41 +5905,43 @@ class Gel extends DataClass implements Insertable<Gel> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'color': serializer.toJson<String>(color),
       'fixtureId': serializer.toJson<int>(fixtureId),
-      'fixturePartId': serializer.toJson<int?>(fixturePartId),
+      'fixturePartId': serializer.toJson<int>(fixturePartId),
+      'color': serializer.toJson<String>(color),
       'size': serializer.toJson<String?>(size),
       'maker': serializer.toJson<String?>(maker),
+      'sortOrder': serializer.toJson<double>(sortOrder),
     };
   }
 
   Gel copyWith({
     int? id,
-    String? color,
     int? fixtureId,
-    Value<int?> fixturePartId = const Value.absent(),
+    int? fixturePartId,
+    String? color,
     Value<String?> size = const Value.absent(),
     Value<String?> maker = const Value.absent(),
+    double? sortOrder,
   }) => Gel(
     id: id ?? this.id,
-    color: color ?? this.color,
     fixtureId: fixtureId ?? this.fixtureId,
-    fixturePartId: fixturePartId.present
-        ? fixturePartId.value
-        : this.fixturePartId,
+    fixturePartId: fixturePartId ?? this.fixturePartId,
+    color: color ?? this.color,
     size: size.present ? size.value : this.size,
     maker: maker.present ? maker.value : this.maker,
+    sortOrder: sortOrder ?? this.sortOrder,
   );
   Gel copyWithCompanion(GelsCompanion data) {
     return Gel(
       id: data.id.present ? data.id.value : this.id,
-      color: data.color.present ? data.color.value : this.color,
       fixtureId: data.fixtureId.present ? data.fixtureId.value : this.fixtureId,
       fixturePartId: data.fixturePartId.present
           ? data.fixturePartId.value
           : this.fixturePartId,
+      color: data.color.present ? data.color.value : this.color,
       size: data.size.present ? data.size.value : this.size,
       maker: data.maker.present ? data.maker.value : this.maker,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
   }
 
@@ -5972,87 +5949,97 @@ class Gel extends DataClass implements Insertable<Gel> {
   String toString() {
     return (StringBuffer('Gel(')
           ..write('id: $id, ')
-          ..write('color: $color, ')
           ..write('fixtureId: $fixtureId, ')
           ..write('fixturePartId: $fixturePartId, ')
+          ..write('color: $color, ')
           ..write('size: $size, ')
-          ..write('maker: $maker')
+          ..write('maker: $maker, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, color, fixtureId, fixturePartId, size, maker);
+      Object.hash(id, fixtureId, fixturePartId, color, size, maker, sortOrder);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Gel &&
           other.id == this.id &&
-          other.color == this.color &&
           other.fixtureId == this.fixtureId &&
           other.fixturePartId == this.fixturePartId &&
+          other.color == this.color &&
           other.size == this.size &&
-          other.maker == this.maker);
+          other.maker == this.maker &&
+          other.sortOrder == this.sortOrder);
 }
 
 class GelsCompanion extends UpdateCompanion<Gel> {
   final Value<int> id;
-  final Value<String> color;
   final Value<int> fixtureId;
-  final Value<int?> fixturePartId;
+  final Value<int> fixturePartId;
+  final Value<String> color;
   final Value<String?> size;
   final Value<String?> maker;
+  final Value<double> sortOrder;
   const GelsCompanion({
     this.id = const Value.absent(),
-    this.color = const Value.absent(),
     this.fixtureId = const Value.absent(),
     this.fixturePartId = const Value.absent(),
+    this.color = const Value.absent(),
     this.size = const Value.absent(),
     this.maker = const Value.absent(),
+    this.sortOrder = const Value.absent(),
   });
   GelsCompanion.insert({
     this.id = const Value.absent(),
-    required String color,
     required int fixtureId,
-    this.fixturePartId = const Value.absent(),
+    required int fixturePartId,
+    required String color,
     this.size = const Value.absent(),
     this.maker = const Value.absent(),
-  }) : color = Value(color),
-       fixtureId = Value(fixtureId);
+    this.sortOrder = const Value.absent(),
+  }) : fixtureId = Value(fixtureId),
+       fixturePartId = Value(fixturePartId),
+       color = Value(color);
   static Insertable<Gel> custom({
     Expression<int>? id,
-    Expression<String>? color,
     Expression<int>? fixtureId,
     Expression<int>? fixturePartId,
+    Expression<String>? color,
     Expression<String>? size,
     Expression<String>? maker,
+    Expression<double>? sortOrder,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (color != null) 'color': color,
       if (fixtureId != null) 'fixture_id': fixtureId,
       if (fixturePartId != null) 'fixture_part_id': fixturePartId,
+      if (color != null) 'color': color,
       if (size != null) 'size': size,
       if (maker != null) 'maker': maker,
+      if (sortOrder != null) 'sort_order': sortOrder,
     });
   }
 
   GelsCompanion copyWith({
     Value<int>? id,
-    Value<String>? color,
     Value<int>? fixtureId,
-    Value<int?>? fixturePartId,
+    Value<int>? fixturePartId,
+    Value<String>? color,
     Value<String?>? size,
     Value<String?>? maker,
+    Value<double>? sortOrder,
   }) {
     return GelsCompanion(
       id: id ?? this.id,
-      color: color ?? this.color,
       fixtureId: fixtureId ?? this.fixtureId,
       fixturePartId: fixturePartId ?? this.fixturePartId,
+      color: color ?? this.color,
       size: size ?? this.size,
       maker: maker ?? this.maker,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 
@@ -6062,20 +6049,23 @@ class GelsCompanion extends UpdateCompanion<Gel> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (color.present) {
-      map['color'] = Variable<String>(color.value);
-    }
     if (fixtureId.present) {
       map['fixture_id'] = Variable<int>(fixtureId.value);
     }
     if (fixturePartId.present) {
       map['fixture_part_id'] = Variable<int>(fixturePartId.value);
     }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
     if (size.present) {
       map['size'] = Variable<String>(size.value);
     }
     if (maker.present) {
       map['maker'] = Variable<String>(maker.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<double>(sortOrder.value);
     }
     return map;
   }
@@ -6084,11 +6074,12 @@ class GelsCompanion extends UpdateCompanion<Gel> {
   String toString() {
     return (StringBuffer('GelsCompanion(')
           ..write('id: $id, ')
-          ..write('color: $color, ')
           ..write('fixtureId: $fixtureId, ')
           ..write('fixturePartId: $fixturePartId, ')
+          ..write('color: $color, ')
           ..write('size: $size, ')
-          ..write('maker: $maker')
+          ..write('maker: $maker, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
@@ -6112,17 +6103,6 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _goboNumberMeta = const VerificationMeta(
-    'goboNumber',
-  );
-  @override
-  late final GeneratedColumn<String> goboNumber = GeneratedColumn<String>(
-    'gobo_number',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _fixtureIdMeta = const VerificationMeta(
     'fixtureId',
   );
@@ -6144,12 +6124,23 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
   late final GeneratedColumn<int> fixturePartId = GeneratedColumn<int>(
     'fixture_part_id',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.int,
-    requiredDuringInsert: false,
+    requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES fixture_parts (id) ON DELETE SET NULL',
+      'REFERENCES fixture_parts (id) ON DELETE CASCADE',
     ),
+  );
+  static const VerificationMeta _goboNumberMeta = const VerificationMeta(
+    'goboNumber',
+  );
+  @override
+  late final GeneratedColumn<String> goboNumber = GeneratedColumn<String>(
+    'gobo_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _sizeMeta = const VerificationMeta('size');
   @override
@@ -6169,14 +6160,27 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<double> sortOrder = GeneratedColumn<double>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    goboNumber,
     fixtureId,
     fixturePartId,
+    goboNumber,
     size,
     maker,
+    sortOrder,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6192,14 +6196,6 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('gobo_number')) {
-      context.handle(
-        _goboNumberMeta,
-        goboNumber.isAcceptableOrUnknown(data['gobo_number']!, _goboNumberMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_goboNumberMeta);
     }
     if (data.containsKey('fixture_id')) {
       context.handle(
@@ -6217,6 +6213,16 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
           _fixturePartIdMeta,
         ),
       );
+    } else if (isInserting) {
+      context.missing(_fixturePartIdMeta);
+    }
+    if (data.containsKey('gobo_number')) {
+      context.handle(
+        _goboNumberMeta,
+        goboNumber.isAcceptableOrUnknown(data['gobo_number']!, _goboNumberMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_goboNumberMeta);
     }
     if (data.containsKey('size')) {
       context.handle(
@@ -6228,6 +6234,12 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
       context.handle(
         _makerMeta,
         maker.isAcceptableOrUnknown(data['maker']!, _makerMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
     }
     return context;
@@ -6243,10 +6255,6 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      goboNumber: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}gobo_number'],
-      )!,
       fixtureId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}fixture_id'],
@@ -6254,7 +6262,11 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
       fixturePartId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}fixture_part_id'],
-      ),
+      )!,
+      goboNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gobo_number'],
+      )!,
       size: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}size'],
@@ -6263,6 +6275,10 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
         DriftSqlType.string,
         data['${effectivePrefix}maker'],
       ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sort_order'],
+      )!,
     );
   }
 
@@ -6274,49 +6290,49 @@ class $GobosTable extends Gobos with TableInfo<$GobosTable, Gobo> {
 
 class Gobo extends DataClass implements Insertable<Gobo> {
   final int id;
-  final String goboNumber;
   final int fixtureId;
-  final int? fixturePartId;
+  final int fixturePartId;
+  final String goboNumber;
   final String? size;
   final String? maker;
+  final double sortOrder;
   const Gobo({
     required this.id,
-    required this.goboNumber,
     required this.fixtureId,
-    this.fixturePartId,
+    required this.fixturePartId,
+    required this.goboNumber,
     this.size,
     this.maker,
+    required this.sortOrder,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['gobo_number'] = Variable<String>(goboNumber);
     map['fixture_id'] = Variable<int>(fixtureId);
-    if (!nullToAbsent || fixturePartId != null) {
-      map['fixture_part_id'] = Variable<int>(fixturePartId);
-    }
+    map['fixture_part_id'] = Variable<int>(fixturePartId);
+    map['gobo_number'] = Variable<String>(goboNumber);
     if (!nullToAbsent || size != null) {
       map['size'] = Variable<String>(size);
     }
     if (!nullToAbsent || maker != null) {
       map['maker'] = Variable<String>(maker);
     }
+    map['sort_order'] = Variable<double>(sortOrder);
     return map;
   }
 
   GobosCompanion toCompanion(bool nullToAbsent) {
     return GobosCompanion(
       id: Value(id),
-      goboNumber: Value(goboNumber),
       fixtureId: Value(fixtureId),
-      fixturePartId: fixturePartId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(fixturePartId),
+      fixturePartId: Value(fixturePartId),
+      goboNumber: Value(goboNumber),
       size: size == null && nullToAbsent ? const Value.absent() : Value(size),
       maker: maker == null && nullToAbsent
           ? const Value.absent()
           : Value(maker),
+      sortOrder: Value(sortOrder),
     );
   }
 
@@ -6327,11 +6343,12 @@ class Gobo extends DataClass implements Insertable<Gobo> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Gobo(
       id: serializer.fromJson<int>(json['id']),
-      goboNumber: serializer.fromJson<String>(json['goboNumber']),
       fixtureId: serializer.fromJson<int>(json['fixtureId']),
-      fixturePartId: serializer.fromJson<int?>(json['fixturePartId']),
+      fixturePartId: serializer.fromJson<int>(json['fixturePartId']),
+      goboNumber: serializer.fromJson<String>(json['goboNumber']),
       size: serializer.fromJson<String?>(json['size']),
       maker: serializer.fromJson<String?>(json['maker']),
+      sortOrder: serializer.fromJson<double>(json['sortOrder']),
     );
   }
   @override
@@ -6339,43 +6356,45 @@ class Gobo extends DataClass implements Insertable<Gobo> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'goboNumber': serializer.toJson<String>(goboNumber),
       'fixtureId': serializer.toJson<int>(fixtureId),
-      'fixturePartId': serializer.toJson<int?>(fixturePartId),
+      'fixturePartId': serializer.toJson<int>(fixturePartId),
+      'goboNumber': serializer.toJson<String>(goboNumber),
       'size': serializer.toJson<String?>(size),
       'maker': serializer.toJson<String?>(maker),
+      'sortOrder': serializer.toJson<double>(sortOrder),
     };
   }
 
   Gobo copyWith({
     int? id,
-    String? goboNumber,
     int? fixtureId,
-    Value<int?> fixturePartId = const Value.absent(),
+    int? fixturePartId,
+    String? goboNumber,
     Value<String?> size = const Value.absent(),
     Value<String?> maker = const Value.absent(),
+    double? sortOrder,
   }) => Gobo(
     id: id ?? this.id,
-    goboNumber: goboNumber ?? this.goboNumber,
     fixtureId: fixtureId ?? this.fixtureId,
-    fixturePartId: fixturePartId.present
-        ? fixturePartId.value
-        : this.fixturePartId,
+    fixturePartId: fixturePartId ?? this.fixturePartId,
+    goboNumber: goboNumber ?? this.goboNumber,
     size: size.present ? size.value : this.size,
     maker: maker.present ? maker.value : this.maker,
+    sortOrder: sortOrder ?? this.sortOrder,
   );
   Gobo copyWithCompanion(GobosCompanion data) {
     return Gobo(
       id: data.id.present ? data.id.value : this.id,
-      goboNumber: data.goboNumber.present
-          ? data.goboNumber.value
-          : this.goboNumber,
       fixtureId: data.fixtureId.present ? data.fixtureId.value : this.fixtureId,
       fixturePartId: data.fixturePartId.present
           ? data.fixturePartId.value
           : this.fixturePartId,
+      goboNumber: data.goboNumber.present
+          ? data.goboNumber.value
+          : this.goboNumber,
       size: data.size.present ? data.size.value : this.size,
       maker: data.maker.present ? data.maker.value : this.maker,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
   }
 
@@ -6383,87 +6402,104 @@ class Gobo extends DataClass implements Insertable<Gobo> {
   String toString() {
     return (StringBuffer('Gobo(')
           ..write('id: $id, ')
-          ..write('goboNumber: $goboNumber, ')
           ..write('fixtureId: $fixtureId, ')
           ..write('fixturePartId: $fixturePartId, ')
+          ..write('goboNumber: $goboNumber, ')
           ..write('size: $size, ')
-          ..write('maker: $maker')
+          ..write('maker: $maker, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, goboNumber, fixtureId, fixturePartId, size, maker);
+  int get hashCode => Object.hash(
+    id,
+    fixtureId,
+    fixturePartId,
+    goboNumber,
+    size,
+    maker,
+    sortOrder,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Gobo &&
           other.id == this.id &&
-          other.goboNumber == this.goboNumber &&
           other.fixtureId == this.fixtureId &&
           other.fixturePartId == this.fixturePartId &&
+          other.goboNumber == this.goboNumber &&
           other.size == this.size &&
-          other.maker == this.maker);
+          other.maker == this.maker &&
+          other.sortOrder == this.sortOrder);
 }
 
 class GobosCompanion extends UpdateCompanion<Gobo> {
   final Value<int> id;
-  final Value<String> goboNumber;
   final Value<int> fixtureId;
-  final Value<int?> fixturePartId;
+  final Value<int> fixturePartId;
+  final Value<String> goboNumber;
   final Value<String?> size;
   final Value<String?> maker;
+  final Value<double> sortOrder;
   const GobosCompanion({
     this.id = const Value.absent(),
-    this.goboNumber = const Value.absent(),
     this.fixtureId = const Value.absent(),
     this.fixturePartId = const Value.absent(),
+    this.goboNumber = const Value.absent(),
     this.size = const Value.absent(),
     this.maker = const Value.absent(),
+    this.sortOrder = const Value.absent(),
   });
   GobosCompanion.insert({
     this.id = const Value.absent(),
-    required String goboNumber,
     required int fixtureId,
-    this.fixturePartId = const Value.absent(),
+    required int fixturePartId,
+    required String goboNumber,
     this.size = const Value.absent(),
     this.maker = const Value.absent(),
-  }) : goboNumber = Value(goboNumber),
-       fixtureId = Value(fixtureId);
+    this.sortOrder = const Value.absent(),
+  }) : fixtureId = Value(fixtureId),
+       fixturePartId = Value(fixturePartId),
+       goboNumber = Value(goboNumber);
   static Insertable<Gobo> custom({
     Expression<int>? id,
-    Expression<String>? goboNumber,
     Expression<int>? fixtureId,
     Expression<int>? fixturePartId,
+    Expression<String>? goboNumber,
     Expression<String>? size,
     Expression<String>? maker,
+    Expression<double>? sortOrder,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (goboNumber != null) 'gobo_number': goboNumber,
       if (fixtureId != null) 'fixture_id': fixtureId,
       if (fixturePartId != null) 'fixture_part_id': fixturePartId,
+      if (goboNumber != null) 'gobo_number': goboNumber,
       if (size != null) 'size': size,
       if (maker != null) 'maker': maker,
+      if (sortOrder != null) 'sort_order': sortOrder,
     });
   }
 
   GobosCompanion copyWith({
     Value<int>? id,
-    Value<String>? goboNumber,
     Value<int>? fixtureId,
-    Value<int?>? fixturePartId,
+    Value<int>? fixturePartId,
+    Value<String>? goboNumber,
     Value<String?>? size,
     Value<String?>? maker,
+    Value<double>? sortOrder,
   }) {
     return GobosCompanion(
       id: id ?? this.id,
-      goboNumber: goboNumber ?? this.goboNumber,
       fixtureId: fixtureId ?? this.fixtureId,
       fixturePartId: fixturePartId ?? this.fixturePartId,
+      goboNumber: goboNumber ?? this.goboNumber,
       size: size ?? this.size,
       maker: maker ?? this.maker,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 
@@ -6473,20 +6509,23 @@ class GobosCompanion extends UpdateCompanion<Gobo> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
-    if (goboNumber.present) {
-      map['gobo_number'] = Variable<String>(goboNumber.value);
-    }
     if (fixtureId.present) {
       map['fixture_id'] = Variable<int>(fixtureId.value);
     }
     if (fixturePartId.present) {
       map['fixture_part_id'] = Variable<int>(fixturePartId.value);
     }
+    if (goboNumber.present) {
+      map['gobo_number'] = Variable<String>(goboNumber.value);
+    }
     if (size.present) {
       map['size'] = Variable<String>(size.value);
     }
     if (maker.present) {
       map['maker'] = Variable<String>(maker.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<double>(sortOrder.value);
     }
     return map;
   }
@@ -6495,11 +6534,12 @@ class GobosCompanion extends UpdateCompanion<Gobo> {
   String toString() {
     return (StringBuffer('GobosCompanion(')
           ..write('id: $id, ')
-          ..write('goboNumber: $goboNumber, ')
           ..write('fixtureId: $fixtureId, ')
           ..write('fixturePartId: $fixturePartId, ')
+          ..write('goboNumber: $goboNumber, ')
           ..write('size: $size, ')
-          ..write('maker: $maker')
+          ..write('maker: $maker, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
@@ -6524,15 +6564,6 @@ class $AccessoriesTable extends Accessories
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
-  @override
-  late final GeneratedColumn<String> name = GeneratedColumn<String>(
-    'name',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _fixtureIdMeta = const VerificationMeta(
     'fixtureId',
   );
@@ -6547,8 +6578,49 @@ class $AccessoriesTable extends Accessories
       'REFERENCES fixtures (id) ON DELETE CASCADE',
     ),
   );
+  static const VerificationMeta _fixturePartIdMeta = const VerificationMeta(
+    'fixturePartId',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, fixtureId];
+  late final GeneratedColumn<int> fixturePartId = GeneratedColumn<int>(
+    'fixture_part_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES fixture_parts (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<double> sortOrder = GeneratedColumn<double>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    fixtureId,
+    fixturePartId,
+    name,
+    sortOrder,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -6564,6 +6636,25 @@ class $AccessoriesTable extends Accessories
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
+    if (data.containsKey('fixture_id')) {
+      context.handle(
+        _fixtureIdMeta,
+        fixtureId.isAcceptableOrUnknown(data['fixture_id']!, _fixtureIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fixtureIdMeta);
+    }
+    if (data.containsKey('fixture_part_id')) {
+      context.handle(
+        _fixturePartIdMeta,
+        fixturePartId.isAcceptableOrUnknown(
+          data['fixture_part_id']!,
+          _fixturePartIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fixturePartIdMeta);
+    }
     if (data.containsKey('name')) {
       context.handle(
         _nameMeta,
@@ -6572,13 +6663,11 @@ class $AccessoriesTable extends Accessories
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('fixture_id')) {
+    if (data.containsKey('sort_order')) {
       context.handle(
-        _fixtureIdMeta,
-        fixtureId.isAcceptableOrUnknown(data['fixture_id']!, _fixtureIdMeta),
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
-    } else if (isInserting) {
-      context.missing(_fixtureIdMeta);
     }
     return context;
   }
@@ -6593,13 +6682,21 @@ class $AccessoriesTable extends Accessories
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
+      fixtureId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fixture_id'],
+      )!,
+      fixturePartId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fixture_part_id'],
+      )!,
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
-      fixtureId: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}fixture_id'],
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sort_order'],
       )!,
     );
   }
@@ -6612,27 +6709,35 @@ class $AccessoriesTable extends Accessories
 
 class Accessory extends DataClass implements Insertable<Accessory> {
   final int id;
-  final String name;
   final int fixtureId;
+  final int fixturePartId;
+  final String name;
+  final double sortOrder;
   const Accessory({
     required this.id,
-    required this.name,
     required this.fixtureId,
+    required this.fixturePartId,
+    required this.name,
+    required this.sortOrder,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['name'] = Variable<String>(name);
     map['fixture_id'] = Variable<int>(fixtureId);
+    map['fixture_part_id'] = Variable<int>(fixturePartId);
+    map['name'] = Variable<String>(name);
+    map['sort_order'] = Variable<double>(sortOrder);
     return map;
   }
 
   AccessoriesCompanion toCompanion(bool nullToAbsent) {
     return AccessoriesCompanion(
       id: Value(id),
-      name: Value(name),
       fixtureId: Value(fixtureId),
+      fixturePartId: Value(fixturePartId),
+      name: Value(name),
+      sortOrder: Value(sortOrder),
     );
   }
 
@@ -6643,8 +6748,10 @@ class Accessory extends DataClass implements Insertable<Accessory> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Accessory(
       id: serializer.fromJson<int>(json['id']),
-      name: serializer.fromJson<String>(json['name']),
       fixtureId: serializer.fromJson<int>(json['fixtureId']),
+      fixturePartId: serializer.fromJson<int>(json['fixturePartId']),
+      name: serializer.fromJson<String>(json['name']),
+      sortOrder: serializer.fromJson<double>(json['sortOrder']),
     );
   }
   @override
@@ -6652,21 +6759,35 @@ class Accessory extends DataClass implements Insertable<Accessory> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'name': serializer.toJson<String>(name),
       'fixtureId': serializer.toJson<int>(fixtureId),
+      'fixturePartId': serializer.toJson<int>(fixturePartId),
+      'name': serializer.toJson<String>(name),
+      'sortOrder': serializer.toJson<double>(sortOrder),
     };
   }
 
-  Accessory copyWith({int? id, String? name, int? fixtureId}) => Accessory(
+  Accessory copyWith({
+    int? id,
+    int? fixtureId,
+    int? fixturePartId,
+    String? name,
+    double? sortOrder,
+  }) => Accessory(
     id: id ?? this.id,
-    name: name ?? this.name,
     fixtureId: fixtureId ?? this.fixtureId,
+    fixturePartId: fixturePartId ?? this.fixturePartId,
+    name: name ?? this.name,
+    sortOrder: sortOrder ?? this.sortOrder,
   );
   Accessory copyWithCompanion(AccessoriesCompanion data) {
     return Accessory(
       id: data.id.present ? data.id.value : this.id,
-      name: data.name.present ? data.name.value : this.name,
       fixtureId: data.fixtureId.present ? data.fixtureId.value : this.fixtureId,
+      fixturePartId: data.fixturePartId.present
+          ? data.fixturePartId.value
+          : this.fixturePartId,
+      name: data.name.present ? data.name.value : this.name,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
   }
 
@@ -6674,59 +6795,79 @@ class Accessory extends DataClass implements Insertable<Accessory> {
   String toString() {
     return (StringBuffer('Accessory(')
           ..write('id: $id, ')
+          ..write('fixtureId: $fixtureId, ')
+          ..write('fixturePartId: $fixturePartId, ')
           ..write('name: $name, ')
-          ..write('fixtureId: $fixtureId')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, fixtureId);
+  int get hashCode =>
+      Object.hash(id, fixtureId, fixturePartId, name, sortOrder);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Accessory &&
           other.id == this.id &&
+          other.fixtureId == this.fixtureId &&
+          other.fixturePartId == this.fixturePartId &&
           other.name == this.name &&
-          other.fixtureId == this.fixtureId);
+          other.sortOrder == this.sortOrder);
 }
 
 class AccessoriesCompanion extends UpdateCompanion<Accessory> {
   final Value<int> id;
-  final Value<String> name;
   final Value<int> fixtureId;
+  final Value<int> fixturePartId;
+  final Value<String> name;
+  final Value<double> sortOrder;
   const AccessoriesCompanion({
     this.id = const Value.absent(),
-    this.name = const Value.absent(),
     this.fixtureId = const Value.absent(),
+    this.fixturePartId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.sortOrder = const Value.absent(),
   });
   AccessoriesCompanion.insert({
     this.id = const Value.absent(),
-    required String name,
     required int fixtureId,
-  }) : name = Value(name),
-       fixtureId = Value(fixtureId);
+    required int fixturePartId,
+    required String name,
+    this.sortOrder = const Value.absent(),
+  }) : fixtureId = Value(fixtureId),
+       fixturePartId = Value(fixturePartId),
+       name = Value(name);
   static Insertable<Accessory> custom({
     Expression<int>? id,
-    Expression<String>? name,
     Expression<int>? fixtureId,
+    Expression<int>? fixturePartId,
+    Expression<String>? name,
+    Expression<double>? sortOrder,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (name != null) 'name': name,
       if (fixtureId != null) 'fixture_id': fixtureId,
+      if (fixturePartId != null) 'fixture_part_id': fixturePartId,
+      if (name != null) 'name': name,
+      if (sortOrder != null) 'sort_order': sortOrder,
     });
   }
 
   AccessoriesCompanion copyWith({
     Value<int>? id,
-    Value<String>? name,
     Value<int>? fixtureId,
+    Value<int>? fixturePartId,
+    Value<String>? name,
+    Value<double>? sortOrder,
   }) {
     return AccessoriesCompanion(
       id: id ?? this.id,
-      name: name ?? this.name,
       fixtureId: fixtureId ?? this.fixtureId,
+      fixturePartId: fixturePartId ?? this.fixturePartId,
+      name: name ?? this.name,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 
@@ -6736,11 +6877,17 @@ class AccessoriesCompanion extends UpdateCompanion<Accessory> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
+    if (fixtureId.present) {
+      map['fixture_id'] = Variable<int>(fixtureId.value);
+    }
+    if (fixturePartId.present) {
+      map['fixture_part_id'] = Variable<int>(fixturePartId.value);
+    }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (fixtureId.present) {
-      map['fixture_id'] = Variable<int>(fixtureId.value);
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<double>(sortOrder.value);
     }
     return map;
   }
@@ -6749,8 +6896,10 @@ class AccessoriesCompanion extends UpdateCompanion<Accessory> {
   String toString() {
     return (StringBuffer('AccessoriesCompanion(')
           ..write('id: $id, ')
+          ..write('fixtureId: $fixtureId, ')
+          ..write('fixturePartId: $fixturePartId, ')
           ..write('name: $name, ')
-          ..write('fixtureId: $fixtureId')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
@@ -12137,7 +12286,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         'fixture_parts',
         limitUpdateKind: UpdateKind.delete,
       ),
-      result: [TableUpdate('gels', kind: UpdateKind.update)],
+      result: [TableUpdate('gels', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -12151,11 +12300,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         'fixture_parts',
         limitUpdateKind: UpdateKind.delete,
       ),
-      result: [TableUpdate('gobos', kind: UpdateKind.update)],
+      result: [TableUpdate('gobos', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'fixtures',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('accessories', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'fixture_parts',
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('accessories', kind: UpdateKind.delete)],
@@ -14428,7 +14584,6 @@ typedef $$FixturesTableCreateCompanionBuilder =
       Value<String?> focus,
       Value<int> flagged,
       Value<double> sortOrder,
-      Value<String?> accessories,
       Value<int> hung,
       Value<int> focused,
       Value<int> patched,
@@ -14446,7 +14601,6 @@ typedef $$FixturesTableUpdateCompanionBuilder =
       Value<String?> focus,
       Value<int> flagged,
       Value<double> sortOrder,
-      Value<String?> accessories,
       Value<int> hung,
       Value<int> focused,
       Value<int> patched,
@@ -14683,11 +14837,6 @@ class $$FixturesTableFilterComposer
 
   ColumnFilters<double> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get accessories => $composableBuilder(
-    column: $table.accessories,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14989,11 +15138,6 @@ class $$FixturesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get accessories => $composableBuilder(
-    column: $table.accessories,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get hung => $composableBuilder(
     column: $table.hung,
     builder: (column) => ColumnOrderings(column),
@@ -15077,11 +15221,6 @@ class $$FixturesTableAnnotationComposer
 
   GeneratedColumn<double> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
-
-  GeneratedColumn<String> get accessories => $composableBuilder(
-    column: $table.accessories,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<int> get hung =>
       $composableBuilder(column: $table.hung, builder: (column) => column);
@@ -15368,7 +15507,6 @@ class $$FixturesTableTableManager
                 Value<String?> focus = const Value.absent(),
                 Value<int> flagged = const Value.absent(),
                 Value<double> sortOrder = const Value.absent(),
-                Value<String?> accessories = const Value.absent(),
                 Value<int> hung = const Value.absent(),
                 Value<int> focused = const Value.absent(),
                 Value<int> patched = const Value.absent(),
@@ -15384,7 +15522,6 @@ class $$FixturesTableTableManager
                 focus: focus,
                 flagged: flagged,
                 sortOrder: sortOrder,
-                accessories: accessories,
                 hung: hung,
                 focused: focused,
                 patched: patched,
@@ -15402,7 +15539,6 @@ class $$FixturesTableTableManager
                 Value<String?> focus = const Value.absent(),
                 Value<int> flagged = const Value.absent(),
                 Value<double> sortOrder = const Value.absent(),
-                Value<String?> accessories = const Value.absent(),
                 Value<int> hung = const Value.absent(),
                 Value<int> focused = const Value.absent(),
                 Value<int> patched = const Value.absent(),
@@ -15418,7 +15554,6 @@ class $$FixturesTableTableManager
                 focus: focus,
                 flagged: flagged,
                 sortOrder: sortOrder,
-                accessories: accessories,
                 hung: hung,
                 focused: focused,
                 patched: patched,
@@ -15777,6 +15912,27 @@ final class $$FixturePartsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$AccessoriesTable, List<Accessory>>
+  _accessoriesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.accessories,
+    aliasName: $_aliasNameGenerator(
+      db.fixtureParts.id,
+      db.accessories.fixturePartId,
+    ),
+  );
+
+  $$AccessoriesTableProcessedTableManager get accessoriesRefs {
+    final manager = $$AccessoriesTableTableManager(
+      $_db,
+      $_db.accessories,
+    ).filter((f) => f.fixturePartId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_accessoriesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$FixturePartsTableFilterComposer
@@ -15917,6 +16073,31 @@ class $$FixturePartsTableFilterComposer
           }) => $$GobosTableFilterComposer(
             $db: $db,
             $table: $db.gobos,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> accessoriesRefs(
+    Expression<bool> Function($$AccessoriesTableFilterComposer f) f,
+  ) {
+    final $$AccessoriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.accessories,
+      getReferencedColumn: (t) => t.fixturePartId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccessoriesTableFilterComposer(
+            $db: $db,
+            $table: $db.accessories,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -16149,6 +16330,31 @@ class $$FixturePartsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> accessoriesRefs<T extends Object>(
+    Expression<T> Function($$AccessoriesTableAnnotationComposer a) f,
+  ) {
+    final $$AccessoriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.accessories,
+      getReferencedColumn: (t) => t.fixturePartId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccessoriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accessories,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$FixturePartsTableTableManager
@@ -16168,6 +16374,7 @@ class $$FixturePartsTableTableManager
             bool fixtureId,
             bool gelsRefs,
             bool gobosRefs,
+            bool accessoriesRefs,
           })
         > {
   $$FixturePartsTableTableManager(_$AppDatabase db, $FixturePartsTable table)
@@ -16254,12 +16461,18 @@ class $$FixturePartsTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({fixtureId = false, gelsRefs = false, gobosRefs = false}) {
+              ({
+                fixtureId = false,
+                gelsRefs = false,
+                gobosRefs = false,
+                accessoriesRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (gelsRefs) db.gels,
                     if (gobosRefs) db.gobos,
+                    if (accessoriesRefs) db.accessories,
                   ],
                   addJoins:
                       <
@@ -16339,6 +16552,27 @@ class $$FixturePartsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (accessoriesRefs)
+                        await $_getPrefetchedData<
+                          FixturePart,
+                          $FixturePartsTable,
+                          Accessory
+                        >(
+                          currentTable: table,
+                          referencedTable: $$FixturePartsTableReferences
+                              ._accessoriesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$FixturePartsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).accessoriesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.fixturePartId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -16359,25 +16593,32 @@ typedef $$FixturePartsTableProcessedTableManager =
       $$FixturePartsTableUpdateCompanionBuilder,
       (FixturePart, $$FixturePartsTableReferences),
       FixturePart,
-      PrefetchHooks Function({bool fixtureId, bool gelsRefs, bool gobosRefs})
+      PrefetchHooks Function({
+        bool fixtureId,
+        bool gelsRefs,
+        bool gobosRefs,
+        bool accessoriesRefs,
+      })
     >;
 typedef $$GelsTableCreateCompanionBuilder =
     GelsCompanion Function({
       Value<int> id,
-      required String color,
       required int fixtureId,
-      Value<int?> fixturePartId,
+      required int fixturePartId,
+      required String color,
       Value<String?> size,
       Value<String?> maker,
+      Value<double> sortOrder,
     });
 typedef $$GelsTableUpdateCompanionBuilder =
     GelsCompanion Function({
       Value<int> id,
-      Value<String> color,
       Value<int> fixtureId,
-      Value<int?> fixturePartId,
+      Value<int> fixturePartId,
+      Value<String> color,
       Value<String?> size,
       Value<String?> maker,
+      Value<double> sortOrder,
     });
 
 final class $$GelsTableReferences
@@ -16406,9 +16647,9 @@ final class $$GelsTableReferences
         $_aliasNameGenerator(db.gels.fixturePartId, db.fixtureParts.id),
       );
 
-  $$FixturePartsTableProcessedTableManager? get fixturePartId {
-    final $_column = $_itemColumn<int>('fixture_part_id');
-    if ($_column == null) return null;
+  $$FixturePartsTableProcessedTableManager get fixturePartId {
+    final $_column = $_itemColumn<int>('fixture_part_id')!;
+
     final manager = $$FixturePartsTableTableManager(
       $_db,
       $_db.fixtureParts,
@@ -16446,6 +16687,11 @@ class $$GelsTableFilterComposer extends Composer<_$AppDatabase, $GelsTable> {
 
   ColumnFilters<String> get maker => $composableBuilder(
     column: $table.maker,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16524,6 +16770,11 @@ class $$GelsTableOrderingComposer extends Composer<_$AppDatabase, $GelsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FixturesTableOrderingComposer get fixtureId {
     final $$FixturesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -16591,6 +16842,9 @@ class $$GelsTableAnnotationComposer
 
   GeneratedColumn<String> get maker =>
       $composableBuilder(column: $table.maker, builder: (column) => column);
+
+  GeneratedColumn<double> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   $$FixturesTableAnnotationComposer get fixtureId {
     final $$FixturesTableAnnotationComposer composer = $composerBuilder(
@@ -16668,34 +16922,38 @@ class $$GelsTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<String> color = const Value.absent(),
                 Value<int> fixtureId = const Value.absent(),
-                Value<int?> fixturePartId = const Value.absent(),
+                Value<int> fixturePartId = const Value.absent(),
+                Value<String> color = const Value.absent(),
                 Value<String?> size = const Value.absent(),
                 Value<String?> maker = const Value.absent(),
+                Value<double> sortOrder = const Value.absent(),
               }) => GelsCompanion(
                 id: id,
-                color: color,
                 fixtureId: fixtureId,
                 fixturePartId: fixturePartId,
+                color: color,
                 size: size,
                 maker: maker,
+                sortOrder: sortOrder,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required String color,
                 required int fixtureId,
-                Value<int?> fixturePartId = const Value.absent(),
+                required int fixturePartId,
+                required String color,
                 Value<String?> size = const Value.absent(),
                 Value<String?> maker = const Value.absent(),
+                Value<double> sortOrder = const Value.absent(),
               }) => GelsCompanion.insert(
                 id: id,
-                color: color,
                 fixtureId: fixtureId,
                 fixturePartId: fixturePartId,
+                color: color,
                 size: size,
                 maker: maker,
+                sortOrder: sortOrder,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -16778,20 +17036,22 @@ typedef $$GelsTableProcessedTableManager =
 typedef $$GobosTableCreateCompanionBuilder =
     GobosCompanion Function({
       Value<int> id,
-      required String goboNumber,
       required int fixtureId,
-      Value<int?> fixturePartId,
+      required int fixturePartId,
+      required String goboNumber,
       Value<String?> size,
       Value<String?> maker,
+      Value<double> sortOrder,
     });
 typedef $$GobosTableUpdateCompanionBuilder =
     GobosCompanion Function({
       Value<int> id,
-      Value<String> goboNumber,
       Value<int> fixtureId,
-      Value<int?> fixturePartId,
+      Value<int> fixturePartId,
+      Value<String> goboNumber,
       Value<String?> size,
       Value<String?> maker,
+      Value<double> sortOrder,
     });
 
 final class $$GobosTableReferences
@@ -16820,9 +17080,9 @@ final class $$GobosTableReferences
         $_aliasNameGenerator(db.gobos.fixturePartId, db.fixtureParts.id),
       );
 
-  $$FixturePartsTableProcessedTableManager? get fixturePartId {
-    final $_column = $_itemColumn<int>('fixture_part_id');
-    if ($_column == null) return null;
+  $$FixturePartsTableProcessedTableManager get fixturePartId {
+    final $_column = $_itemColumn<int>('fixture_part_id')!;
+
     final manager = $$FixturePartsTableTableManager(
       $_db,
       $_db.fixtureParts,
@@ -16860,6 +17120,11 @@ class $$GobosTableFilterComposer extends Composer<_$AppDatabase, $GobosTable> {
 
   ColumnFilters<String> get maker => $composableBuilder(
     column: $table.maker,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16939,6 +17204,11 @@ class $$GobosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FixturesTableOrderingComposer get fixtureId {
     final $$FixturesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -17008,6 +17278,9 @@ class $$GobosTableAnnotationComposer
 
   GeneratedColumn<String> get maker =>
       $composableBuilder(column: $table.maker, builder: (column) => column);
+
+  GeneratedColumn<double> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   $$FixturesTableAnnotationComposer get fixtureId {
     final $$FixturesTableAnnotationComposer composer = $composerBuilder(
@@ -17085,34 +17358,38 @@ class $$GobosTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<String> goboNumber = const Value.absent(),
                 Value<int> fixtureId = const Value.absent(),
-                Value<int?> fixturePartId = const Value.absent(),
+                Value<int> fixturePartId = const Value.absent(),
+                Value<String> goboNumber = const Value.absent(),
                 Value<String?> size = const Value.absent(),
                 Value<String?> maker = const Value.absent(),
+                Value<double> sortOrder = const Value.absent(),
               }) => GobosCompanion(
                 id: id,
-                goboNumber: goboNumber,
                 fixtureId: fixtureId,
                 fixturePartId: fixturePartId,
+                goboNumber: goboNumber,
                 size: size,
                 maker: maker,
+                sortOrder: sortOrder,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required String goboNumber,
                 required int fixtureId,
-                Value<int?> fixturePartId = const Value.absent(),
+                required int fixturePartId,
+                required String goboNumber,
                 Value<String?> size = const Value.absent(),
                 Value<String?> maker = const Value.absent(),
+                Value<double> sortOrder = const Value.absent(),
               }) => GobosCompanion.insert(
                 id: id,
-                goboNumber: goboNumber,
                 fixtureId: fixtureId,
                 fixturePartId: fixturePartId,
+                goboNumber: goboNumber,
                 size: size,
                 maker: maker,
+                sortOrder: sortOrder,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -17195,14 +17472,18 @@ typedef $$GobosTableProcessedTableManager =
 typedef $$AccessoriesTableCreateCompanionBuilder =
     AccessoriesCompanion Function({
       Value<int> id,
-      required String name,
       required int fixtureId,
+      required int fixturePartId,
+      required String name,
+      Value<double> sortOrder,
     });
 typedef $$AccessoriesTableUpdateCompanionBuilder =
     AccessoriesCompanion Function({
       Value<int> id,
-      Value<String> name,
       Value<int> fixtureId,
+      Value<int> fixturePartId,
+      Value<String> name,
+      Value<double> sortOrder,
     });
 
 final class $$AccessoriesTableReferences
@@ -17222,6 +17503,25 @@ final class $$AccessoriesTableReferences
       $_db.fixtures,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_fixtureIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $FixturePartsTable _fixturePartIdTable(_$AppDatabase db) =>
+      db.fixtureParts.createAlias(
+        $_aliasNameGenerator(db.accessories.fixturePartId, db.fixtureParts.id),
+      );
+
+  $$FixturePartsTableProcessedTableManager get fixturePartId {
+    final $_column = $_itemColumn<int>('fixture_part_id')!;
+
+    final manager = $$FixturePartsTableTableManager(
+      $_db,
+      $_db.fixtureParts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fixturePartIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -17248,6 +17548,11 @@ class $$AccessoriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$FixturesTableFilterComposer get fixtureId {
     final $$FixturesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -17262,6 +17567,29 @@ class $$AccessoriesTableFilterComposer
           }) => $$FixturesTableFilterComposer(
             $db: $db,
             $table: $db.fixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FixturePartsTableFilterComposer get fixturePartId {
+    final $$FixturePartsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixturePartId,
+      referencedTable: $db.fixtureParts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixturePartsTableFilterComposer(
+            $db: $db,
+            $table: $db.fixtureParts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -17291,6 +17619,11 @@ class $$AccessoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$FixturesTableOrderingComposer get fixtureId {
     final $$FixturesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -17305,6 +17638,29 @@ class $$AccessoriesTableOrderingComposer
           }) => $$FixturesTableOrderingComposer(
             $db: $db,
             $table: $db.fixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FixturePartsTableOrderingComposer get fixturePartId {
+    final $$FixturePartsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixturePartId,
+      referencedTable: $db.fixtureParts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixturePartsTableOrderingComposer(
+            $db: $db,
+            $table: $db.fixtureParts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -17330,6 +17686,9 @@ class $$AccessoriesTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
+  GeneratedColumn<double> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
   $$FixturesTableAnnotationComposer get fixtureId {
     final $$FixturesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -17344,6 +17703,29 @@ class $$AccessoriesTableAnnotationComposer
           }) => $$FixturesTableAnnotationComposer(
             $db: $db,
             $table: $db.fixtures,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$FixturePartsTableAnnotationComposer get fixturePartId {
+    final $$FixturePartsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fixturePartId,
+      referencedTable: $db.fixtureParts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$FixturePartsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.fixtureParts,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -17367,7 +17749,7 @@ class $$AccessoriesTableTableManager
           $$AccessoriesTableUpdateCompanionBuilder,
           (Accessory, $$AccessoriesTableReferences),
           Accessory,
-          PrefetchHooks Function({bool fixtureId})
+          PrefetchHooks Function({bool fixtureId, bool fixturePartId})
         > {
   $$AccessoriesTableTableManager(_$AppDatabase db, $AccessoriesTable table)
     : super(
@@ -17383,22 +17765,30 @@ class $$AccessoriesTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
                 Value<int> fixtureId = const Value.absent(),
+                Value<int> fixturePartId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<double> sortOrder = const Value.absent(),
               }) => AccessoriesCompanion(
                 id: id,
-                name: name,
                 fixtureId: fixtureId,
+                fixturePartId: fixturePartId,
+                name: name,
+                sortOrder: sortOrder,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required String name,
                 required int fixtureId,
+                required int fixturePartId,
+                required String name,
+                Value<double> sortOrder = const Value.absent(),
               }) => AccessoriesCompanion.insert(
                 id: id,
-                name: name,
                 fixtureId: fixtureId,
+                fixturePartId: fixturePartId,
+                name: name,
+                sortOrder: sortOrder,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -17408,7 +17798,7 @@ class $$AccessoriesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({fixtureId = false}) {
+          prefetchHooksCallback: ({fixtureId = false, fixturePartId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -17441,6 +17831,19 @@ class $$AccessoriesTableTableManager
                               )
                               as T;
                     }
+                    if (fixturePartId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.fixturePartId,
+                                referencedTable: $$AccessoriesTableReferences
+                                    ._fixturePartIdTable(db),
+                                referencedColumn: $$AccessoriesTableReferences
+                                    ._fixturePartIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
 
                     return state;
                   },
@@ -17465,7 +17868,7 @@ typedef $$AccessoriesTableProcessedTableManager =
       $$AccessoriesTableUpdateCompanionBuilder,
       (Accessory, $$AccessoriesTableReferences),
       Accessory,
-      PrefetchHooks Function({bool fixtureId})
+      PrefetchHooks Function({bool fixtureId, bool fixturePartId})
     >;
 typedef $$WorkNotesTableCreateCompanionBuilder =
     WorkNotesCompanion Function({

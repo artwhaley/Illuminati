@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/show_provider.dart';
 import '../../repositories/report_template_repository.dart';
+import '../../features/reports/report_template.dart';
+
 
 class TemplateSelector extends ConsumerStatefulWidget {
   const TemplateSelector({super.key});
@@ -38,7 +40,7 @@ class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
                 child: Text(t.name, style: GoogleFonts.jetBrainsMono(fontSize: 12)),
               ),
             ).toList(),
-            onChanged: (id) {
+            onChanged: (id) async {
               if (id == null) return;
               ref.read(activeReportTemplateIdProvider.notifier).state = id;
               final row = templates.firstWhere((t) => t.id == id);
@@ -48,35 +50,52 @@ class _TemplateSelectorState extends ConsumerState<TemplateSelector> {
           ),
           const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.save, size: 14),
-                  label: const Text('Save'),
-                  onPressed: selectedId == null ? null : () {
-                    repo?.updateTemplate(selectedId, currentTemplate);
-                  },
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.save_as, size: 14),
-                  label: const Text('Save As'),
-                  onPressed: () async {
-                    final name = await _showNameDialog(context, currentTemplate.name);
-                    if (name != null && name.isNotEmpty) {
-                      final newTemplate = currentTemplate.copyWith(name: name);
-                      notifier.setName(name);
-                      final id = await repo?.createTemplate(name, newTemplate);
-                      if (id != null) ref.read(activeReportTemplateIdProvider.notifier).state = id;
+              IconButton.outlined(
+                icon: const Icon(Icons.add, size: 18),
+                tooltip: 'New Template',
+                onPressed: () async {
+                  final name = await _showNameDialog(context, 'New Template');
+                  if (name != null && name.isNotEmpty) {
+                    final newTemplate = ReportTemplate(
+                      name: name,
+                      columns: [
+                        const ReportColumn(id: 'chan', label: 'CHAN', fieldKeys: ['chan'], widthPercent: 20),
+                        const ReportColumn(id: 'position', label: 'POSITION', fieldKeys: ['position'], widthPercent: 80),
+                      ],
+                      sortLevels: [const SortLevel(fieldKey: 'chan', ascending: true)],
+                    );
+                    
+                    final id = await repo?.createTemplate(name, newTemplate);
+                    if (id != null) {
+                      ref.read(activeReportTemplateIdProvider.notifier).state = id;
+                      notifier.loadTemplate(newTemplate);
                     }
-                  },
-                ),
+                  }
+                },
               ),
-              const SizedBox(width: 4),
-              IconButton(
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                icon: const Icon(Icons.copy, size: 18),
+                tooltip: 'Copy Template',
+                onPressed: () async {
+                  final name = await _showNameDialog(context, '${currentTemplate.name} Copy');
+                  if (name != null && name.isNotEmpty) {
+                    final newTemplate = currentTemplate.copyWith(name: name);
+                    final id = await repo?.createTemplate(name, newTemplate);
+                    if (id != null) {
+                      ref.read(activeReportTemplateIdProvider.notifier).state = id;
+                      notifier.loadTemplate(newTemplate);
+                    }
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+              IconButton.outlined(
                 icon: const Icon(Icons.delete_outline, size: 18),
+                tooltip: 'Delete Template',
+                color: Theme.of(context).colorScheme.error,
                 onPressed: selectedId == null ? null : () async {
                   final selected = templates.firstWhere((t) => t.id == selectedId);
                   if (selected.isSystem == 1) return;

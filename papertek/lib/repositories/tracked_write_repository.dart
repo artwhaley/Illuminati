@@ -370,7 +370,7 @@ class TrackedWriteRepository {
         // Restore the deleted row from the snapshot.
         if (op.oldValueJson != null) {
           final snapshot = jsonDecode(op.oldValueJson!) as Map<String, dynamic>;
-          await _restoreFromSnapshot(op.targetTable, snapshot);
+          await restoreFromSnapshot(op.targetTable, snapshot);
         }
         if (op.revisionId != null) {
           await (_db.delete(_db.revisions)
@@ -402,7 +402,7 @@ class TrackedWriteRepository {
         // Re-insert the row from the snapshot.
         if (op.newValueJson != null) {
           final snapshot = jsonDecode(op.newValueJson!) as Map<String, dynamic>;
-          await _restoreFromSnapshot(op.targetTable, snapshot);
+          await restoreFromSnapshot(op.targetTable, snapshot);
         }
         if (!_designerMode) {
           await _reinsertRevision(op, operation: 'insert');
@@ -434,7 +434,7 @@ class TrackedWriteRepository {
 
   // ── Snapshot restore ──────────────────────────────────────────────────────
 
-  Future<void> _restoreFromSnapshot(
+  Future<void> restoreFromSnapshot(
       String table, Map<String, dynamic> snapshot) async {
     switch (table) {
       case 'fixtures':
@@ -455,8 +455,8 @@ class TrackedWriteRepository {
       INSERT OR IGNORE INTO fixtures
         (id, fixture_type_id, fixture_type, position, unit_number,
          wattage, function, focus, flagged, sort_order,
-         accessories, hung, focused, patched)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         hung, focused, patched)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
       ''',
       variables: [
         Variable<int>(fixtureData['id']),
@@ -469,7 +469,6 @@ class TrackedWriteRepository {
         Variable<String>(fixtureData['focus']),
         Variable<int>(fixtureData['flagged'] ?? 0),
         Variable<double>(fixtureData['sort_order'] ?? 0.0),
-        Variable<String>(fixtureData['accessories']),
         Variable<int>(fixtureData['hung'] ?? 0),
         Variable<int>(fixtureData['focused'] ?? 0),
         Variable<int>(fixtureData['patched'] ?? 0),
@@ -504,6 +503,24 @@ class TrackedWriteRepository {
         ],
         updates: {_db.fixtureParts},
       );
+    }
+
+    // Re-insert Gels
+    final gelsData = (snapshot['gels'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+    for (final g in gelsData) {
+      await _restoreGenericRow('gels', g);
+    }
+
+    // Re-insert Gobos
+    final gobosData = (snapshot['gobos'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+    for (final g in gobosData) {
+      await _restoreGenericRow('gobos', g);
+    }
+
+    // Re-insert Accessories
+    final accsData = (snapshot['accessories'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+    for (final a in accsData) {
+      await _restoreGenericRow('accessories', a);
     }
   }
 
@@ -584,6 +601,12 @@ class TrackedWriteRepository {
         return {_db.roleContacts};
       case 'show_meta':
         return {_db.showMeta};
+      case 'gels':
+        return {_db.gels};
+      case 'gobos':
+        return {_db.gobos};
+      case 'accessories':
+        return {_db.accessories};
       default:
         return {};
     }

@@ -23,6 +23,7 @@ enum PaperTekImportField {
   // When present, rows sharing the same position+unit+type are grouped into
   // one multi-part fixture (e.g. the three cells of a cyc unit).
   partNumber,
+  accessories,
 }
 
 extension PaperTekImportFieldX on PaperTekImportField {
@@ -41,6 +42,7 @@ extension PaperTekImportFieldX on PaperTekImportField {
         PaperTekImportField.focus => 'Focus',
         PaperTekImportField.notes => 'Notes',
         PaperTekImportField.partNumber => 'Part #',
+        PaperTekImportField.accessories => 'Accessories',
       };
 
   /// Shown in the mapping UI to explain what the field is used for.
@@ -59,6 +61,7 @@ extension PaperTekImportFieldX on PaperTekImportField {
         PaperTekImportField.focus => 'Focus position or area',
         PaperTekImportField.notes => 'Instrument notes',
         PaperTekImportField.partNumber => 'Part number for multi-cell fixtures (e.g. 1, 2, 3 for a 3-cell cyc)',
+        PaperTekImportField.accessories => 'Accessories (creates Accessory records)',
       };
 
   /// Position is the only field without which a row cannot be created.

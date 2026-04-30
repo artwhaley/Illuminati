@@ -21,7 +21,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import '../../../database/database.dart';
-import '../../../repositories/fixture_repository.dart';
+import '../../repositories/fixture_repository.dart';
+import '../../repositories/custom_field_repository.dart';
 import '../../../repositories/spreadsheet_view_preset_repository.dart';
 import 'column_spec.dart';
 import 'fixture_data_source.dart';
@@ -32,21 +33,26 @@ class SpreadsheetViewController extends ChangeNotifier {
     required this.repo,
     required this.presetRepo,
     required this.dataSource,
-  }) {
+    required List<ColumnSpec> columns,
+    this.customFieldRepo,
+  }) : _columns = columns {
     _init();
   }
 
   final FixtureRepository repo;
   final SpreadsheetViewPresetRepository? presetRepo;
   final FixtureDataSource dataSource;
+  final CustomFieldRepository? customFieldRepo;
+  
+  List<ColumnSpec> _columns;
 
   // ── Grid State ─────────────────────────────────────────────────────────────
   final DataGridController gridController = DataGridController();
   final TextEditingController searchController = TextEditingController();
 
-  List<String> colOrder = List.from(kDefaultColumnOrder);
+  List<String> colOrder = [];
   Set<String> hiddenCols = {};
-  Map<String, double> colWidths = Map.from(kDefaultWidths);
+  Map<String, double> colWidths = {};
   List<SortSpec> sortSpecs = [SortSpec(column: 'chan', ascending: true)];
 
   // ── Add Fixture Mode ───────────────────────────────────────────────────────
@@ -75,10 +81,29 @@ class SpreadsheetViewController extends ChangeNotifier {
 
   // ── Initialization ──────────────────────────────────────────────────────────
   void _init() {
+    colOrder = _columns.map((c) => c.id).toList();
+    colWidths = {for (final c in _columns) c.id: c.defaultWidth};
+
     searchController.addListener(_onSearchChanged);
     dataSource.onSortChanged = _onDataSourceSortChanged;
     // Initial sort sync
     _syncSortToDataSource();
+  }
+
+  void updateColumns(List<ColumnSpec> columns) {
+    _columns = columns;
+    // Sync order: keep existing order, append new ones.
+    final newOrder = List<String>.from(colOrder);
+    final existingIds = Set<String>.from(colOrder);
+    for (final c in columns) {
+      if (!existingIds.contains(c.id)) {
+        newOrder.add(c.id);
+        colWidths[c.id] = c.defaultWidth;
+      }
+    }
+    colOrder = newOrder;
+    dataSource.setColumns(columns);
+    notifyListeners();
   }
 
   void _syncSortToDataSource() {
@@ -130,7 +155,11 @@ class SpreadsheetViewController extends ChangeNotifier {
   }
 
   bool get filterActive => _filterCol != null || searchController.text.isNotEmpty;
-  String? get filterLabel => _filterCol != null ? '${kColumnById[_filterCol!]?.label ?? _filterCol}: $_filterValue' : null;
+  String? get filterLabel {
+    if (_filterCol == null) return null;
+    final spec = _columns.firstWhere((c) => c.id == _filterCol, orElse: () => ColumnSpec(id: _filterCol!, label: _filterCol!, defaultWidth: 100, getValue: (f) => null));
+    return '${spec.label}: $_filterValue';
+  }
 
   // ── Sorting ────────────────────────────────────────────────────────────────
   bool _isSyncingSort = false;
@@ -325,7 +354,7 @@ class SpreadsheetViewController extends ChangeNotifier {
     notifyListeners();
   }
 
-  static Set<String> _allEditableFields() => kColumns
+  Set<String> _allEditableFields() => _columns
       .where((c) => !c.isReadOnly && c.id != '#')
       .map((c) => c.id)
       .toSet();
@@ -400,9 +429,7 @@ class SpreadsheetViewController extends ChangeNotifier {
   Future<void> editCell(FixtureRow fixture, String col, String? value, int? partOrder) async {
     final spec = kColumnById[col];
     if (spec != null && spec.onEdit != null) {
-      // Note: partOrder is currently handled by the data source for specific columns,
-      // but here we centralize the update logic.
-      await spec.onEdit!(fixture.id, value, repo);
+      await spec.onEdit!(fixture.id, value, repo, partOrder: partOrder);
     }
   }
 }

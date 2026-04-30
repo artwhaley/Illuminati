@@ -29,18 +29,34 @@ class CommitService {
             notes: Value(notes),
           ));
 
-      // 2. Process each decision
+      // 2. Fetch all revisions and sort: approvals first, then rejections newest-first.
+      // Rejecting newest-first ensures cascaded oldValue rollbacks restore the original value.
+      final List<({int revId, ReviewDecision decision, Revision rev})> items = [];
       for (final entry in decisions.entries) {
-        final revId = entry.key;
-        final decision = entry.value;
-
-        final rev = await (_db.select(_db.revisions)..where((r) => r.id.equals(revId))).getSingleOrNull();
+        final rev = await (_db.select(_db.revisions)
+              ..where((r) => r.id.equals(entry.key)))
+            .getSingleOrNull();
         if (rev == null) continue;
+        items.add((revId: entry.key, decision: entry.value, rev: rev));
+      }
 
-        if (decision == ReviewDecision.approve) {
-          await _approveRevision(rev, commitId);
+      // Sort: approvals first (order doesn't matter for approvals), then rejections
+      // newest-first so cascaded oldValue rollbacks are applied in the correct order.
+      items.sort((a, b) {
+        if (a.decision == b.decision) {
+          // Both approve, or both reject: sort by ID descending (newest first).
+          return b.revId.compareTo(a.revId);
+        }
+        // Approvals before rejections.
+        return a.decision == ReviewDecision.approve ? -1 : 1;
+      });
+
+      // 3. Process in sorted order.
+      for (final item in items) {
+        if (item.decision == ReviewDecision.approve) {
+          await _approveRevision(item.rev, commitId);
         } else {
-          await _rejectRevision(rev, commitId);
+          await _rejectRevision(item.rev, commitId);
         }
       }
 
@@ -52,24 +68,26 @@ class CommitService {
   }
 
   Future<void> _approveRevision(Revision rev, int commitId) async {
-    // Update status
+    if (rev.status != 'pending') return;
+
     await (_db.update(_db.revisions)..where((r) => r.id.equals(rev.id))).write(RevisionsCompanion(
       status: const Value('committed'),
       commitId: Value(commitId),
     ));
 
-    // For delete operations, we need to actually delete the row now
+    // If it was a pending delete, we actually hard-delete it now.
+    // Attachables are already hard-deleted during 'doDelete', but fixtures/parts use soft-delete.
     if (rev.operation == 'delete') {
-      if (rev.targetTable == 'fixtures') {
-        await (_db.delete(_db.fixtures)..where((f) => f.id.equals(rev.targetId!))).go();
-      } else if (rev.targetTable == 'fixture_parts') {
-        await (_db.delete(_db.fixtureParts)..where((f) => f.id.equals(rev.targetId!))).go();
+      if (revisionTableNameIsSafe(rev.targetTable)) {
+        await _db.customStatement(
+          'DELETE FROM ${rev.targetTable} WHERE id = ?',
+          [rev.targetId],
+        );
       }
     }
 
-    // 3. Auto-reject conflicts:
-    // Any other pending revisions for this same field are now obsolete.
-    if (rev.fieldName != null) {
+    // Auto-reject conflicts for field updates.
+    if (rev.operation == 'update' && rev.fieldName != null) {
       await (_db.update(_db.revisions)
             ..where((r) => r.targetTable.equals(rev.targetTable))
             ..where((r) => r.targetId.equals(rev.targetId!))
@@ -84,41 +102,40 @@ class CommitService {
   }
 
   Future<void> _rejectRevision(Revision rev, int commitId) async {
-    // Update status
+    if (rev.status != 'pending') return;
+
     await (_db.update(_db.revisions)..where((r) => r.id.equals(rev.id))).write(RevisionsCompanion(
       status: const Value('rejected'),
       commitId: Value(commitId),
     ));
 
-    // Reverse the change
-    if (rev.operation == 'update') {
-      if (!revisionUpdateTargetIsSafe(rev.targetTable, rev.fieldName)) {
-        throw StateError(
-          'Reject rollback: invalid revision target '
-          'table=${rev.targetTable} field=${rev.fieldName}',
-        );
-      }
-      final oldVal = rev.oldValue != null ? jsonDecode(rev.oldValue!) : null;
-      await _db.customStatement(
-        'UPDATE ${rev.targetTable} SET ${rev.fieldName} = ? WHERE id = ?',
-        [oldVal, rev.targetId],
-      );
-    } else if (rev.operation == 'insert') {
-      // Actually delete the inserted row
-      if (rev.targetTable == 'fixtures') {
-        await (_db.delete(_db.fixtures)..where((f) => f.id.equals(rev.targetId!))).go();
-      } else if (rev.targetTable == 'fixture_parts') {
-        await (_db.delete(_db.fixtureParts)..where((f) => f.id.equals(rev.targetId!))).go();
-      }
-    } else if (rev.operation == 'delete') {
-      // Clear the 'deleted' flag
-      if (rev.targetTable == 'fixtures') {
-        await (_db.update(_db.fixtures)..where((f) => f.id.equals(rev.targetId!)))
-            .write(const FixturesCompanion(deleted: Value(0)));
-      } else if (rev.targetTable == 'fixture_parts') {
-        await (_db.update(_db.fixtureParts)..where((f) => f.id.equals(rev.targetId!)))
-            .write(const FixturePartsCompanion(deleted: Value(0)));
-      }
+    switch (rev.operation) {
+      case 'update':
+        if (revisionUpdateTargetIsSafe(rev.targetTable, rev.fieldName)) {
+          final oldVal = rev.oldValue != null ? jsonDecode(rev.oldValue!) : null;
+          await _db.customStatement(
+            'UPDATE ${rev.targetTable} SET ${rev.fieldName} = ? WHERE id = ?',
+            [oldVal, rev.targetId],
+          );
+        }
+      case 'insert':
+        if (revisionTableNameIsSafe(rev.targetTable)) {
+          await _db.customStatement(
+            'DELETE FROM ${rev.targetTable} WHERE id = ?',
+            [rev.targetId],
+          );
+        }
+      case 'delete':
+        if (rev.oldValue != null && revisionTableNameIsSafe(rev.targetTable)) {
+          final snapshot = jsonDecode(rev.oldValue!) as Map<String, dynamic>;
+          // Re-insert using the repository's snapshot restorer.
+          // Since we are in a transaction, we can call it.
+          await _tracked.restoreFromSnapshot(rev.targetTable, snapshot);
+        }
+      case 'import_batch':
+        // Batch rows are rejected individually if the supervisor selects them.
+        // The summary row itself doesn't have a direct rollback logic here.
+        break;
     }
   }
 }

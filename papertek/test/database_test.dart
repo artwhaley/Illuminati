@@ -123,6 +123,7 @@ void main() {
       await db.into(db.gels).insert(GelsCompanion(
             color: const Value('R02'),
             fixtureId: Value(fixId),
+            fixturePartId: Value(partId),
           ));
       // Gel attached to a specific part
       await db.into(db.gels).insert(GelsCompanion(
@@ -133,10 +134,12 @@ void main() {
       await db.into(db.gobos).insert(GobosCompanion(
             goboNumber: const Value('R77735'),
             fixtureId: Value(fixId),
+            fixturePartId: Value(partId),
           ));
       await db.into(db.accessories).insert(AccessoriesCompanion(
             name: const Value('Top Hat'),
             fixtureId: Value(fixId),
+            fixturePartId: Value(partId),
           ));
       await operational.addWorkNote(
         body: 'Focus note',
@@ -292,12 +295,12 @@ void main() {
     });
 
     test('insertRow creates one pending insert revision with snapshot', () async {
-      final id = await tracked.insertRow(
+      final res = await tracked.insertRow(
         table: 'fixtures',
-        companion: const FixturesCompanion(position: Value('2E')),
         doInsert: () => db.into(db.fixtures).insert(const FixturesCompanion(position: Value('2E'))),
         buildSnapshot: (id) async => {'id': id, 'position': '2E'},
       );
+      final id = res.rowId;
 
       final revs = await (db.select(db.revisions)
             ..where((t) => t.operation.equals('insert') & t.targetId.equals(id)))
@@ -343,20 +346,20 @@ void main() {
     test('beginImportBatch / endImportBatch shares batch_id', () async {
       final batchId = tracked.beginImportBatch();
 
-      final id1 = await tracked.insertRow(
+      final res1 = await tracked.insertRow(
         table: 'fixtures',
-        companion: const FixturesCompanion(position: Value('Rail')),
         doInsert: () => db.into(db.fixtures).insert(const FixturesCompanion(position: Value('Rail'))),
         buildSnapshot: (id) async => {'id': id, 'position': 'Rail'},
         batchId: batchId,
       );
-      final id2 = await tracked.insertRow(
+      final id1 = res1.rowId;
+      final res2 = await tracked.insertRow(
         table: 'fixtures',
-        companion: const FixturesCompanion(position: Value('Rail')),
         doInsert: () => db.into(db.fixtures).insert(const FixturesCompanion(position: Value('Rail'))),
         buildSnapshot: (id) async => {'id': id, 'position': 'Rail'},
         batchId: batchId,
       );
+      final id2 = res2.rowId;
 
       await tracked.endImportBatch(
         batchId: batchId,

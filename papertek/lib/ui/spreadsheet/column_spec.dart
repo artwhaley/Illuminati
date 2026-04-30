@@ -12,9 +12,8 @@
 ///    grid, the sidebar, and any export tools.
 /// ─────────────────────────────────────────────────────────────────────────────
 
-import 'package:flutter/material.dart';
-import '../../../database/database.dart';
 import '../../../repositories/fixture_repository.dart';
+import '../../../repositories/custom_field_repository.dart';
 
 /// Describes the category of the column for sidebar grouping.
 enum ColumnSection {
@@ -33,6 +32,7 @@ class ColumnSpec {
     required this.label,
     required this.defaultWidth,
     required this.getValue,
+    this.dbField,
     this.section = ColumnSection.other,
     this.isReadOnly = false,
     this.isBoolean = false,
@@ -41,12 +41,35 @@ class ColumnSpec {
     this.isPartLevel = false,
     this.getPartValue,
     this.onEdit,
+    this.isCollection = false,
+    this.customFieldId,
   });
+
+  /// Factory for dynamic columns based on user-defined fields.
+  factory ColumnSpec.custom(int dbId, String name) {
+    return ColumnSpec(
+      id: 'custom_$dbId',
+      label: name.toUpperCase(),
+      defaultWidth: 100.0,
+      section: ColumnSection.other,
+      customFieldId: dbId,
+      getValue: (f) => f.customFieldValues[dbId],
+      onEdit: (fid, val, repo, {partOrder, customRepo}) {
+        return customRepo?.updateValue(
+          fixtureId: fid,
+          fieldId: dbId,
+          value: val,
+          fieldName: name,
+        ) ?? Future.value();
+      },
+    );
+  }
 
   final String id;
   final String label;
   final double defaultWidth;
   final String? Function(FixtureRow) getValue;
+  final String? dbField;
   final ColumnSection section;
   final bool isReadOnly;
   final bool isBoolean;
@@ -61,7 +84,22 @@ class ColumnSpec {
   final String? Function(FixturePartRow)? getPartValue;
 
   /// Callback to update the database for this column.
-  final Future<void> Function(int fixtureId, String? value, FixtureRepository repo)? onEdit;
+  final Future<void> Function(
+    int fixtureId,
+    String? value,
+    FixtureRepository repo, {
+    int? partOrder,
+    CustomFieldRepository? customRepo,
+  })? onEdit;
+
+  /// Whether this column represents a collection (Gel, Gobo, etc) that
+  /// requires a specialized editor rather than a simple text field.
+  final bool isCollection;
+
+  /// If this is a custom field, the DB ID of the field definition.
+  final int? customFieldId;
+
+  bool get isCustomField => customFieldId != null;
 }
 
 /// The single, canonical list of all columns in the spreadsheet.
@@ -79,74 +117,93 @@ final List<ColumnSpec> kColumns = [
   ColumnSpec(
     id: 'chan',
     label: 'CHAN',
+    dbField: 'channel',
     defaultWidth: 60.0,
     section: ColumnSection.patch,
     getValue: (f) => f.channel,
     isNumeric: true,
     isPartLevel: true,
     getPartValue: (p) => p.channel,
-    onEdit: (id, val, repo) => repo.updateIntensityChannel(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null 
+        ? repo.updatePartChannel(id, partOrder, val)
+        : repo.updateIntensityChannel(id, val),
   ),
   ColumnSpec(
     id: 'dimmer',
     label: 'ADDRESS',
+    dbField: 'address',
     defaultWidth: 80.0,
     section: ColumnSection.patch,
     getValue: (f) => f.dimmer,
     isPartLevel: true,
     getPartValue: (p) => p.address,
-    onEdit: (id, val, repo) => repo.updatePartAddress(id, 0, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePartAddress(id, partOrder ?? 0, val),
   ),
   ColumnSpec(
     id: 'circuit',
     label: 'CIRCUIT',
+    dbField: 'circuit',
     defaultWidth: 80.0,
     section: ColumnSection.patch,
     getValue: (f) => f.circuit,
     isPartLevel: true,
     getPartValue: (p) => p.circuit,
-    onEdit: (id, val, repo) => repo.updatePartCircuit(id, 0, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePartCircuit(id, partOrder ?? 0, val),
   ),
   ColumnSpec(
     id: 'position',
     label: 'POSITION',
+    dbField: 'position',
     defaultWidth: 140.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.position,
-    onEdit: (id, val, repo) => repo.updatePosition(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePosition(id, val),
   ),
   ColumnSpec(
     id: 'unit',
     label: 'U#',
+    dbField: 'unit_number',
     defaultWidth: 50.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.unitNumber?.toString(),
     isNumeric: true,
-    onEdit: (id, val, repo) => repo.updateUnitNumber(id, int.tryParse(val ?? '')),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateUnitNumber(id, int.tryParse(val ?? '')),
   ),
   ColumnSpec(
     id: 'type',
     label: 'FIXTURE TYPE',
+    dbField: 'fixture_type',
     defaultWidth: 160.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.fixtureType,
-    onEdit: (id, val, repo) => repo.updateFixtureType(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateFixtureType(id, val),
+  ),
+  ColumnSpec(
+    id: 'wattage',
+    label: 'WATTAGE',
+    dbField: 'wattage',
+    defaultWidth: 60.0,
+    section: ColumnSection.fixture,
+    getValue: (f) => f.wattage,
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateWattage(id, val),
   ),
   ColumnSpec(
     id: 'function',
     label: 'PURPOSE',
+    dbField: 'function',
     defaultWidth: 120.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.function,
-    onEdit: (id, val, repo) => repo.updateFunction(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateFunction(id, val),
   ),
   ColumnSpec(
     id: 'focus',
     label: 'FOCUS AREA',
+    dbField: 'focus',
     defaultWidth: 120.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.focus,
-    onEdit: (id, val, repo) => repo.updateFocus(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateFocus(id, val),
   ),
   ColumnSpec(
     id: 'accessories',
@@ -154,51 +211,78 @@ final List<ColumnSpec> kColumns = [
     defaultWidth: 120.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.accessories,
-    onEdit: (id, val, repo) => repo.updateAccessories(id, val),
+    isPartLevel: true,
+    getPartValue: (p) => p.accessories,
+    isCollection: true,
+  ),
+  ColumnSpec(
+    id: 'color',
+    label: 'COLOR',
+    defaultWidth: 100.0,
+    section: ColumnSection.fixture,
+    getValue: (f) => f.color,
+    isPartLevel: true,
+    getPartValue: (p) => p.color,
+    isCollection: true,
+  ),
+  ColumnSpec(
+    id: 'gobo',
+    label: 'GOBO',
+    defaultWidth: 100.0,
+    section: ColumnSection.fixture,
+    getValue: (f) => f.gobo,
+    isPartLevel: true,
+    getPartValue: (p) => p.gobo,
+    isCollection: true,
   ),
   ColumnSpec(
     id: 'ip',
     label: 'IP ADDRESS',
+    dbField: 'ip_address',
     defaultWidth: 120.0,
     section: ColumnSection.network,
     getValue: (f) => f.ipAddress,
     isPartLevel: true,
     getPartValue: (p) => p.ipAddress,
-    onEdit: (id, val, repo) => repo.updateIntensityIp(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityIp(id, val),
   ),
   ColumnSpec(
     id: 'subnet',
     label: 'SUBNET',
+    dbField: 'subnet',
     defaultWidth: 110.0,
     section: ColumnSection.network,
     getValue: (f) => f.subnet,
     isPartLevel: true,
     getPartValue: (p) => p.subnet,
-    onEdit: (id, val, repo) => repo.updateIntensitySubnet(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensitySubnet(id, val),
   ),
   ColumnSpec(
     id: 'mac',
     label: 'MAC ADDRESS',
+    dbField: 'mac_address',
     defaultWidth: 130.0,
     section: ColumnSection.network,
     getValue: (f) => f.macAddress,
     isPartLevel: true,
     getPartValue: (p) => p.macAddress,
-    onEdit: (id, val, repo) => repo.updateIntensityMac(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityMac(id, val),
   ),
   ColumnSpec(
     id: 'ipv6',
     label: 'IPV6',
+    dbField: 'ipv6',
     defaultWidth: 150.0,
     section: ColumnSection.network,
     getValue: (f) => f.ipv6,
     isPartLevel: true,
     getPartValue: (p) => p.ipv6,
-    onEdit: (id, val, repo) => repo.updateIntensityIpv6(id, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityIpv6(id, val),
   ),
   ColumnSpec(
     id: 'hung',
     label: 'HUNG',
+    dbField: 'hung',
     defaultWidth: 55.0,
     section: ColumnSection.status,
     getValue: (f) => f.hung ? '✓' : '—',
@@ -208,6 +292,7 @@ final List<ColumnSpec> kColumns = [
   ColumnSpec(
     id: 'patch',
     label: 'PATCHED',
+    dbField: 'patched',
     defaultWidth: 60.0,
     section: ColumnSection.status,
     getValue: (f) => f.patched ? '✓' : '—',
@@ -217,6 +302,7 @@ final List<ColumnSpec> kColumns = [
   ColumnSpec(
     id: 'focused',
     label: 'FOCUSED',
+    dbField: 'focused',
     defaultWidth: 65.0,
     section: ColumnSection.status,
     getValue: (f) => f.focused ? '✓' : '—',
@@ -226,6 +312,7 @@ final List<ColumnSpec> kColumns = [
   ColumnSpec(
     id: 'notes',
     label: 'NOTES',
+    dbField: null,
     defaultWidth: 120.0,
     section: ColumnSection.other,
     getValue: (f) => '', // Notes are not currently backed by a field
@@ -235,6 +322,13 @@ final List<ColumnSpec> kColumns = [
 /// Fast lookup by ID.
 final Map<String, ColumnSpec> kColumnById = {
   for (final c in kColumns) c.id: c,
+};
+
+/// Reverse lookup: DB field name → ColumnSpec.
+/// Useful in the maintenance tab for mapping revision.fieldName → display column.
+final Map<String, ColumnSpec> kColumnByDbField = {
+  for (final c in kColumns)
+    if (c.dbField != null) c.dbField!: c,
 };
 
 /// Default column order (just the IDs).

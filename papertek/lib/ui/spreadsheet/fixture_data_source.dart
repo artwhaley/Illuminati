@@ -27,11 +27,22 @@ import 'column_spec.dart';
 
 class FixtureDataSource extends DataGridSource {
   FixtureDataSource({
+    required List<ColumnSpec> columns,
     required this.onCellEditCommit,
     required this.onBooleanSet,
     required this.onNativeEditStart,
     required this.onNativeEditComplete,
-  });
+  }) : _columns = columns,
+       _colById = {for (final c in columns) c.id: c};
+
+  List<ColumnSpec> _columns;
+  Map<String, ColumnSpec> _colById;
+
+  void setColumns(List<ColumnSpec> columns) {
+    _columns = columns;
+    _colById = {for (final c in columns) c.id: c};
+    _rebuildFilteredRows();
+  }
 
   VoidCallback? onSortChanged;
   final void Function(FixtureRow fixture, String col) onNativeEditStart;
@@ -56,7 +67,7 @@ class FixtureDataSource extends DataGridSource {
   final Map<DataGridRow, int?> _rowToPartOrder = {};
   final Map<DataGridRow, int> _rowToIndex = {};
   List<DataGridRow> _rows = [];
-  List<String> _visibleCols = List.of(kDefaultColumnOrder);
+  List<String> _visibleCols = [];
 
   bool isChildRow(DataGridRow row) => _rowToPartOrder[row] != null;
   int? partOrderForRow(DataGridRow row) => _rowToPartOrder[row];
@@ -110,7 +121,7 @@ class FixtureDataSource extends DataGridSource {
     final f = selectedFixture;
     final colId = _selectedColName;
     if (f == null || colId == null) return null;
-    return kColumnById[colId]?.getValue(f);
+    return _colById[colId]?.getValue(f);
   }
 
   void setSelectedCell(int? fixtureId, String? colName) {
@@ -118,8 +129,11 @@ class FixtureDataSource extends DataGridSource {
     _selectedColName = colName;
   }
 
-  void updateRows(List<FixtureRow> fixtures) {
+  void updateData(List<FixtureRow> fixtures) {
     _allFixtures = fixtures;
+    if (_visibleCols.isEmpty) {
+       _visibleCols = _columns.map((c) => c.id).toList();
+    }
     _rebuildFilteredRows();
     notifyListeners();
   }
@@ -133,6 +147,7 @@ class FixtureDataSource extends DataGridSource {
   }
 
   FixtureRow? fixtureForRow(DataGridRow row) => _rowToFixture[row];
+  int? partOrderByRow(DataGridRow row) => _rowToPartOrder[row];
 
   @override
   Future<void> handleSort() async {
@@ -166,15 +181,13 @@ class FixtureDataSource extends DataGridSource {
 
   @override
   int compare(DataGridRow? a, DataGridRow? b, SortColumnDetails sortColumn) {
-    final spec = kColumnById[sortColumn.name];
+    final spec = _colById[sortColumn.name];
     if (spec == null) return 0;
 
     final va = a?.getCells().firstWhere((c) => c.columnName == sortColumn.name).value?.toString() ?? '';
     final vb = b?.getCells().firstWhere((c) => c.columnName == sortColumn.name).value?.toString() ?? '';
 
     int cmp;
-    // For specific numeric-primary columns, we try double parse first.
-    // If it fails (e.g. "5a"), we fall back to natural compare.
     if (spec.isNumeric) {
       final na = double.tryParse(va);
       final nb = double.tryParse(vb);
@@ -198,7 +211,7 @@ class FixtureDataSource extends DataGridSource {
 
     if (_filterCol != null && _filterValue != null && _filterValue!.isNotEmpty) {
       final exact = _filterValue!.toLowerCase();
-      final spec = kColumnById[_filterCol!];
+      final spec = _colById[_filterCol!];
       if (spec != null) {
         list = list.where((f) {
           final v = spec.getValue(f) ?? '';
@@ -210,7 +223,7 @@ class FixtureDataSource extends DataGridSource {
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       list = list.where((f) {
-        return kColumns.any((spec) {
+        return _columns.any((spec) {
           final v = spec.getValue(f) ?? '';
           return v.toLowerCase().contains(q);
         });
@@ -222,7 +235,7 @@ class FixtureDataSource extends DataGridSource {
       final sortedList = list.toList();
       sortedList.sort((a, b) {
         for (final sortCol in sortedColumns) {
-          final spec = kColumnById[sortCol.name];
+          final spec = _colById[sortCol.name];
           if (spec == null) continue;
           final va = spec.getValue(a);
           final vb = spec.getValue(b);
@@ -258,7 +271,7 @@ class FixtureDataSource extends DataGridSource {
     for (final f in _filteredFixtures) {
       // ── Parent / single row ──────────────────────────────────────────────
       final parentRow = DataGridRow(cells: [
-        for (final spec in kColumns)
+        for (final spec in _columns)
           DataGridCell(columnName: spec.id, value: spec.getValue(f) ?? ''),
       ]);
       _rowToFixture[parentRow] = f;
@@ -270,7 +283,7 @@ class FixtureDataSource extends DataGridSource {
       if (f.isMultiPart) {
         for (final part in f.parts) {
           final childRow = DataGridRow(cells: [
-            for (final spec in kColumns)
+            for (final spec in _columns)
               DataGridCell(
                 columnName: spec.id,
                 value: spec.getPartValue?.call(part) ?? '',
@@ -356,7 +369,7 @@ class FixtureDataSource extends DataGridSource {
         var color = isFirst ? _accent : _textMain;
         var bold = isFirst || (selected && !isFirst); // Bold first col OR selected row items
         
-        String text = (fixture.isMultiPart && const {'chan', 'dimmer', 'circuit', 'ip', 'subnet', 'mac', 'ipv6'}.contains(name))
+        String text = (fixture.isMultiPart && const {'chan', 'dimmer', 'circuit', 'ip', 'subnet', 'mac', 'ipv6', 'color', 'gobo', 'accessories'}.contains(name))
             ? ''
             : (byName[name] ?? '');
 
@@ -411,12 +424,16 @@ class FixtureDataSource extends DataGridSource {
         initial = part?.channel ?? '';
       } else if (col == 'dimmer') {
         initial = part?.address ?? '';
+      } else if (col == 'circuit') {
+        initial = part?.circuit ?? '';
       } else {
         return null;
       }
     } else {
-      if (kColumnById[col]?.isReadOnly ?? false) return null;
-      initial = kColumnById[col]?.getValue(fixture) ?? '';
+      final spec = _colById[col];
+      if (spec?.isReadOnly ?? false) return null;
+      if (spec?.isCollection ?? false) return null;
+      initial = spec?.getValue(fixture) ?? '';
     }
 
     _editingController?.dispose();
@@ -456,12 +473,13 @@ class FixtureDataSource extends DataGridSource {
 
     try {
       if (partOrder != null) {
-        if (col == 'chan')   await onCellEditCommit(fixture, 'chan',   val, partOrder);
-        if (col == 'dimmer') await onCellEditCommit(fixture, 'dimmer', val, partOrder);
+        if (col == 'chan')    await onCellEditCommit(fixture, 'chan',    val, partOrder);
+        if (col == 'dimmer')  await onCellEditCommit(fixture, 'dimmer',  val, partOrder);
+        if (col == 'circuit') await onCellEditCommit(fixture, 'circuit', val, partOrder);
         return;
       }
 
-      if (!(kColumnById[col]?.isReadOnly ?? false)) {
+      if (!(_colById[col]?.isReadOnly ?? false)) {
         await onCellEditCommit(fixture, col, val, null);
       }
     } finally {

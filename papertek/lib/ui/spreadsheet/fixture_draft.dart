@@ -1,5 +1,4 @@
 import '../../repositories/fixture_repository.dart';
-import 'column_spec.dart';
 
 /// A mutable draft of a fixture being composed in the "Add Fixture" sidebar.
 ///
@@ -25,12 +24,28 @@ class FixtureDraft {
   String? ipv6;
 
   // ── Other-part fields ───────────────────────────────────────────────────────
-  String? color;   // gel part
-  String? gobo1;
-  String? gobo2;
+  String? color;
+  String? gobo;
 
   // ── Factory: empty draft ────────────────────────────────────────────────────
-  FixtureDraft();
+  FixtureDraft({
+    this.position,
+    this.unitNumber,
+    this.fixtureType,
+    this.wattage,
+    this.function,
+    this.focus,
+    this.accessories,
+    this.channel,
+    this.dimmer,
+    this.circuit,
+    this.ipAddress,
+    this.subnet,
+    this.macAddress,
+    this.ipv6,
+    this.color,
+    this.gobo,
+  });
 
   // ── Factory: prefill from donor using mask ──────────────────────────────────
   factory FixtureDraft.fromDonor(FixtureRow donor, Set<String> mask) {
@@ -49,8 +64,8 @@ class FixtureDraft {
     if (mask.contains('subnet'))      d.subnet      = donor.subnet;
     if (mask.contains('mac'))         d.macAddress  = donor.macAddress;
     if (mask.contains('ipv6'))        d.ipv6        = donor.ipv6;
-    // color/gobo not surfaced as direct kColumns IDs in the editable spec;
-    // skip for now — add if column IDs are added later.
+    if (mask.contains('color'))       d.color       = donor.color;
+    if (mask.contains('gobo'))        d.gobo        = donor.gobo;
     return d;
   }
 

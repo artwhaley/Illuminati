@@ -48,8 +48,30 @@ class PositionRepository {
     return res.rowId;
   }
 
-  Future<void> renamePosition(int id, String name) => _updateField(
-      id, 'name', name, (r) => r.name, (v) => LightingPositionsCompanion(name: Value(v)));
+  Future<void> renamePosition(int id, String name) async {
+    final oldRow = await (_db.select(_db.lightingPositions)..where((t) => t.id.equals(id))).getSingle();
+    final batchId = _tracked.beginImportBatch();
+    await _db.transaction(() async {
+      // 1. Rename the position itself.
+      await _updateField(id, 'name', name, (r) => r.name, (v) => LightingPositionsCompanion(name: Value(v)), batchId: batchId);
+
+      // 2. Update all fixtures referencing the old name.
+      final fixtures = await (_db.select(_db.fixtures)..where((f) => f.position.equals(oldRow.name))).get();
+      for (final f in fixtures) {
+        await _tracked.updateField(
+          table: 'fixtures',
+          id: f.id,
+          field: 'position',
+          newValue: name,
+          readCurrentValue: () async => f.position,
+          applyUpdate: (v) async {
+            await (_db.update(_db.fixtures)..where((r) => r.id.equals(f.id))).write(FixturesCompanion(position: Value(v)));
+          },
+          batchId: batchId,
+        );
+      }
+    });
+  }
 
   Future<void> updateTrim(int id, String? value) => _updateField(
       id, 'trim', value, (r) => r.trim, (v) => LightingPositionsCompanion(trim: Value(v)));

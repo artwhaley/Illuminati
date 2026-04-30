@@ -8,38 +8,19 @@ import '../../repositories/revision_repository.dart';
 import '../../repositories/fixture_repository.dart';
 import '../../services/commit_service.dart';
 import '../../database/database.dart';
+import '../../ui/spreadsheet/column_spec.dart';
 
-// ── Column definition ─────────────────────────────────────────────────────────
-//
-// _ColDef is the unit of layout flexibility.  Each card receives a List<_ColDef>
-// so callers can swap column sets without touching the card widget — e.g., a
-// position-only card or a network-info card would just pass a different list.
-// fieldNames maps revision.fieldName values to this column so the history rows
-// know which cell to highlight when a revision touches a given DB column.
-
-class _ColDef {
-  const _ColDef({
-    required this.key,
-    required this.label,
-    required this.width,
-    this.fieldNames = const [],
-  });
-
-  final String key;
-  final String label;
-  final double width;
-  final List<String> fieldNames; // revision.fieldName values that belong here
-}
-
-// Default fixture column set — extendable; swap per card type in the future.
-const _kFixtureCols = <_ColDef>[
-  _ColDef(key: 'chan',     label: 'CHAN',         width:  60, fieldNames: ['channel']),
-  _ColDef(key: 'dimmer',  label: 'ADDRESS',      width:  80, fieldNames: ['address']),
-  _ColDef(key: 'position',label: 'POSITION',     width: 130, fieldNames: ['position']),
-  _ColDef(key: 'unit',    label: 'UNIT #',       width:  55, fieldNames: ['unit_number']),
-  _ColDef(key: 'type',    label: 'FIXTURE TYPE', width: 130, fieldNames: ['fixture_type']),
-  _ColDef(key: 'function',label: 'PURPOSE',      width: 110, fieldNames: ['function']),
-  _ColDef(key: 'focus',   label: 'FOCUS AREA',   width: 110, fieldNames: ['focus']),
+/// Columns shown on fixture review cards in the Maintenance tab.
+/// This is an intentionally reduced view — not every spreadsheet column
+/// belongs on a maintenance card.
+final List<ColumnSpec> _kFixtureCols = [
+  kColumnById['chan']!,
+  kColumnById['dimmer']!,
+  kColumnById['position']!,
+  kColumnById['unit']!,
+  kColumnById['type']!,
+  kColumnById['function']!,
+  kColumnById['focus']!,
 ];
 
 // ── Color palette ─────────────────────────────────────────────────────────────
@@ -81,24 +62,8 @@ class _HistoryRow {
   final String? changedCol; // which col key was changed by this revision
 }
 
-// ── Utilities ─────────────────────────────────────────────────────────────────
-
-Map<String, String> _buildFieldMap(List<_ColDef> cols) => {
-  for (final col in cols)
-    for (final field in col.fieldNames)
-      field: col.key,
-};
-
-String? _getFixtureVal(FixtureRow f, String colKey) => switch (colKey) {
-  'chan'     => f.channel,
-  'dimmer'   => f.dimmer,
-  'position' => f.position,
-  'unit'     => f.unitNumber?.toString(),
-  'type'     => f.fixtureType,
-  'function' => f.function,
-  'focus'    => f.focus,
-  _          => null,
-};
+String? _getFixtureVal(FixtureRow f, String colKey) =>
+    kColumnById[colKey]?.getValue(f);
 
 String _formatTs(String ts) {
   try {
@@ -117,18 +82,17 @@ String _formatTs(String ts) {
 /// Builds history rows for a tabular card: grey baseline at top, then revision
 /// rows oldest→newest.  The staging row (editable, at the bottom) is separate.
 List<_HistoryRow> _buildHistoryRows(
-    FixtureRow f, List<RevisionView> revs, List<_ColDef> cols) {
-  final fieldMap = _buildFieldMap(cols);
+    FixtureRow f, List<RevisionView> revs, List<ColumnSpec> cols) {
   final sorted   = List<RevisionView>.from(revs)
     ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
   // Baseline: oldValue of each col's earliest revision; current value otherwise.
   final baseline = <String, String?>{
-    for (final col in cols) col.key: _getFixtureVal(f, col.key)
+    for (final col in cols) col.id: _getFixtureVal(f, col.id)
   };
   final earliestByCol = <String, RevisionView>{};
   for (final rev in sorted) {
-    final col = fieldMap[rev.fieldName ?? ''];
+    final col = kColumnByDbField[rev.fieldName ?? '']?.id;
     if (col != null) { earliestByCol.putIfAbsent(col, () => rev); }
   }
   for (final e in earliestByCol.entries) {
@@ -138,7 +102,7 @@ List<_HistoryRow> _buildHistoryRows(
   // Latest revision per col drives cyan vs purple.
   final latestByCol = <String, RevisionView>{};
   for (final rev in sorted) {
-    final col = fieldMap[rev.fieldName ?? ''];
+    final col = kColumnByDbField[rev.fieldName ?? '']?.id;
     if (col != null) { latestByCol[col] = rev; }
   }
   final latestIds = latestByCol.values.map((r) => r.id).toSet();
@@ -153,7 +117,7 @@ List<_HistoryRow> _buildHistoryRows(
   ];
 
   for (final rev in sorted) {
-    final col   = fieldMap[rev.fieldName ?? ''];
+    final col   = kColumnByDbField[rev.fieldName ?? '']?.id;
     final cells = Map<String, String?>.from(baseline);
     if (col != null) { cells[col] = rev.newValue?.toString(); }
 
@@ -172,10 +136,8 @@ List<_HistoryRow> _buildHistoryRows(
 
 /// Returns the initial staging row values: current fixture state (which already
 /// reflects all applied pending revisions).
-Map<String, String?> _initialStagingValues(FixtureRow f, List<_ColDef> cols) =>
-    { for (final col in cols) col.key: _getFixtureVal(f, col.key) };
-
-// ── Tab shell ─────────────────────────────────────────────────────────────────
+Map<String, String?> _initialStagingValues(FixtureRow f, List<ColumnSpec> cols) =>
+    { for (final col in cols) col.id: _getFixtureVal(f, col.id) };
 
 class MaintenanceTab extends ConsumerStatefulWidget {
   const MaintenanceTab({super.key});
@@ -191,7 +153,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 1, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -211,6 +173,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab>
             isScrollable: false,
             tabs: const [
               Tab(text: 'Edit Review'),
+              Tab(text: 'Maintenance Log'),
             ],
           ),
         ),
@@ -219,6 +182,7 @@ class _MaintenanceTabState extends ConsumerState<MaintenanceTab>
             controller: _tabController,
             children: const [
               EditReviewTab(),
+              MaintenanceLogTab(),
             ],
           ),
         ),
@@ -388,7 +352,7 @@ class _EditReviewTabState extends ConsumerState<EditReviewTab> {
 // grid, since we have no known column structure for arbitrary tables.
 
 class _RevisionCard extends ConsumerWidget {
-  const _RevisionCard({
+  _RevisionCard({
     super.key,
     required this.fixture,
     required this.fixtureId,
@@ -396,8 +360,8 @@ class _RevisionCard extends ConsumerWidget {
     required this.cardDecision,
     required this.onApprove,
     required this.onReject,
-    this.columns = _kFixtureCols,
-  });
+    List<ColumnSpec>? columns,
+  }) : columns = columns ?? _kFixtureCols;
 
   final FixtureRow? fixture;
   final int? fixtureId;
@@ -405,7 +369,7 @@ class _RevisionCard extends ConsumerWidget {
   final ReviewDecision? cardDecision;
   final VoidCallback onApprove;
   final VoidCallback onReject;
-  final List<_ColDef> columns;
+  final List<ColumnSpec> columns;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -499,7 +463,7 @@ class _TabularCardBody extends ConsumerWidget {
 
   final FixtureRow fixture;
   final List<RevisionView> revisions;
-  final List<_ColDef> columns;
+  final List<ColumnSpec> columns;
   final ReviewDecision? cardDecision;
 
   @override
@@ -537,7 +501,7 @@ class _TabularCardBody extends ConsumerWidget {
 
 class _HeaderRow extends StatelessWidget {
   const _HeaderRow({required this.columns});
-  final List<_ColDef> columns;
+  final List<ColumnSpec> columns;
 
   @override
   Widget build(BuildContext context) {
@@ -545,7 +509,7 @@ class _HeaderRow extends StatelessWidget {
       children: [
         for (final col in columns)
           SizedBox(
-            width: col.width,
+            width: col.defaultWidth,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Text(col.label,
@@ -566,7 +530,7 @@ class _HeaderRow extends StatelessWidget {
 class _ReadOnlyRow extends StatelessWidget {
   const _ReadOnlyRow({super.key, required this.row, required this.columns});
   final _HistoryRow row;
-  final List<_ColDef> columns;
+  final List<ColumnSpec> columns;
 
   @override
   Widget build(BuildContext context) {
@@ -599,14 +563,14 @@ class _ReadOnlyRow extends StatelessWidget {
     );
   }
 
-  Widget _cell(_ColDef col) {
-    final isChanged  = row.changedCol == col.key;
+  Widget _cell(ColumnSpec col) {
+    final isChanged  = row.changedCol == col.id;
     final textColor  = isChanged ? _fgChanged : row.textColor;
-    final value      = row.cells[col.key];
+    final value      = row.cells[col.id];
     final display    = (value == null || value.isEmpty) ? '—' : value;
 
     return SizedBox(
-      width: col.width,
+      width: col.defaultWidth,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         child: Text(display,
@@ -638,7 +602,7 @@ class _StagingRow extends ConsumerStatefulWidget {
     required this.revisions,
   });
 
-  final List<_ColDef> columns;
+  final List<ColumnSpec> columns;
   final Map<String, String?> initialValues;
   final ReviewDecision? decision;
   final List<RevisionView> revisions;
@@ -656,13 +620,13 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
   void initState() {
     super.initState();
     for (final col in widget.columns) {
-      _ctrls[col.key]     = TextEditingController(
-          text: widget.initialValues[col.key] ?? '');
+      _ctrls[col.id]     = TextEditingController(
+          text: widget.initialValues[col.id] ?? '');
       final fn = FocusNode();
       fn.addListener(() {
-        if (!fn.hasFocus && _editingCol == col.key) { _commit(col.key); }
+        if (!fn.hasFocus && _editingCol == col.id) { _commit(col.id); }
       });
-      _focusNodes[col.key] = fn;
+      _focusNodes[col.id] = fn;
     }
   }
 
@@ -700,9 +664,8 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
 
     // If a pending revision already covers this column, update its newValue
     // in-place rather than creating an additional revision row.
-    final fieldMap     = _buildFieldMap(widget.columns);
     final pendingMatch = widget.revisions
-        .where((r) => fieldMap[r.fieldName ?? ''] == colKey)
+        .where((r) => kColumnByDbField[r.fieldName ?? '']?.id == colKey)
         .toList()
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
@@ -715,21 +678,13 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
 
     // No existing revision for this col — create one via the fixture repo so it
     // enters the normal revision/approval flow.
-    // NOTE: this block is fixture-specific; non-fixture card types should pass
-    // a custom save handler instead of relying on this switch.
     if (fixtureRepo == null) return;
     final fid = widget.revisions.firstOrNull?.targetId;
     if (fid == null) return;
 
-    switch (colKey) {
-      case 'chan':     await fixtureRepo.updateIntensityChannel(fid, newValue);
-      case 'dimmer':  await fixtureRepo.updatePartAddress(fid, 0, newValue);
-      case 'position':await fixtureRepo.updatePosition(fid, newValue);
-      case 'unit':    await fixtureRepo.updateUnitNumber(
-                            fid, int.tryParse(newValue ?? ''));
-      case 'type':    await fixtureRepo.updateFixtureType(fid, newValue);
-      case 'function':await fixtureRepo.updateFunction(fid, newValue);
-      case 'focus':   await fixtureRepo.updateFocus(fid, newValue);
+    final spec = kColumnById[colKey];
+    if (spec?.onEdit != null) {
+      await spec!.onEdit!(fid, newValue, fixtureRepo);
     }
   }
 
@@ -771,25 +726,25 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
     );
   }
 
-  Widget _buildCell(_ColDef col) {
-    final isEditing = _editingCol == col.key;
+  Widget _buildCell(ColumnSpec col) {
+    final isEditing = _editingCol == col.id;
     final fg        = _fg;
     final bar       = _bar;
 
     return SizedBox(
-      width: col.width,
+      width: col.defaultWidth,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: GestureDetector(
-          onDoubleTap: () => _activate(col.key),
+          onDoubleTap: () => _activate(col.id),
           child: isEditing ? _editField(col, fg, bar) : _labelField(col, fg, bar),
         ),
       ),
     );
   }
 
-  Widget _labelField(_ColDef col, Color fg, Color bar) {
-    final text = _ctrls[col.key]?.text ?? '';
+  Widget _labelField(ColumnSpec col, Color fg, Color bar) {
+    final text = _ctrls[col.id]?.text ?? '';
     final isEmpty = text.isEmpty;
     return Container(
       height: 28,
@@ -810,12 +765,12 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
     );
   }
 
-  Widget _editField(_ColDef col, Color fg, Color bar) {
+  Widget _editField(ColumnSpec col, Color fg, Color bar) {
     return SizedBox(
       height: 28,
       child: TextField(
-        controller: _ctrls[col.key],
-        focusNode:  _focusNodes[col.key],
+        controller: _ctrls[col.id],
+        focusNode:  _focusNodes[col.id],
         style: GoogleFonts.jetBrainsMono(fontSize: 12, color: fg),
         decoration: InputDecoration(
           isDense: true,
@@ -827,7 +782,7 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
               borderSide: BorderSide(color: bar, width: 1.5)),
           filled: false,
         ),
-        onSubmitted: (_) => _commit(col.key),
+        onSubmitted: (_) => _commit(col.id),
       ),
     );
   }
@@ -880,15 +835,15 @@ class _RevisionDiffRow extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   color: const Color(0xFF78909C))),
           const SizedBox(height: 2),
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               _ValueChip(label: oldVal ?? '—', fg: _fgPurple, bg: _bgPurple),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(Icons.arrow_forward, size: 12, color: Colors.grey),
-              ),
+              const Icon(Icons.arrow_forward, size: 12, color: Colors.grey),
               _ValueChip(label: newVal ?? '—', fg: _fgCyan,   bg: _bgCyan),
-              const SizedBox(width: 12),
+              const SizedBox(width: 4),
               Text('${_formatTs(revision.timestamp)}  ${revision.userId}',
                   style: GoogleFonts.jetBrainsMono(
                       fontSize: 10, color: const Color(0xFF546E7A))),
@@ -908,13 +863,17 @@ class _ValueChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 300),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
           color: bg, borderRadius: BorderRadius.circular(3)),
       child: Text(label,
           style: GoogleFonts.jetBrainsMono(
-              fontSize: 11, color: fg, fontWeight: FontWeight.bold)),
+              fontSize: 11, color: fg, fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis),
+      ),
     );
   }
 }
@@ -965,6 +924,188 @@ class _ActionButton extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Maintenance Log Tab ───────────────────────────────────────────────────────
+
+class MaintenanceLogTab extends ConsumerWidget {
+  const MaintenanceLogTab({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final flaggedAsync = ref.watch(flaggedFixturesProvider);
+    final logsAsync    = ref.watch(unresolvedMaintenanceProvider);
+
+    return flaggedAsync.when(
+      data: (flagged) {
+        return logsAsync.when(
+          data: (logs) {
+            if (flagged.isEmpty && logs.isEmpty) {
+              return const Center(
+                child: Text('No unresolved maintenance items.\nEverything is looking good!',
+                    textAlign: TextAlign.center),
+              );
+            }
+
+            // Group logs by fixture
+            final logsByFixture = <int, List<MaintenanceLogData>>{};
+            for (final log in logs) {
+              logsByFixture.putIfAbsent(log.fixtureId, () => []).add(log);
+            }
+
+            // Combine into a list of "items" to show
+            final fixtureIds = {...flagged.map((f) => f.id), ...logsByFixture.keys}.toList()
+              ..sort();
+
+            final fixtureMap = {for (final f in flagged) f.id: f};
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: fixtureIds.length,
+              itemBuilder: (context, index) {
+                final fid = fixtureIds[index];
+                final fixture = fixtureMap[fid];
+                final fixtureLogs = logsByFixture[fid] ?? [];
+
+                return _MaintenanceItemCard(
+                  fixtureId: fid,
+                  fixture: fixture,
+                  logs: fixtureLogs,
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error loading logs: $e')),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Error loading flagged fixtures: $e')),
+    );
+  }
+}
+
+class _MaintenanceItemCard extends ConsumerWidget {
+  const _MaintenanceItemCard({
+    required this.fixtureId,
+    this.fixture,
+    required this.logs,
+  });
+
+  final int fixtureId;
+  final FixtureRow? fixture;
+  final List<MaintenanceLogData> logs;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final f = fixture;
+    
+    final title = f != null
+        ? 'Ch ${f.channel ?? "—"}  ·  ${f.position ?? "No Position"}  ·  U#${f.unitNumber ?? "?"}'
+        : 'Fixture #$fixtureId';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.flag, color: Colors.red, size: 16),
+                const SizedBox(width: 8),
+                Text(title,
+                    style: GoogleFonts.jetBrainsMono(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface)),
+                const Spacer(),
+                if (f != null && f.fixtureType != null)
+                  Text(f.fixtureType!,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          if (logs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text('Flagged for review (no log entry).',
+                  style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic)),
+            )
+          else
+            ...logs.map((log) => _MaintenanceLogRow(log: log)),
+          
+          if (logs.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.tonalIcon(
+                  onPressed: () => _resolveAll(ref),
+                  icon: const Icon(Icons.check, size: 16),
+                  label: const Text('Resolve All'),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resolveAll(WidgetRef ref) async {
+    final repo = ref.read(operationalRepoProvider);
+    if (repo == null) return;
+    for (final log in logs) {
+      await repo.resolveMaintenance(log.id);
+    }
+  }
+}
+
+class _MaintenanceLogRow extends ConsumerWidget {
+  const _MaintenanceLogRow({required this.log});
+  final MaintenanceLogData log;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(log.description, style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 4),
+                Text('${_formatTs(log.timestamp)}  ·  ${log.userId}',
+                    style: GoogleFonts.jetBrainsMono(
+                        fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.check_circle_outline, size: 20),
+            tooltip: 'Resolve',
+            onPressed: () => ref.read(operationalRepoProvider)?.resolveMaintenance(log.id),
+          ),
+        ],
       ),
     );
   }

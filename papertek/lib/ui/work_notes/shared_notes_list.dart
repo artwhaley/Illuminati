@@ -14,33 +14,74 @@ class SharedNotesList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final provider = noteType == 'work' ? workNotesProvider : boardNotesProvider;
     final notesAsync = ref.watch(provider);
 
-    return Column(
-      children: [
-        _buildToolbar(context, ref),
-        const Divider(height: 1),
-        Expanded(
-          child: notesAsync.when(
-            data: (notes) {
-              if (notes.isEmpty) {
-                return const Center(child: Text('No notes found.'));
-              }
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: notes.length,
-                itemBuilder: (context, index) {
-                  return _NoteCard(note: notes[index]);
-                },
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Error loading notes: $e')),
+    return Scaffold(
+      body: Column(
+        children: [
+          _buildToolbar(context, ref),
+          const Divider(height: 1),
+          Expanded(
+            child: notesAsync.when(
+              data: (notes) {
+                if (notes.isEmpty) {
+                  return const Center(child: Text('No notes found.'));
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: notes.length,
+                  itemBuilder: (context, index) {
+                    return _NoteCard(note: notes[index]);
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, st) => Center(child: Text('Error loading notes: $e')),
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddNoteDialog(context, ref),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _showAddNoteDialog(BuildContext context, WidgetRef ref) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('New ${noteType == "work" ? "Work" : "Board"} Note'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'Note body...',
+            border: OutlineInputBorder(),
           ),
         ),
-      ],
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              final repo = ref.read(notesRepoProvider);
+              if (repo != null && ctrl.text.isNotEmpty) {
+                await repo.createNote(
+                  type: noteType,
+                  body: ctrl.text,
+                  userId: 'local-user',
+                );
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
     );
   }
 
