@@ -342,6 +342,8 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                           availableCols: kDefaultColumnOrder.where((c) => !_controller.hiddenCols.contains(c) && c != '#').toList(),
                                           onColumnsPressed: _showColumnPicker,
                                           onDeselect: _clearSelection,
+                                          groupBySort1: _controller.groupBySort1,
+                                          onGroupBySort1Changed: (val) => _controller.setGroupBySort1(val ?? false),
                                         ),
                                       ),
                                       Expanded(
@@ -358,6 +360,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                             source: _source,
                                             allowSorting: true, 
                                             allowMultiColumnSorting: true,
+                                            allowExpandCollapseGroup: true,
                                             allowFiltering: false,
                                             allowEditing: true,
                                             allowColumnsResizing: true,

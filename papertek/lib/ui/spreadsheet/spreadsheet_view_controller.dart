@@ -79,6 +79,40 @@ class SpreadsheetViewController extends ChangeNotifier {
   SpreadsheetViewPreset? activePreset;
   bool isPresetDirty = false;
 
+  bool groupBySort1 = false;
+  bool _groupingActive = false;
+
+  void setGroupBySort1(bool enabled) {
+    if (groupBySort1 == enabled) return;
+    groupBySort1 = enabled;
+    _syncGridGrouping();
+    notifyListeners();
+  }
+
+  void _syncGridGrouping() {
+    if (_groupingActive) {
+      try {
+        dataSource.clearColumnGroups();
+      } catch (_) {
+        // In some Syncfusion versions, this crashes if the grid isn't fully attached.
+      }
+      _groupingActive = false;
+    }
+
+    if (groupBySort1 && sortSpecs.isNotEmpty) {
+      final sort1 = sortSpecs.first.column;
+      try {
+        dataSource.addColumnGroup(ColumnGroup(
+          name: sort1,
+          sortGroupRows: true,
+        ));
+        _groupingActive = true;
+      } catch (_) {
+        // Swallow if grid not ready
+      }
+    }
+  }
+
   // ── Initialization ──────────────────────────────────────────────────────────
   void _init() {
     colOrder = _columns.map((c) => c.id).toList();
@@ -88,6 +122,13 @@ class SpreadsheetViewController extends ChangeNotifier {
     dataSource.onSortChanged = _onDataSourceSortChanged;
     // Initial sort sync
     _syncSortToDataSource();
+    
+    // Initial grouping sync - delay to allow grid to mount and avoid null-check crashes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (gridController.hashCode != 0) { // Tiny check to see if we're still alive
+        _syncGridGrouping();
+      }
+    });
   }
 
   void updateColumns(List<ColumnSpec> columns) {
@@ -189,6 +230,7 @@ class SpreadsheetViewController extends ChangeNotifier {
         column: s.name,
         ascending: s.sortDirection == DataGridSortDirection.ascending,
       )).toList();
+      _syncGridGrouping();
       isPresetDirty = true;
     } finally {
       _isSyncingSort = false;
@@ -213,6 +255,7 @@ class SpreadsheetViewController extends ChangeNotifier {
       }
     }
     _syncGridSort();
+    _syncGridGrouping();
     isPresetDirty = true;
   }
 
@@ -220,6 +263,7 @@ class SpreadsheetViewController extends ChangeNotifier {
     if (level < sortSpecs.length) {
       sortSpecs[level] = sortSpecs[level].toggle();
       _syncGridSort();
+      _syncGridGrouping();
       isPresetDirty = true;
     }
   }
@@ -302,9 +346,16 @@ class SpreadsheetViewController extends ChangeNotifier {
       final specs = (data['sorts'] as List).map((s) => SortSpec.fromJson(s as Map<String, dynamic>)).toList();
       sortSpecs = specs.where((s) => kColumnById.containsKey(s.column)).toList();
     }
+
+    if (data.containsKey('groupBySort1')) {
+      groupBySort1 = data['groupBySort1'] as bool;
+    } else {
+      groupBySort1 = false;
+    }
     
     dataSource.setVisibleCols(visibleColOrder);
     _syncGridSort();
+    _syncGridGrouping();
   }
 
   Map<String, dynamic> captureCurrentState() {
@@ -314,6 +365,7 @@ class SpreadsheetViewController extends ChangeNotifier {
       'hiddenColumns': hiddenCols.toList(),
       'columnWidths': colWidths,
       'sorts': sortSpecs.map((s) => s.toJson()).toList(),
+      'groupBySort1': groupBySort1,
     };
   }
 

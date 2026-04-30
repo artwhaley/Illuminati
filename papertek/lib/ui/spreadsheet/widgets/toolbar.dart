@@ -14,6 +14,8 @@ class SpreadsheetToolbar extends StatelessWidget {
     required this.availableCols,
     required this.onColumnsPressed,
     required this.onDeselect,
+    required this.groupBySort1,
+    required this.onGroupBySort1Changed,
   });
 
   final ThemeData theme;
@@ -24,6 +26,8 @@ class SpreadsheetToolbar extends StatelessWidget {
   final List<String> availableCols;
   final void Function(BuildContext) onColumnsPressed;
   final VoidCallback onDeselect;
+  final bool groupBySort1;
+  final ValueChanged<bool?> onGroupBySort1Changed;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +50,30 @@ class SpreadsheetToolbar extends StatelessWidget {
                 _buildSortLevel(1, '2nd'),
                 const SizedBox(width: 12),
                 _buildSortLevel(2, '3rd'),
+                const SizedBox(width: 24),
+                // Group By Sort 1 Checkbox
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: groupBySort1,
+                        onChanged: onGroupBySort1Changed,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Group By Sort 1',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
