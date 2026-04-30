@@ -118,6 +118,7 @@ class CommitService {
             [oldVal, rev.targetId],
           );
         }
+        break;
       case 'insert':
         if (revisionTableNameIsSafe(rev.targetTable)) {
           await _db.customStatement(
@@ -125,6 +126,7 @@ class CommitService {
             [rev.targetId],
           );
         }
+        break;
       case 'delete':
         if (rev.oldValue != null && revisionTableNameIsSafe(rev.targetTable)) {
           final snapshot = jsonDecode(rev.oldValue!) as Map<String, dynamic>;
@@ -132,6 +134,7 @@ class CommitService {
           // Since we are in a transaction, we can call it.
           await _tracked.restoreFromSnapshot(rev.targetTable, snapshot);
         }
+        break;
       case 'import_batch':
         // Batch rows are rejected individually if the supervisor selects them.
         // The summary row itself doesn't have a direct rollback logic here.

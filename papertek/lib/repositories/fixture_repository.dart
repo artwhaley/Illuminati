@@ -140,10 +140,38 @@ class FixtureRepository {
           ..sort((a, b) => a.partOrder.compareTo(b.partOrder));
         final intensityPart = intensityParts.firstOrNull;
 
-        // Aggregate strings for the parent row
-        final fixtureGels = gels.where((g) => g.fixtureId == f.id).toList();
-        final fixtureGobos = gobos.where((g) => g.fixtureId == f.id).toList();
-        final fixtureAccs = accs.where((a) => a.fixtureId == f.id).toList();
+        // Aggregate strings for the parent row, ordered by:
+        // part_order asc, sort_order asc, id asc
+        final partOrderById = <int, int>{
+          for (final p in fParts) p.id: p.partOrder,
+        };
+        final fixtureGels = gels.where((g) => g.fixtureId == f.id).toList()
+          ..sort((a, b) {
+            final partCmp = (partOrderById[a.fixturePartId] ?? 0)
+                .compareTo(partOrderById[b.fixturePartId] ?? 0);
+            if (partCmp != 0) return partCmp;
+            final sortCmp = a.sortOrder.compareTo(b.sortOrder);
+            if (sortCmp != 0) return sortCmp;
+            return a.id.compareTo(b.id);
+          });
+        final fixtureGobos = gobos.where((g) => g.fixtureId == f.id).toList()
+          ..sort((a, b) {
+            final partCmp = (partOrderById[a.fixturePartId] ?? 0)
+                .compareTo(partOrderById[b.fixturePartId] ?? 0);
+            if (partCmp != 0) return partCmp;
+            final sortCmp = a.sortOrder.compareTo(b.sortOrder);
+            if (sortCmp != 0) return sortCmp;
+            return a.id.compareTo(b.id);
+          });
+        final fixtureAccs = accs.where((a) => a.fixtureId == f.id).toList()
+          ..sort((a, b) {
+            final partCmp = (partOrderById[a.fixturePartId] ?? 0)
+                .compareTo(partOrderById[b.fixturePartId] ?? 0);
+            if (partCmp != 0) return partCmp;
+            final sortCmp = a.sortOrder.compareTo(b.sortOrder);
+            if (sortCmp != 0) return sortCmp;
+            return a.id.compareTo(b.id);
+          });
 
         final colorStr = fixtureGels.map((g) => g.color).join(' + ');
         final goboStr = fixtureGobos.map((g) => g.goboNumber).join(' + ');
@@ -557,6 +585,7 @@ class FixtureRepository {
       .get();
 
   Future<void> addGel({required int fixtureId, required int partId, required String color}) async {
+    await _requireFixturePartMatch(fixtureId: fixtureId, partId: partId);
     final maxOrder = await _maxCollectionOrder(_db.gels, partId);
     await _tracked.insertRow(
       table: 'gels',
@@ -624,6 +653,7 @@ class FixtureRepository {
       .get();
 
   Future<void> addGobo({required int fixtureId, required int partId, required String goboNumber}) async {
+    await _requireFixturePartMatch(fixtureId: fixtureId, partId: partId);
     final maxOrder = await _maxCollectionOrder(_db.gobos, partId);
     await _tracked.insertRow(
       table: 'gobos',
@@ -691,6 +721,7 @@ class FixtureRepository {
       .get();
 
   Future<void> addAccessory({required int fixtureId, required int partId, required String name}) async {
+    await _requireFixturePartMatch(fixtureId: fixtureId, partId: partId);
     final maxOrder = await _maxCollectionOrder(_db.accessories, partId);
     await _tracked.insertRow(
       table: 'accessories',
@@ -800,6 +831,21 @@ class FixtureRepository {
       (_db.select(_db.fixtureParts)
             ..where((p) => p.fixtureId.equals(fixtureId) & p.partOrder.equals(partOrder)))
           .getSingleOrNull();
+
+  Future<void> _requireFixturePartMatch({
+    required int fixtureId,
+    required int partId,
+  }) async {
+    final part = await (_db.select(_db.fixtureParts)..where((p) => p.id.equals(partId))).getSingleOrNull();
+    if (part == null) {
+      throw StateError('Fixture part $partId does not exist.');
+    }
+    if (part.fixtureId != fixtureId) {
+      throw StateError(
+        'Fixture part $partId belongs to fixture ${part.fixtureId}, not $fixtureId.',
+      );
+    }
+  }
 
   Future<int> _maxPartOrder(int fixtureId) async {
     final all = await (_db.select(_db.fixtureParts)..where((p) => p.fixtureId.equals(fixtureId)))

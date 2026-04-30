@@ -17,6 +17,7 @@ const Set<String> kRevisionTrackedTables = {
   'gels',
   'gobos',
   'accessories',
+  'custom_field_values',
   'lighting_positions',
   'position_groups',
   'fixture_types',

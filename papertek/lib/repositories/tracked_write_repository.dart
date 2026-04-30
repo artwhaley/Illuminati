@@ -607,6 +607,8 @@ class TrackedWriteRepository {
         return {_db.gobos};
       case 'accessories':
         return {_db.accessories};
+      case 'custom_field_values':
+        return {_db.customFieldValues};
       default:
         return {};
     }
