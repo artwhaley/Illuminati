@@ -10,6 +10,7 @@ class FixturePartRow {
   const FixturePartRow({
     required this.id,
     required this.partOrder,
+    this.partName,
     this.channel,
     this.address,
     this.circuit,
@@ -24,6 +25,7 @@ class FixturePartRow {
 
   final int id;
   final int partOrder;
+  final String? partName;
   final String? channel;
   final String? address;
   final String? circuit;
@@ -223,9 +225,10 @@ class FixtureRepository {
           goboByPart: goboByPart,
           accessoriesByPart: accessoriesByPart,
           customFieldValues: fCustomValues,
-          parts: intensityParts.map((p) => FixturePartRow(
+          parts: fParts.map((p) => FixturePartRow(
             id: p.id,
             partOrder: p.partOrder,
+            partName: p.partName,
             channel: p.channel,
             address: p.address,
             circuit: p.circuit,

@@ -213,9 +213,20 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   void _clearSelection() {
     _source.setSelectedCell(null, null);
     _sidebarSelection.value = null;
-    _controller.gridController.selectedIndex = -1;
-    _controller.gridController.selectedRow = null;
-    _controller.gridController.moveCurrentCellTo(RowColumnIndex(-1, -1));
+    
+    // Using a microtask to avoid conflicts if this is called during a gesture/build cycle.
+    Future.microtask(() {
+      if (!mounted) return;
+      try {
+        if (_controller.gridController.selectedRow != null || 
+            _controller.gridController.selectedIndex != -1) {
+          _controller.gridController.selectedRow = null;
+          _controller.gridController.moveCurrentCellTo(RowColumnIndex(-1, -1));
+        }
+      } catch (e) {
+        debugPrint('SfDataGrid selection clear safely caught: $e');
+      }
+    });
   }
 
   void _syncSelectionFromRowCol(RowColumnIndex rci) {
@@ -344,6 +355,8 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                           onDeselect: _clearSelection,
                                           groupBySort1: _controller.groupBySort1,
                                           onGroupBySort1Changed: (val) => _controller.setGroupBySort1(val ?? false),
+                                          multipartMode: _controller.multipartMode,
+                                          onMultipartModeChanged: (val) => _controller.setMultipartMode(val ? MultipartDisplayMode.headerless : MultipartDisplayMode.header),
                                         ),
                                       ),
                                       Expanded(
@@ -354,6 +367,16 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                             selectionColor: theme.brightness == Brightness.dark
                                                 ? const Color(0xFF42451A).withValues(alpha: 0.8)
                                                 : theme.colorScheme.primary.withValues(alpha: 0.1),
+                                            captionSummaryRowColor: theme.brightness == Brightness.dark
+                                                ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.85)
+                                                : theme.colorScheme.surfaceContainerHigh,
+                                            indentColumnWidth: 18,
+                                            indentColumnColor: theme.colorScheme.surface,
+                                            groupExpanderIcon: Icon(
+                                              Icons.keyboard_arrow_down_rounded,
+                                              size: 18,
+                                              color: theme.colorScheme.primary,
+                                            ),
                                           ),
                                           child: SfDataGrid(
                                             controller: _controller.gridController,

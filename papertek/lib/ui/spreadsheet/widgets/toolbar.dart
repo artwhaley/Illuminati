@@ -2,6 +2,7 @@
 /// Handles searching, multi-level sorting, and column management access.
 import 'package:flutter/material.dart';
 import '../column_spec.dart';
+import '../spreadsheet_view_controller.dart';
 
 class SpreadsheetToolbar extends StatelessWidget {
   const SpreadsheetToolbar({
@@ -16,6 +17,8 @@ class SpreadsheetToolbar extends StatelessWidget {
     required this.onDeselect,
     required this.groupBySort1,
     required this.onGroupBySort1Changed,
+    required this.multipartMode,
+    required this.onMultipartModeChanged,
   });
 
   final ThemeData theme;
@@ -28,6 +31,8 @@ class SpreadsheetToolbar extends StatelessWidget {
   final VoidCallback onDeselect;
   final bool groupBySort1;
   final ValueChanged<bool?> onGroupBySort1Changed;
+  final MultipartDisplayMode multipartMode;
+  final ValueChanged<bool> onMultipartModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +72,30 @@ class SpreadsheetToolbar extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       'Group By Sort 1',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 24),
+                // Headerless Mode Checkbox
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: multipartMode == MultipartDisplayMode.headerless,
+                        onChanged: (val) => onMultipartModeChanged(val == true),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Headerless',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 10,

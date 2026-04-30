@@ -28,6 +28,11 @@ import 'column_spec.dart';
 import 'fixture_data_source.dart';
 import 'fixture_draft.dart';
 
+enum MultipartDisplayMode {
+  header,
+  headerless,
+}
+
 class SpreadsheetViewController extends ChangeNotifier {
   SpreadsheetViewController({
     required this.repo,
@@ -80,12 +85,21 @@ class SpreadsheetViewController extends ChangeNotifier {
   bool isPresetDirty = false;
 
   bool groupBySort1 = false;
+  MultipartDisplayMode multipartMode = MultipartDisplayMode.header;
   bool _groupingActive = false;
 
   void setGroupBySort1(bool enabled) {
     if (groupBySort1 == enabled) return;
     groupBySort1 = enabled;
     _syncGridGrouping();
+    notifyListeners();
+  }
+
+  void setMultipartMode(MultipartDisplayMode mode) {
+    if (multipartMode == mode) return;
+    multipartMode = mode;
+    dataSource.setMultipartMode(mode);
+    isPresetDirty = true;
     notifyListeners();
   }
 
@@ -352,7 +366,18 @@ class SpreadsheetViewController extends ChangeNotifier {
     } else {
       groupBySort1 = false;
     }
+
+    if (data.containsKey('multipartMode')) {
+      final modeStr = data['multipartMode'] as String;
+      multipartMode = MultipartDisplayMode.values.firstWhere(
+        (e) => e.name == modeStr,
+        orElse: () => MultipartDisplayMode.header,
+      );
+    } else {
+      multipartMode = MultipartDisplayMode.header;
+    }
     
+    dataSource.setMultipartMode(multipartMode);
     dataSource.setVisibleCols(visibleColOrder);
     _syncGridSort();
     _syncGridGrouping();
@@ -366,6 +391,7 @@ class SpreadsheetViewController extends ChangeNotifier {
       'columnWidths': colWidths,
       'sorts': sortSpecs.map((s) => s.toJson()).toList(),
       'groupBySort1': groupBySort1,
+      'multipartMode': multipartMode.name,
     };
   }
 

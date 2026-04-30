@@ -81,7 +81,7 @@ class ColumnSpec {
   final bool isPartLevel;
   
   /// Accessor for part-level data (for child rows).
-  final String? Function(FixturePartRow)? getPartValue;
+  final String? Function(FixtureRow, FixturePartRow)? getPartValue;
 
   /// Callback to update the database for this column.
   final Future<void> Function(
@@ -123,7 +123,7 @@ final List<ColumnSpec> kColumns = [
     getValue: (f) => f.channel,
     isNumeric: true,
     isPartLevel: true,
-    getPartValue: (p) => p.channel,
+    getPartValue: (f, p) => p.channel,
     onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null 
         ? repo.updatePartChannel(id, partOrder, val)
         : repo.updateIntensityChannel(id, val),
@@ -136,7 +136,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.patch,
     getValue: (f) => f.dimmer,
     isPartLevel: true,
-    getPartValue: (p) => p.address,
+    getPartValue: (f, p) => p.address,
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePartAddress(id, partOrder ?? 0, val),
   ),
   ColumnSpec(
@@ -147,7 +147,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.patch,
     getValue: (f) => f.circuit,
     isPartLevel: true,
-    getPartValue: (p) => p.circuit,
+    getPartValue: (f, p) => p.circuit,
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePartCircuit(id, partOrder ?? 0, val),
   ),
   ColumnSpec(
@@ -176,6 +176,10 @@ final List<ColumnSpec> kColumns = [
     defaultWidth: 160.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.fixtureType,
+    getPartValue: (f, p) {
+      final name = p.partName ?? 'Part ${p.partOrder + 1}';
+      return '${f.fixtureType ?? "Fixture"} $name';
+    },
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateFixtureType(id, val),
   ),
   ColumnSpec(
@@ -212,7 +216,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.fixture,
     getValue: (f) => f.accessories,
     isPartLevel: true,
-    getPartValue: (p) => p.accessories,
+    getPartValue: (f, p) => p.accessories,
     isCollection: true,
   ),
   ColumnSpec(
@@ -222,7 +226,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.fixture,
     getValue: (f) => f.color,
     isPartLevel: true,
-    getPartValue: (p) => p.color,
+    getPartValue: (f, p) => p.color,
     isCollection: true,
   ),
   ColumnSpec(
@@ -232,7 +236,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.fixture,
     getValue: (f) => f.gobo,
     isPartLevel: true,
-    getPartValue: (p) => p.gobo,
+    getPartValue: (f, p) => p.gobo,
     isCollection: true,
   ),
   ColumnSpec(
@@ -243,7 +247,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.network,
     getValue: (f) => f.ipAddress,
     isPartLevel: true,
-    getPartValue: (p) => p.ipAddress,
+    getPartValue: (f, p) => p.ipAddress,
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityIp(id, val),
   ),
   ColumnSpec(
@@ -254,7 +258,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.network,
     getValue: (f) => f.subnet,
     isPartLevel: true,
-    getPartValue: (p) => p.subnet,
+    getPartValue: (f, p) => p.subnet,
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensitySubnet(id, val),
   ),
   ColumnSpec(
@@ -265,7 +269,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.network,
     getValue: (f) => f.macAddress,
     isPartLevel: true,
-    getPartValue: (p) => p.macAddress,
+    getPartValue: (f, p) => p.macAddress,
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityMac(id, val),
   ),
   ColumnSpec(
@@ -276,7 +280,7 @@ final List<ColumnSpec> kColumns = [
     section: ColumnSection.network,
     getValue: (f) => f.ipv6,
     isPartLevel: true,
-    getPartValue: (p) => p.ipv6,
+    getPartValue: (f, p) => p.ipv6,
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityIpv6(id, val),
   ),
   ColumnSpec(

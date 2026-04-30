@@ -24,6 +24,7 @@ import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 import '../../repositories/fixture_repository.dart';
 import 'column_spec.dart';
+import 'spreadsheet_view_controller.dart';
 
 class FixtureDataSource extends DataGridSource {
   FixtureDataSource({
@@ -33,14 +34,24 @@ class FixtureDataSource extends DataGridSource {
     required this.onNativeEditStart,
     required this.onNativeEditComplete,
   }) : _columns = columns,
-       _colById = {for (final c in columns) c.id: c};
+       _colById = {for (final c in columns) c.id: c},
+       _multipartMode = MultipartDisplayMode.header;
 
   List<ColumnSpec> _columns;
   Map<String, ColumnSpec> _colById;
+  MultipartDisplayMode _multipartMode;
+
+  void setMultipartMode(MultipartDisplayMode mode) {
+    if (_multipartMode == mode) return;
+    _multipartMode = mode;
+    _rebuildFilteredRows();
+    notifyListeners();
+  }
 
   void setColumns(List<ColumnSpec> columns) {
     _columns = columns;
     _colById = {for (final c in columns) c.id: c};
+    _rowCache.clear();
     _rebuildFilteredRows();
   }
 
@@ -66,6 +77,7 @@ class FixtureDataSource extends DataGridSource {
   // null = parent/single row; non-null = child row for that part order
   final Map<DataGridRow, int?> _rowToPartOrder = {};
   final Map<DataGridRow, int> _rowToIndex = {};
+  final Map<String, DataGridRow> _rowCache = {}; // Cache key: fixtureId:partOrder
   List<DataGridRow> _rows = [];
   List<String> _visibleCols = [];
 
@@ -131,6 +143,7 @@ class FixtureDataSource extends DataGridSource {
 
   void updateData(List<FixtureRow> fixtures) {
     _allFixtures = fixtures;
+    _rowCache.clear();
     if (_visibleCols.isEmpty) {
        _visibleCols = _columns.map((c) => c.id).toList();
     }
@@ -206,6 +219,23 @@ class FixtureDataSource extends DataGridSource {
     return 0;
   }
 
+  String _getValueForSort(FixtureRow f, int? partOrder, ColumnSpec spec) {
+    if (partOrder != null && spec.isPartLevel) {
+      final part = f.parts.where((p) => p.partOrder == partOrder).firstOrNull;
+      if (part != null) return spec.getPartValue?.call(f, part) ?? '';
+    }
+    return spec.getValue(f) ?? '';
+  }
+
+  String _getHeaderModeSortValue(FixtureRow fixture, ColumnSpec spec) {
+    final firstPart = fixture.parts.firstOrNull;
+    if (firstPart != null) {
+      final partValue = spec.getPartValue?.call(fixture, firstPart);
+      if (partValue != null && partValue.isNotEmpty) return partValue;
+    }
+    return spec.getValue(fixture) ?? '';
+  }
+
   void _rebuildFilteredRows() {
     Iterable<FixtureRow> list = _allFixtures;
 
@@ -230,15 +260,49 @@ class FixtureDataSource extends DataGridSource {
       });
     }
 
-    // ── Native Sorting Integration ───────────────────────────────────────────
+    _rowToFixture.clear();
+    _rowToPartOrder.clear();
+    _rowToIndex.clear();
+    _rows = [];
+
+    // ── Flattening ──────────────────────────────────────────────────────────
+    final List<({FixtureRow f, int? partOrder})> descriptors = [];
+
+    for (final f in list) {
+      if (_multipartMode == MultipartDisplayMode.header) {
+        // Parent always exists in header mode
+        descriptors.add((f: f, partOrder: null));
+        if (f.isMultiPart) {
+          for (final part in f.parts) {
+            descriptors.add((f: f, partOrder: part.partOrder));
+          }
+        }
+      } else {
+        // Headerless mode: only parent for single-part, only parts for multi-part
+        if (!f.isMultiPart) {
+          descriptors.add((f: f, partOrder: null));
+        } else {
+          for (final part in f.parts) {
+            descriptors.add((f: f, partOrder: part.partOrder));
+          }
+        }
+      }
+    }
+
+    // ── Mode-Aware Sorting ───────────────────────────────────────────────────
     if (sortedColumns.isNotEmpty) {
-      final sortedList = list.toList();
-      sortedList.sort((a, b) {
+      descriptors.sort((a, b) {
         for (final sortCol in sortedColumns) {
           final spec = _colById[sortCol.name];
           if (spec == null) continue;
-          final va = spec.getValue(a);
-          final vb = spec.getValue(b);
+
+          final va = _multipartMode == MultipartDisplayMode.header 
+              ? _getHeaderModeSortValue(a.f, spec)
+              : _getValueForSort(a.f, a.partOrder, spec);
+              
+          final vb = _multipartMode == MultipartDisplayMode.header 
+              ? _getHeaderModeSortValue(b.f, spec)
+              : _getValueForSort(b.f, b.partOrder, spec);
 
           int cmp;
           if (spec.isNumeric) {
@@ -257,44 +321,44 @@ class FixtureDataSource extends DataGridSource {
             return sortCol.sortDirection == DataGridSortDirection.ascending ? cmp : -cmp;
           }
         }
-        return a.id.compareTo(b.id);
+        
+        // Tie-breaker: fixture ID, then part order
+        final fCmp = a.f.id.compareTo(b.f.id);
+        if (fCmp != 0) return fCmp;
+        return (a.partOrder ?? -1).compareTo(b.partOrder ?? -1);
       });
-      list = sortedList;
     }
 
-    _filteredFixtures = list.toList();
-    _rowToFixture.clear();
-    _rowToPartOrder.clear();
-    _rowToIndex.clear();
-    _rows = [];
-
-    for (final f in _filteredFixtures) {
-      // ── Parent / single row ──────────────────────────────────────────────
-      final parentRow = DataGridRow(cells: [
-        for (final spec in _columns)
-          DataGridCell(columnName: spec.id, value: spec.getValue(f) ?? ''),
-      ]);
-      _rowToFixture[parentRow] = f;
-      _rowToPartOrder[parentRow] = null;
-      _rowToIndex[parentRow] = _rows.length;
-      _rows.add(parentRow);
-
-      // ── Child rows: always shown for multi-part fixtures ─────────────────
-      if (f.isMultiPart) {
-        for (final part in f.parts) {
-          final childRow = DataGridRow(cells: [
+    // ── Materialization ──────────────────────────────────────────────────────
+    for (final desc in descriptors) {
+      final f = desc.f;
+      final partOrder = desc.partOrder;
+      final cacheKey = partOrder == null ? '${f.id}' : '${f.id}:$partOrder';
+      
+      // Try to reuse the row object if possible to maintain SfDataGrid stability
+      DataGridRow row;
+      if (_rowCache.containsKey(cacheKey)) {
+        row = _rowCache[cacheKey]!;
+      } else {
+        if (partOrder == null) {
+          row = DataGridRow(cells: [
             for (final spec in _columns)
-              DataGridCell(
-                columnName: spec.id,
-                value: spec.getPartValue?.call(part) ?? '',
-              ),
+              DataGridCell(columnName: spec.id, value: spec.getValue(f) ?? ''),
           ]);
-          _rowToFixture[childRow] = f;
-          _rowToPartOrder[childRow] = part.partOrder;
-          _rowToIndex[childRow] = _rows.length;
-          _rows.add(childRow);
+        } else {
+          final part = f.parts.firstWhere((p) => p.partOrder == partOrder);
+          row = DataGridRow(cells: [
+            for (final spec in _columns)
+              DataGridCell(columnName: spec.id, value: spec.getPartValue?.call(f, part) ?? ''),
+          ]);
         }
+        _rowCache[cacheKey] = row;
       }
+      
+      _rowToFixture[row] = f;
+      _rowToPartOrder[row] = partOrder;
+      _rowToIndex[row] = _rows.length;
+      _rows.add(row);
     }
   }
 
@@ -314,6 +378,7 @@ class FixtureDataSource extends DataGridSource {
 
     // ── Child row ────────────────────────────────────────────────────────────
     if (isChild) {
+      const parentFallbackCols = {'position', 'type', 'function', 'focus', 'unit'};
       final bgChild = (_theme?.colorScheme.surfaceContainerHighest ??
               _theme?.colorScheme.surface ?? 
               Colors.transparent)
@@ -328,7 +393,10 @@ class FixtureDataSource extends DataGridSource {
           final name = entry.value;
           final isFirst = idx == 0;
 
-          final text = byName[name] ?? '';
+          var text = byName[name] ?? '';
+          if (text.isEmpty && parentFallbackCols.contains(name)) {
+            text = _colById[name]?.getValue(fixture) ?? '';
+          }
           final color = isFirst ? _accent : _textMuted; // Keep child rows slightly muted generally
           
           return Container(
@@ -404,6 +472,28 @@ class FixtureDataSource extends DataGridSource {
   }
 
   @override
+  Widget? buildGroupCaptionCellWidget(
+    RowColumnIndex rowColumnIndex,
+    String summaryValue,
+  ) {
+    final theme = _theme;
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: Text(
+        summaryValue,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.jetBrainsMono(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: theme?.colorScheme.onSurfaceVariant ?? Colors.white70,
+          letterSpacing: 0.1,
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget? buildEditWidget(
     DataGridRow row,
     RowColumnIndex rowColumnIndex,
@@ -414,26 +504,21 @@ class FixtureDataSource extends DataGridSource {
     if (fixture == null) return null;
     final col = column.columnName;
     final partOrder = _rowToPartOrder[row];
+    final spec = _colById[col];
+    if (spec == null || spec.isReadOnly || spec.isCollection) return null;
 
     onNativeEditStart(fixture, col);
 
     String initial;
     if (partOrder != null) {
       final part = fixture.parts.where((p) => p.partOrder == partOrder).firstOrNull;
-      if (col == 'chan') {
-        initial = part?.channel ?? '';
-      } else if (col == 'dimmer') {
-        initial = part?.address ?? '';
-      } else if (col == 'circuit') {
-        initial = part?.circuit ?? '';
+      if (spec.isPartLevel) {
+        initial = part == null ? '' : (spec.getPartValue?.call(fixture, part) ?? '');
       } else {
-        return null;
+        initial = spec.getValue(fixture) ?? '';
       }
     } else {
-      final spec = _colById[col];
-      if (spec?.isReadOnly ?? false) return null;
-      if (spec?.isCollection ?? false) return null;
-      initial = spec?.getValue(fixture) ?? '';
+      initial = spec.getValue(fixture) ?? '';
     }
 
     _editingController?.dispose();
@@ -463,6 +548,8 @@ class FixtureDataSource extends DataGridSource {
     if (fixture == null) return;
     final col = column.columnName;
     final partOrder = _rowToPartOrder[dataGridRow];
+    final spec = _colById[col];
+    if (spec == null || spec.isReadOnly || spec.isCollection) return;
 
     final nextText = (_newCellValue ?? _editingController?.text ?? '').trim();
     _editingController?.dispose();
@@ -472,16 +559,12 @@ class FixtureDataSource extends DataGridSource {
     final val = nextText.isEmpty ? null : nextText;
 
     try {
-      if (partOrder != null) {
-        if (col == 'chan')    await onCellEditCommit(fixture, 'chan',    val, partOrder);
-        if (col == 'dimmer')  await onCellEditCommit(fixture, 'dimmer',  val, partOrder);
-        if (col == 'circuit') await onCellEditCommit(fixture, 'circuit', val, partOrder);
-        return;
-      }
-
-      if (!(_colById[col]?.isReadOnly ?? false)) {
-        await onCellEditCommit(fixture, col, val, null);
-      }
+      await onCellEditCommit(
+        fixture,
+        col,
+        val,
+        partOrder != null && spec.isPartLevel ? partOrder : null,
+      );
     } finally {
       onNativeEditComplete();
     }
