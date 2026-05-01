@@ -204,7 +204,7 @@ class _MappingRow extends StatelessWidget {
           const SizedBox(width: 16),
           Expanded(
             child: DropdownButtonFormField<int?>(
-              initialValue: currentValue,
+              value: currentValue,
               items: columnItems,
               onChanged: onChanged,
               isExpanded: true,
