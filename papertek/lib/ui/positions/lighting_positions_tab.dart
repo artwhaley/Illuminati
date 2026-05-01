@@ -9,7 +9,7 @@ import 'widgets/position_info_panel.dart';
 import 'widgets/position_card.dart';
 import 'widgets/position_group_card.dart';
 
-// ── Tab widget ─────────────────────────────────────────────────────────────────
+// â”€â”€ Tab widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class LightingPositionsTab extends ConsumerStatefulWidget {
   const LightingPositionsTab({super.key});
@@ -44,7 +44,7 @@ class _LightingPositionsTabState extends ConsumerState<LightingPositionsTab> {
     super.dispose();
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +81,7 @@ class _LightingPositionsTabState extends ConsumerState<LightingPositionsTab> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ── Tool sidebar (LEFT) ────────────────────────────────────────
+        // â”€â”€ Tool sidebar (LEFT) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Container(
           width: 52,
           decoration: const BoxDecoration(
@@ -130,10 +130,10 @@ class _LightingPositionsTabState extends ConsumerState<LightingPositionsTab> {
           ),
         ),
 
-        // ── Position info panel (LEFT) ─────────────────────────────────
+        // â”€â”€ Position info panel (LEFT) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         PositionInfoPanel(position: singleSelected, repo: repo),
 
-        // ── Main list area ─────────────────────────────────────────────
+        // â”€â”€ Main list area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -232,11 +232,11 @@ class _LightingPositionsTabState extends ConsumerState<LightingPositionsTab> {
                             ),
                           ),
               ),
-              // ── Selection hint ───────────────────────────────────────
+              // â”€â”€ Selection hint â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 2, 12, 4),
                 child: Text(
-                  'Ctrl+click or right-click to multi-select · Double-click name to rename',
+                  'Ctrl+click or right-click to multi-select Â· Double-click name to rename',
                   textAlign: TextAlign.right,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: const Color(0xFF4B5263),
