@@ -45,6 +45,7 @@ class ColumnSpec {
     this.onEdit,
     this.isCollection = false,
     this.customFieldId,
+    this.importAliases,
   }) : label = label ?? defaultLabel;
 
   /// Factory for dynamic columns based on user-defined fields.
@@ -101,8 +102,10 @@ class ColumnSpec {
 
   /// If this is a custom field, the DB ID of the field definition.
   final int? customFieldId;
+  final List<String>? importAliases;
 
   bool get isCustomField => customFieldId != null;
+  bool get isImportable => !isReadOnly && !isBoolean;
 }
 
 /// The single, canonical list of all columns in the spreadsheet.
@@ -117,6 +120,7 @@ final List<ColumnSpec> kColumns = [
     isNumeric: true,
     isPartLevel: true,
     getPartValue: (f, p) => p.channel,
+    importAliases: ['channel', 'chan', 'ch', 'ch#'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null
         ? repo.updatePartChannel(id, partOrder, val)
         : repo.updateIntensityChannel(id, val),
@@ -130,6 +134,7 @@ final List<ColumnSpec> kColumns = [
     getValue: (f) => f.dimmer,
     isPartLevel: true,
     getPartValue: (f, p) => p.dimmer,
+    importAliases: ['dimmer', 'dim', 'dim#', 'dimmer number', 'dimmer no', 'dimmer #'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null
         ? repo.updatePartDimmer(id, partOrder, val)
         : repo.updateIntensityDimmer(id, val),
@@ -143,6 +148,7 @@ final List<ColumnSpec> kColumns = [
     getValue: (f) => f.address,
     isPartLevel: true,
     getPartValue: (f, p) => p.address,
+    importAliases: ['address', 'addr', 'dmx address', 'dmx addr', 'dmx#', 'u address', 'start address', 'dmx start'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null
         ? repo.updatePartAddress(id, partOrder, val)
         : repo.updateIntensityAddress(id, val),
@@ -156,6 +162,7 @@ final List<ColumnSpec> kColumns = [
     getValue: (f) => f.circuit,
     isPartLevel: true,
     getPartValue: (f, p) => p.circuit,
+    importAliases: ['circuit', 'circuit number', 'circuit no', 'ckt', 'ckt#', 'circuit name'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePartCircuit(id, partOrder ?? 0, val),
   ),
   ColumnSpec(
@@ -165,6 +172,7 @@ final List<ColumnSpec> kColumns = [
     defaultWidth: 140.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.position,
+    importAliases: ['position', 'pos', 'electric', 'location', 'batten', 'pipe', 'lighting position'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePosition(id, val),
   ),
   ColumnSpec(
@@ -174,6 +182,7 @@ final List<ColumnSpec> kColumns = [
     defaultWidth: 50.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.unitNumber,
+    importAliases: ['unit', 'unit number', 'unit no', 'unit#', 'instrument number'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateUnitNumber(id, val),
   ),
   ColumnSpec(
@@ -187,6 +196,7 @@ final List<ColumnSpec> kColumns = [
       final name = p.partName ?? 'Part ${p.partOrder + 1}';
       return '${f.fixtureType ?? "Fixture"} - $name';
     },
+    importAliases: ['instrument', 'instrument type', 'fixture type', 'type', 'luminaire', 'instrument name'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateFixtureType(id, val),
   ),
   ColumnSpec(
@@ -201,6 +211,7 @@ final List<ColumnSpec> kColumns = [
         .map((p) => p.wattage!)
         .join(' / '),
     getPartValue: (f, p) => p.wattage,
+    importAliases: ['wattage', 'watts', 'watt', 'wattage (w)', 'load'],
     onEdit: (id, val, repo, {partOrder, customRepo}) =>
         repo.updatePartWattage(id, partOrder ?? 0, val),
   ),
@@ -211,6 +222,7 @@ final List<ColumnSpec> kColumns = [
     defaultWidth: 120.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.purpose,
+    importAliases: ['purpose', 'use', 'function', 'system'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePurpose(id, val),
   ),
   ColumnSpec(
@@ -220,6 +232,7 @@ final List<ColumnSpec> kColumns = [
     defaultWidth: 120.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.area,
+    importAliases: ['area', 'focus', 'focus area', 'focus point', 'target', 'zone', 'scene'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateArea(id, val),
   ),
   ColumnSpec(
@@ -231,6 +244,7 @@ final List<ColumnSpec> kColumns = [
     isPartLevel: true,
     getPartValue: (f, p) => p.accessories,
     isCollection: true,
+    importAliases: ['accessories', 'accessory', 'acc', 'hardware', 'top hat', 'barndoor', 'add-ons'],
   ),
   ColumnSpec(
     id: 'color',
@@ -241,6 +255,7 @@ final List<ColumnSpec> kColumns = [
     isPartLevel: true,
     getPartValue: (f, p) => p.color,
     isCollection: true,
+    importAliases: ['color', 'colour', 'gel', 'filter', 'gel color', 'gel colour', 'media', 'color filter'],
   ),
   ColumnSpec(
     id: 'gobo',
@@ -251,6 +266,7 @@ final List<ColumnSpec> kColumns = [
     isPartLevel: true,
     getPartValue: (f, p) => p.gobo,
     isCollection: true,
+    importAliases: ['gobo', 'gobo 1', 'gobo1', 'pattern', 'template'],
   ),
   ColumnSpec(
     id: 'ip',
@@ -261,6 +277,7 @@ final List<ColumnSpec> kColumns = [
     getValue: (f) => f.ipAddress,
     isPartLevel: true,
     getPartValue: (f, p) => p.ipAddress,
+    importAliases: ['ip', 'ip address', 'ip addr', 'ipv4', 'network address', 'ip4'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityIp(id, val),
   ),
   ColumnSpec(
@@ -272,6 +289,7 @@ final List<ColumnSpec> kColumns = [
     getValue: (f) => f.subnet,
     isPartLevel: true,
     getPartValue: (f, p) => p.subnet,
+    importAliases: ['subnet', 'subnet mask', 'mask', 'netmask', 'network mask'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensitySubnet(id, val),
   ),
   ColumnSpec(
@@ -283,6 +301,7 @@ final List<ColumnSpec> kColumns = [
     getValue: (f) => f.macAddress,
     isPartLevel: true,
     getPartValue: (f, p) => p.macAddress,
+    importAliases: ['mac', 'mac address', 'mac addr', 'hardware address', 'physical address'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityMac(id, val),
   ),
   ColumnSpec(
@@ -294,6 +313,7 @@ final List<ColumnSpec> kColumns = [
     getValue: (f) => f.ipv6,
     isPartLevel: true,
     getPartValue: (f, p) => p.ipv6,
+    importAliases: ['ipv6', 'ipv6 address', 'ip6', 'ipv6 addr'],
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateIntensityIpv6(id, val),
   ),
   ColumnSpec(
@@ -333,6 +353,7 @@ final List<ColumnSpec> kColumns = [
     defaultWidth: 120.0,
     section: ColumnSection.other,
     getValue: (f) => '',
+    importAliases: ['notes', 'note', 'comment', 'comments', 'remarks', 'description'],
   ),
 ];
 

@@ -5,10 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/tracked_write_repository.dart';
 import '../providers/show_provider.dart';
-import '../services/import/csv_field_definitions.dart';
-import '../services/import/csv_import_parser.dart';
-import '../services/import/lightwright_column_detector.dart';
+import '../services/import/delimited_row_reader.dart';
+import '../services/import/row_matcher.dart';
+import '../ui/spreadsheet/column_spec.dart';
 import 'import/column_mapping_screen.dart';
+import 'import/multipart_detection_screen.dart';
+import 'import/import_summary_dialog.dart';
 import 'show_tab.dart';
 import 'spreadsheet/spreadsheet_tab.dart';
 import 'maintenance/maintenance_tab.dart';
@@ -381,41 +383,99 @@ class _MainShellState extends ConsumerState<MainShell> {
     if (mounted) ref.read(databaseProvider.notifier).state = null;
   }
 
-  Future<void> _importCsv() async {
-    final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Select CSV File',
-      allowedExtensions: ['csv', 'txt'],
+  Future<void> _importFixtures() async {
+    // Step 1: Pick file
+    final picked = await FilePicker.platform.pickFiles(
       type: FileType.custom,
+      allowedExtensions: ['csv', 'txt', 'tsv'],
       lockParentWindow: true,
     );
-    if (result == null || result.files.isEmpty || !mounted) return;
+    if (picked == null || picked.files.single.path == null) return;
+    final path = picked.files.single.path!;
 
-    final path = result.files.single.path!;
-    const parser = CsvImportParser();
-    final headers = await parser.readHeaders(path);
-
-    if (!mounted) return;
-    if (headers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not read CSV headers.')),
-      );
+    // Step 2: Read headers
+    const reader = DelimitedRowReader();
+    final List<String> importHeaders;
+    try {
+      importHeaders = await reader.readHeaders(path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Could not read file: $e')));
+      }
       return;
     }
 
-    final autoMapping = LightwrightColumnDetector().detectColumns(headers);
-    final initialMapping = {
-      for (final f in PaperTekImportField.values) f: autoMapping[f],
+    // Step 3: Build suggestions and initial mapping
+    final suggestions = RowMatcher().suggest(importHeaders);
+    final initialMapping = <ColumnSpec, List<String>>{
+      for (final entry in suggestions.entries)
+        entry.key: entry.value.isNotEmpty ? [entry.value.first.importHeader] : [],
     };
 
-    await showDialog<void>(
+    // Step 4: Show column mapping screen → get confirmed mapping
+    if (!mounted) return;
+    final confirmedMapping = await showDialog<Map<ColumnSpec, List<String>>>(
       context: context,
+      barrierDismissible: false,
       builder: (_) => ColumnMappingScreen(
-        csvPath: path,
-        headers: headers,
+        path: path,
+        rowReader: reader,
+        importHeaders: importHeaders,
+        suggestions: suggestions,
         initialMapping: initialMapping,
         importServiceProvider: importServiceProvider,
       ),
     );
+    if (confirmedMapping == null) return;
+
+    // Step 5: Read full rows
+    final List<Map<String, String>> rawRows;
+    try {
+      rawRows = await reader.readRows(path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Could not parse file: $e')));
+      }
+      return;
+    }
+
+    // Step 6: Multipart detection
+    final candidates = detectMultipartCandidates(rawRows, confirmedMapping);
+    List<MultipartDecision> decisions = [];
+    if (candidates.isNotEmpty && mounted) {
+      decisions = await showDialog<List<MultipartDecision>>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => MultipartDetectionScreen(candidates: candidates),
+          ) ??
+          [];
+    }
+
+    // Step 7: Run import
+    if (!mounted) return;
+    final service = ref.read(importServiceProvider);
+    if (service == null) return;
+    try {
+      final importResult = await service.importRows(
+        rawRows,
+        confirmedMapping,
+        multipartDecisions: decisions,
+        sourceFileName: path.split(Platform.pathSeparator).last,
+      );
+      if (mounted) {
+        showDialog<void>(
+          context: context,
+          builder: (_) => ImportSummaryDialog(result: importResult),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Import failed: $e')));
+      }
+    }
   }
 
   Future<void> _undo() async {
@@ -514,8 +574,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                         ),
                       ], menuFg),
                       _menu('Operations', [
-                        _item('Import Fixtures from CSV', Icons.upload_file,
-                            _importCsv),
+                        _item('Import Fixtures', Icons.upload_file,
+                            _importFixtures),
                       ], menuFg),
                       _menu('Help', [
                         _item('About PaperTek', Icons.info_outline,

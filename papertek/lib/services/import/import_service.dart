@@ -1,23 +1,16 @@
 /// ── IMPORT PIPELINE & DATA PERSISTENCE ──────────────────────────────────────
 ///
-/// This service is the final stage of the PaperTek Import Pipeline. It takes 
-/// data that has been parsed and normalized and "materializes" it into the 
+/// This service is the final stage of the PaperTek Import Pipeline. It takes
+/// parsed rows and a confirmed column mapping and "materializes" them into the
 /// database.
 ///
 /// THE PIPELINE:
-/// 1. Detector: identifies which column is which (e.g. "Ch" vs "Chan").
-/// 2. Parser: Reads the raw CSV rows.
-/// 3. Normalizer: Maps the CSV columns to internal PaperTek data fields.
-/// 4. Service (This File): Writes the rows to the DB using the 
+/// 1. DelimitedRowReader: reads raw rows from the file.
+/// 2. RowMatcher: suggests column mappings.
+/// 3. ColumnMappingScreen: user confirms mapping.
+/// 4. (Multipart detection screen — optional.)
+/// 5. Service (This File): Writes the rows to the DB using the
 ///    TrackedWriteRepository.
-///
-/// THE "ROW GROUPING" LOGIC:
-/// Some lighting fixtures have multiple parts (e.g. a LED wash with 3 pixels). 
-/// In a Lightwright CSV, these often appear as multiple rows with the same 
-/// Channel/Unit number but different "Part" numbers.
-/// 
-/// `importRows` automatically detects these duplicates and merges them into 
-/// a single parent Fixture in the database with multiple FixturePart children.
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
@@ -25,8 +18,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../../database/database.dart';
 import '../../repositories/tracked_write_repository.dart';
-import 'csv_field_definitions.dart';
-import 'csv_import_parser.dart';
+import '../../ui/spreadsheet/column_spec.dart';
 
 /// Summary returned after a completed import.
 class ImportResult {
@@ -49,13 +41,8 @@ class ImportResult {
   final String batchId;
 }
 
-/// Converts [NormalizedRow]s from [CsvImportParser] into database records.
-///
-/// Responsibilities:
-///   - Look up or auto-create positions and fixture types.
-///   - Write fixtures, parts, gels, and gobos in a single transaction.
-///   - Record per-fixture insert revisions and one import_batch summary,
-///     all sharing a single [batchId] for the supervisor queue.
+/// Materializes raw import rows into database records using a confirmed
+/// [ColumnSpec]-based column mapping.
 class ImportService {
   ImportService({required AppDatabase db, required TrackedWriteRepository tracked})
       : _db = db,
@@ -64,19 +51,21 @@ class ImportService {
   final AppDatabase _db;
   final TrackedWriteRepository _tracked;
 
-  /// Import a list of normalised rows.
+  static const _noColorSentinels = {
+    'n/c', 'nc', 'open', 'none', '-', 'no color', 'no colour',
+  };
+
+  /// Import a list of raw delimited rows using [columnMapping].
   ///
-  /// All DB writes run inside one transaction for performance.
-  /// Large imports (500+ rows) are fast enough in a single transaction
-  /// on SQLite; revisit with a background isolate if needed for >2000 rows.
-  Future<ImportResult> importRows({
-    required List<NormalizedRow> rows,
-    required String sourceFileName,
+  /// [multipartDecisions] is accepted but ignored — it will be wired in Ticket 07.
+  Future<ImportResult> importRows(
+    List<Map<String, String>> rawRows,
+    Map<ColumnSpec, List<String>> columnMapping, {
+    String? sourceFileName,
+    List<dynamic>? multipartDecisions,
   }) async {
-    // Caches prevent redundant lookups within a single import run.
     final positionCache = <String, int>{};
     final fixtureTypeCache = <String, int>{};
-
     var fixturesCreated = 0;
     var positionsCreated = 0;
     var fixtureTypesCreated = 0;
@@ -86,16 +75,28 @@ class ImportService {
 
     final batchId = _tracked.beginImportBatch();
 
-    // Group rows that carry a partNumber into a single fixture per
-    // (position, unit#, type) key; ungrouped rows stay as single-element lists.
-    final rowGroups = _buildRowGroups(rows);
+    final positionSpec = kColumnById['position']!;
+
+    // Filter rows missing a position value.
+    final validRows = <Map<String, String>>[];
+    for (var i = 0; i < rawRows.length; i++) {
+      final position = _resolveValue(rawRows[i], positionSpec, columnMapping);
+      if (position == null || position.isEmpty) {
+        rowsSkipped++;
+        warnings.add('Row ${i + 2}: skipped — no position value');
+      } else {
+        validRows.add(rawRows[i]);
+      }
+    }
+
+    final rowGroups = _buildRowGroups(validRows, columnMapping);
 
     await _db.transaction(() async {
       for (final group in rowGroups) {
-        final primary = group.first;
         try {
           final fixtureId = await _importRowGroup(
             rowGroup: group,
+            columnMapping: columnMapping,
             batchId: batchId,
             positionCache: positionCache,
             fixtureTypeCache: fixtureTypeCache,
@@ -106,17 +107,15 @@ class ImportService {
           fixturesCreated++;
         } catch (e) {
           rowsSkipped++;
-          warnings.add('Row ${primary.csvRowIndex}: skipped — $e');
+          warnings.add('Row skipped — $e');
         }
       }
     });
 
-    // The import_batch summary sits outside the main transaction so it
-    // reflects the final counts rather than mid-flight state.
     await _tracked.endImportBatch(
       batchId: batchId,
       summary: {
-        'source': sourceFileName,
+        'source': sourceFileName ?? '',
         'fixture_count': fixturesCreated,
         'positions_created': positionsCreated,
         'rows_skipped': rowsSkipped,
@@ -129,39 +128,80 @@ class ImportService {
       positionsCreated: positionsCreated,
       fixtureTypesCreated: fixtureTypesCreated,
       rowsSkipped: rowsSkipped,
-      warnings: [...warnings, ...rows.expand((r) => r.warnings)],
+      warnings: warnings,
       batchId: batchId,
     );
   }
 
+  // ── Value resolution ─────────────────────────────────────────────────────
+
+  /// Resolves a single column's value from a raw row using the confirmed mapping.
+  ///
+  /// For collection columns, tokens from multiple headers are split on common
+  /// separators and joined with '|' for downstream DB splitting.
+  /// For non-collection columns, multiple header values are joined with ' + '.
+  String? _resolveValue(
+    Map<String, String> row,
+    ColumnSpec col,
+    Map<ColumnSpec, List<String>> mapping,
+  ) {
+    final headers = mapping[col];
+    if (headers == null || headers.isEmpty) return null;
+
+    final values = headers
+        .map((h) => (row[h] ?? '').trim())
+        .where((v) => v.isNotEmpty)
+        .toList();
+
+    if (values.isEmpty) return null;
+
+    if (col.isCollection) {
+      final tokens = values
+          .expand((v) => v.split(RegExp(r'[+,/;]')))
+          .map((t) => t.trim())
+          .where((t) =>
+              t.isNotEmpty && !_noColorSentinels.contains(t.toLowerCase()))
+          .toList();
+      return tokens.isEmpty ? null : tokens.join('|');
+    }
+
+    return values.join(' + ');
+  }
+
   // ── Row grouping ─────────────────────────────────────────────────────────
 
-  /// Collects consecutive rows that share the same (position, unit#, type) key
-  /// AND carry a non-null partNumber into a single group; every other row forms
-  /// its own single-element group. Order within the original list is preserved.
-  List<List<NormalizedRow>> _buildRowGroups(List<NormalizedRow> rows) {
-    final groups = <List<NormalizedRow>>[];
-    // key → index into [groups] for the in-progress multi-part group.
-    final keyToGroup = <String, List<NormalizedRow>>{};
+  /// Groups consecutive rows sharing the same (position, unit, type) key into
+  /// multipart groups. All other rows form single-element groups.
+  List<List<Map<String, String>>> _buildRowGroups(
+    List<Map<String, String>> rows,
+    Map<ColumnSpec, List<String>> mapping,
+  ) {
+    final groups = <List<Map<String, String>>>[];
+    final keyToGroup = <String, List<Map<String, String>>>{};
+
+    final positionSpec = kColumnById['position']!;
+    final unitSpec = kColumnById['unit']!;
+    final instrumentSpec = kColumnById['instrument']!;
 
     for (final row in rows) {
-      final partNum = row.get(PaperTekImportField.partNumber);
-      if (partNum != null) {
-        final key = [
-          (row.get(PaperTekImportField.position) ?? '').toLowerCase(),
-          (row.get(PaperTekImportField.unitNumber) ?? '').toLowerCase(),
-          (row.get(PaperTekImportField.fixtureType) ?? '').toLowerCase(),
-        ].join('|');
-        final existing = keyToGroup[key];
-        if (existing != null) {
-          existing.add(row);
-        } else {
-          final newGroup = [row];
-          keyToGroup[key] = newGroup;
-          groups.add(newGroup);
-        }
-      } else {
+      final position = _resolveValue(row, positionSpec, mapping) ?? '';
+      final unit = _resolveValue(row, unitSpec, mapping) ?? '';
+      final type = _resolveValue(row, instrumentSpec, mapping) ?? '';
+
+      if (position.isEmpty) {
         groups.add([row]);
+        continue;
+      }
+
+      final key =
+          '${position.toLowerCase()}|${unit.toLowerCase()}|${type.toLowerCase()}';
+      final existing = keyToGroup[key];
+      if (existing != null) {
+        existing.add(row);
+      } else {
+        final newGroup = [row];
+        keyToGroup[key] = newGroup;
+        groups.add(newGroup);
       }
     }
     return groups;
@@ -169,122 +209,143 @@ class ImportService {
 
   // ── Per-fixture logic ─────────────────────────────────────────────────────
 
-  /// Imports one logical fixture from one or more CSV rows.
-  ///
-  /// Single-part: [rowGroup] has one element — existing behaviour.
-  /// Multi-part:  [rowGroup] has N elements (e.g. 3 cells of a cyc) — one
-  ///              fixture row is created with N intensity parts, one per
-  ///              part-row, ordered by their position in the group.
   Future<int> _importRowGroup({
-    required List<NormalizedRow> rowGroup,
+    required List<Map<String, String>> rowGroup,
+    required Map<ColumnSpec, List<String>> columnMapping,
     required String batchId,
     required Map<String, int> positionCache,
     required Map<String, int> fixtureTypeCache,
     required void Function() onPositionCreated,
     required void Function() onTypeCreated,
   }) async {
-    final primary = rowGroup.first;
+    // Fixture-level fields (isPartLevel: false) share one value across all parts.
+    String? firstNonNull(ColumnSpec spec) {
+      assert(!spec.isPartLevel, '${spec.id} is part-level; resolve per row');
+      for (final row in rowGroup) {
+        final v = _resolveValue(row, spec, columnMapping);
+        if (v != null && v.isNotEmpty) return v;
+      }
+      return null;
+    }
 
-    // Resolve (or auto-create) position.
-    final positionName = primary.get(PaperTekImportField.position)!;
+    final positionSpec = kColumnById['position']!;
+    final unitSpec = kColumnById['unit']!;
+    final instrumentSpec = kColumnById['instrument']!;
+    final purposeSpec = kColumnById['purpose']!;
+    final areaSpec = kColumnById['area']!;
+    final chanSpec = kColumnById['chan']!;
+    final dimmerSpec = kColumnById['dimmer']!;
+    final addressSpec = kColumnById['address']!;
+    final circuitSpec = kColumnById['circuit']!;
+    final wattageSpec = kColumnById['wattage']!;
+    final colorSpec = kColumnById['color']!;
+    final goboSpec = kColumnById['gobo']!;
+    final accessoriesSpec = kColumnById['accessories']!;
+    final notesSpec = kColumnById['notes']!;
+
+    final positionName = _resolveValue(rowGroup.first, positionSpec, columnMapping)!;
     await _resolvePosition(positionName, positionCache, onPositionCreated);
 
-    // Resolve (or auto-create) fixture type.
     int? fixtureTypeId;
-    final typeName = primary.get(PaperTekImportField.fixtureType);
+    final typeName = firstNonNull(instrumentSpec);
     if (typeName != null) {
       fixtureTypeId = await _resolveFixtureType(
         typeName,
-        wattage: primary.get(PaperTekImportField.wattage),
+        wattage: firstNonNull(wattageSpec),
         cache: fixtureTypeCache,
         onCreated: onTypeCreated,
       );
     }
 
-    // Create the fixture row.
     final res = await _tracked.insertRow(
       table: 'fixtures',
       doInsert: () async {
         final fixtureId = await _db.into(_db.fixtures).insert(FixturesCompanion(
-              fixtureTypeId: Value(fixtureTypeId),
-              fixtureType: Value(typeName),
-              position: Value(positionName),
-              unitNumber: Value(primary.get(PaperTekImportField.unitNumber)),
-              purpose: Value(primary.get(PaperTekImportField.purpose)),
-              area: Value(primary.get(PaperTekImportField.area)),
-            ));
+          fixtureTypeId: Value(fixtureTypeId),
+          fixtureType: Value(typeName),
+          position: Value(positionName),
+          unitNumber: Value(firstNonNull(unitSpec)),
+          purpose: Value(firstNonNull(purposeSpec)),
+          area: Value(firstNonNull(areaSpec)),
+        ));
 
-        // Intensity parts — one per row in the group (partOrder = row index).
         int? firstPartId;
         for (var i = 0; i < rowGroup.length; i++) {
           final partRow = rowGroup[i];
-          final notes = partRow.get(PaperTekImportField.notes);
-          final partId = await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
-                fixtureId: Value(fixtureId),
-                partOrder: Value(i),
-                partType: const Value('intensity'),
-                channel: Value(partRow.get(PaperTekImportField.channel)),
-                dimmer: Value(partRow.get(PaperTekImportField.dimmer)),
-                address: Value(partRow.get(PaperTekImportField.address)),
-                circuit: Value(partRow.get(PaperTekImportField.circuit)),
-                wattage: Value(partRow.get(PaperTekImportField.wattage)),
-                extrasJson: Value(notes != null ? jsonEncode({'notes': notes}) : null),
-              ));
+          final notes = _resolveValue(partRow, notesSpec, columnMapping);
+          final partId = await _db.into(_db.fixtureParts).insert(
+            FixturePartsCompanion(
+              fixtureId: Value(fixtureId),
+              partOrder: Value(i),
+              partType: const Value('intensity'),
+              channel: Value(_resolveValue(partRow, chanSpec, columnMapping)),
+              dimmer: Value(_resolveValue(partRow, dimmerSpec, columnMapping)),
+              address: Value(_resolveValue(partRow, addressSpec, columnMapping)),
+              circuit: Value(_resolveValue(partRow, circuitSpec, columnMapping)),
+              wattage: Value(_resolveValue(partRow, wattageSpec, columnMapping)),
+              extrasJson: Value(notes != null ? jsonEncode({'notes': notes}) : null),
+            ),
+          );
           if (i == 0) firstPartId = partId;
         }
-        firstPartId ??= 0; // Should not happen
+        firstPartId ??= 0;
 
-        // Gel and gobo records are sourced from the primary row only.
-        // We attach them to the first part created above.
-        final color = primary.get(PaperTekImportField.color);
-        if (color != null && !_isNoColor(color)) {
-          await _db.into(_db.gels).insert(GelsCompanion(
-                fixtureId: Value(fixtureId),
-                fixturePartId: Value(firstPartId),
-                color: Value(color),
-                sortOrder: const Value(0),
-              ));
+        // Collection fields — from primary row, attached to first part.
+        final colorValue = _resolveValue(rowGroup.first, colorSpec, columnMapping);
+        if (colorValue != null) {
+          final tokens = colorValue.split('|');
+          for (var i = 0; i < tokens.length; i++) {
+            await _db.into(_db.gels).insert(GelsCompanion(
+              fixtureId: Value(fixtureId),
+              fixturePartId: Value(firstPartId),
+              color: Value(tokens[i]),
+              sortOrder: Value(i.toDouble()),
+            ));
+          }
         }
 
-        final gobo1 = primary.get(PaperTekImportField.gobo1);
-        if (gobo1 != null && gobo1.isNotEmpty) {
-          await _db.into(_db.gobos).insert(GobosCompanion(
-                fixtureId: Value(fixtureId),
-                fixturePartId: Value(firstPartId),
-                goboNumber: Value(gobo1),
-                sortOrder: const Value(0),
-              ));
+        final goboValue = _resolveValue(rowGroup.first, goboSpec, columnMapping);
+        if (goboValue != null) {
+          final tokens = goboValue.split('|');
+          for (var i = 0; i < tokens.length; i++) {
+            await _db.into(_db.gobos).insert(GobosCompanion(
+              fixtureId: Value(fixtureId),
+              fixturePartId: Value(firstPartId),
+              goboNumber: Value(tokens[i]),
+              sortOrder: Value(i.toDouble()),
+            ));
+          }
         }
 
-        final gobo2 = primary.get(PaperTekImportField.gobo2);
-        if (gobo2 != null && gobo2.isNotEmpty) {
-          await _db.into(_db.gobos).insert(GobosCompanion(
-                fixtureId: Value(fixtureId),
-                fixturePartId: Value(firstPartId),
-                goboNumber: Value(gobo2),
-                sortOrder: const Value(1),
-              ));
-        }
-
-        final acc = primary.get(PaperTekImportField.accessories);
-        if (acc != null && acc.isNotEmpty) {
-          await _db.into(_db.accessories).insert(AccessoriesCompanion(
-                fixtureId: Value(fixtureId),
-                fixturePartId: Value(firstPartId),
-                name: Value(acc),
-                sortOrder: const Value(0),
-              ));
+        final accValue = _resolveValue(rowGroup.first, accessoriesSpec, columnMapping);
+        if (accValue != null) {
+          final tokens = accValue.split('|');
+          for (var i = 0; i < tokens.length; i++) {
+            await _db.into(_db.accessories).insert(AccessoriesCompanion(
+              fixtureId: Value(fixtureId),
+              fixturePartId: Value(firstPartId),
+              name: Value(tokens[i]),
+              sortOrder: Value(i.toDouble()),
+            ));
+          }
         }
 
         return fixtureId;
       },
       buildSnapshot: (id) async {
-        final fixture = await (_db.select(_db.fixtures)..where((t) => t.id.equals(id))).getSingle();
+        final fixture =
+            await (_db.select(_db.fixtures)..where((t) => t.id.equals(id)))
+                .getSingle();
         final parts =
-            await (_db.select(_db.fixtureParts)..where((t) => t.fixtureId.equals(id))).get();
-        final gels = await (_db.select(_db.gels)..where((t) => t.fixtureId.equals(id))).get();
-        final gobos = await (_db.select(_db.gobos)..where((t) => t.fixtureId.equals(id))).get();
-        final accs = await (_db.select(_db.accessories)..where((t) => t.fixtureId.equals(id))).get();
+            await (_db.select(_db.fixtureParts)..where((t) => t.fixtureId.equals(id)))
+                .get();
+        final gels =
+            await (_db.select(_db.gels)..where((t) => t.fixtureId.equals(id))).get();
+        final gobos =
+            await (_db.select(_db.gobos)..where((t) => t.fixtureId.equals(id))).get();
+        final accs =
+            await (_db.select(_db.accessories)..where((t) => t.fixtureId.equals(id)))
+                .get();
 
         return {
           'fixture': fixture.toJson(),
@@ -343,13 +404,4 @@ class ImportService {
     onCreated();
     return id;
   }
-
-  // ── Value helpers ────────────────────────────────────────────────────────
-
-  /// Strings that mean "no gel" in standard lighting notation.
-  bool _isNoColor(String value) {
-    const sentinels = {'n/c', 'nc', 'open', 'none', '-', 'no color', 'no colour'};
-    return sentinels.contains(value.toLowerCase().trim());
-  }
-
 }

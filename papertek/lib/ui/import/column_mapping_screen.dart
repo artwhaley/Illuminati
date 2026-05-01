@@ -1,32 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../services/import/csv_field_definitions.dart';
-import '../../services/import/csv_import_parser.dart';
+import '../../services/import/row_reader.dart';
+import '../../services/import/row_matcher.dart';
 import '../../services/import/import_service.dart';
-import 'import_summary_dialog.dart';
+import '../spreadsheet/column_spec.dart';
 
-/// Modal dialog: maps CSV columns → PaperTek fields, then triggers the import.
+/// Modal dialog: maps import file columns → PaperTek fields, then triggers import.
 ///
-/// [initialMapping] comes from the auto-detector; the user can override each
-/// dropdown. Null means "don't import this field".
+/// Supports multi-header assignment per field via removable chips.
 class ColumnMappingScreen extends ConsumerStatefulWidget {
   const ColumnMappingScreen({
     super.key,
-    required this.csvPath,
-    required this.headers,
+    required this.path,
+    required this.rowReader,
+    required this.importHeaders,
+    required this.suggestions,
     required this.initialMapping,
     required this.importServiceProvider,
   });
 
-  final String csvPath;
+  final String path;
+  final RowReader rowReader;
 
-  /// Column headers from row 1 of the CSV.
-  final List<String> headers;
+  /// All column headers from the import file (row 1).
+  final List<String> importHeaders;
 
-  /// Field → 0-based column index (null = not mapped).
-  final Map<PaperTekImportField, int?> initialMapping;
+  /// Per-ColumnSpec ranked suggestions from RowMatcher.
+  final Map<ColumnSpec, List<MatchSuggestion>> suggestions;
 
-  /// Provider resolved by the caller; passed in so this widget stays testable.
+  /// Initial mapping (deep-copied into state).
+  final Map<ColumnSpec, List<String>> initialMapping;
+
   final ProviderBase<ImportService?> importServiceProvider;
 
   @override
@@ -35,43 +39,49 @@ class ColumnMappingScreen extends ConsumerStatefulWidget {
 }
 
 class _ColumnMappingScreenState extends ConsumerState<ColumnMappingScreen> {
-  late Map<PaperTekImportField, int?> _mapping;
-  bool _importing = false;
+  late Map<ColumnSpec, List<String>> _mapping;
+  bool _isLoading = false;
+
+  late final List<ColumnSpec> _importableColumns;
 
   @override
   void initState() {
     super.initState();
-    _mapping = Map.of(widget.initialMapping);
+    _importableColumns = kColumns.where((c) => c.isImportable).toList();
+    _mapping = {
+      for (final e in widget.initialMapping.entries)
+        e.key: List<String>.from(e.value),
+    };
+    for (final col in _importableColumns) {
+      _mapping.putIfAbsent(col, () => []);
+    }
   }
 
-  bool get _canImport =>
-      _mapping[PaperTekImportField.position] != null && !_importing;
+  bool get _canImport {
+    final posSpec = kColumns.firstWhere((c) => c.id == 'position');
+    return (_mapping[posSpec]?.isNotEmpty == true) && !_isLoading;
+  }
+
+  Future<void> _runImport() async {
+    // Return the confirmed mapping to the caller; import is orchestrated by main_shell.
+    Navigator.of(context).pop(Map<ColumnSpec, List<String>>.from(_mapping));
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Dropdown items: null = "Not imported" + one entry per CSV column.
-    final columnItems = [
-      const DropdownMenuItem<int?>(value: null, child: Text('— not imported —')),
-      ...widget.headers.asMap().entries.map(
-            (e) => DropdownMenuItem<int?>(
-              value: e.key,
-              child: Text(e.value, overflow: TextOverflow.ellipsis),
-            ),
-          ),
-    ];
 
     return AlertDialog(
-      title: const Text('Map CSV Columns'),
+      title: const Text('Map Import Columns'),
       contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       content: SizedBox(
-        width: 560,
-        height: 480,
+        width: 640,
+        height: 520,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Match each PaperTek field to the right column from your CSV. '
+              'Match each PaperTek field to one or more columns from your file. '
               'Auto-detected matches are pre-filled.',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: const Color(0xFF6B7280)),
@@ -80,14 +90,18 @@ class _ColumnMappingScreenState extends ConsumerState<ColumnMappingScreen> {
             const Divider(),
             Expanded(
               child: ListView.builder(
-                itemCount: PaperTekImportField.values.length,
+                itemCount: _importableColumns.length,
                 itemBuilder: (_, i) {
-                  final field = PaperTekImportField.values[i];
-                  return _MappingRow(
-                    field: field,
-                    columnItems: columnItems,
-                    currentValue: _mapping[field],
-                    onChanged: (v) => setState(() => _mapping[field] = v),
+                  final col = _importableColumns[i];
+                  return _ColumnMappingRow(
+                    column: col,
+                    assignedHeaders: List.from(_mapping[col] ?? []),
+                    allHeaders: widget.importHeaders,
+                    suggestions: widget.suggestions[col] ?? [],
+                    onAddHeader: (h) => setState(
+                        () => (_mapping[col] ??= []).add(h)),
+                    onRemoveHeader: (h) =>
+                        setState(() => _mapping[col]?.remove(h)),
                   );
                 },
               ),
@@ -98,12 +112,12 @@ class _ColumnMappingScreenState extends ConsumerState<ColumnMappingScreen> {
       ),
       actions: [
         TextButton(
-          onPressed: _importing ? null : () => Navigator.of(context).pop(),
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
         FilledButton(
           onPressed: _canImport ? _runImport : null,
-          child: _importing
+          child: _isLoading
               ? const SizedBox(
                   width: 16,
                   height: 16,
@@ -114,107 +128,147 @@ class _ColumnMappingScreenState extends ConsumerState<ColumnMappingScreen> {
       ],
     );
   }
-
-  Future<void> _runImport() async {
-    final service = ref.read(widget.importServiceProvider);
-    if (service == null) return;
-
-    setState(() => _importing = true);
-
-    try {
-      const parser = CsvImportParser();
-      final (rows, fileWarnings) = await parser.parseRows(
-        widget.csvPath,
-        Map.of(_mapping),
-      );
-
-      final result = await service.importRows(
-        rows: rows,
-        sourceFileName: widget.csvPath.split(RegExp(r'[/\\]')).last,
-      );
-
-      if (!mounted) return;
-      Navigator.of(context).pop(); // close mapping dialog
-      await showDialog<void>(
-        context: context,
-        builder: (_) => ImportSummaryDialog(
-          result: result,
-          fileWarnings: fileWarnings,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _importing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Import failed: $e')),
-      );
-    }
-  }
 }
 
-class _MappingRow extends StatelessWidget {
-  const _MappingRow({
-    required this.field,
-    required this.columnItems,
-    required this.currentValue,
-    required this.onChanged,
+class _ColumnMappingRow extends StatelessWidget {
+  const _ColumnMappingRow({
+    required this.column,
+    required this.assignedHeaders,
+    required this.allHeaders,
+    required this.suggestions,
+    required this.onAddHeader,
+    required this.onRemoveHeader,
   });
 
-  final PaperTekImportField field;
-  final List<DropdownMenuItem<int?>> columnItems;
-  final int? currentValue;
-  final ValueChanged<int?> onChanged;
+  final ColumnSpec column;
+  final List<String> assignedHeaders;
+  final List<String> allHeaders;
+  final List<MatchSuggestion> suggestions;
+  final ValueChanged<String> onAddHeader;
+  final ValueChanged<String> onRemoveHeader;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    final filteredSuggestions =
+        suggestions.where((s) => !assignedHeaders.contains(s.importHeader)).toList();
+
+    final sortedRemaining = ([...allHeaders]..sort())
+        .where((h) => !assignedHeaders.contains(h))
+        .toList();
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 160,
+            width: 140,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                column.label,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(field.displayName,
-                        style: theme.textTheme.bodyMedium),
-                    if (field.isRequired) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        '*',
-                        style: TextStyle(
+                if (assignedHeaders.isNotEmpty)
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: assignedHeaders
+                        .map(
+                          (h) => Chip(
+                            label: Text(
+                              h,
+                              style: theme.textTheme.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            deleteIcon: const Icon(Icons.close, size: 14),
+                            onDeleted: () => onRemoveHeader(h),
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                PopupMenuButton<String>(
+                  tooltip: 'Add a column',
+                  onSelected: (value) {
+                    if (value.isNotEmpty) onAddHeader(value);
+                  },
+                  itemBuilder: (_) {
+                    final items = <PopupMenuEntry<String>>[];
+
+                    if (filteredSuggestions.isNotEmpty) {
+                      for (final s in filteredSuggestions) {
+                        items.add(PopupMenuItem<String>(
+                          value: s.importHeader,
+                          child: Row(
+                            children: [
+                              Icon(Icons.auto_awesome,
+                                  size: 14,
+                                  color: theme.colorScheme.primary),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  s.importHeader,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ));
+                      }
+                      items.add(const PopupMenuDivider());
+                    }
+
+                    for (final h in sortedRemaining) {
+                      items.add(PopupMenuItem<String>(
+                        value: h,
+                        child: Text(h, overflow: TextOverflow.ellipsis),
+                      ));
+                    }
+
+                    if (items.isEmpty || (items.length == 1 && items.first is PopupMenuDivider)) {
+                      return [
+                        const PopupMenuItem<String>(
+                          value: '',
+                          child: Text('— not imported —'),
+                        ),
+                      ];
+                    }
+
+                    return items;
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 16,
+                            color: theme.colorScheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Add column',
+                          style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ],
-                ),
-                Text(
-                  field.hint,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: const Color(0xFF6B7280)),
-                  overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: DropdownButtonFormField<int?>(
-              value: currentValue,
-              items: columnItems,
-              onChanged: onChanged,
-              isExpanded: true,
-              decoration: InputDecoration(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
             ),
           ),
         ],
