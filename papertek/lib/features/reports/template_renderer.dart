@@ -7,6 +7,8 @@ import '../../repositories/fixture_repository.dart';
 import 'report_field_registry.dart';
 import 'report_template.dart';
 import 'report_theme.dart';
+import '../../services/fixture_multipart_sort.dart';
+import '../../ui/spreadsheet/column_spec.dart';
 
 /// Generic PDF renderer that produces a document from a ReportTemplate.
 Future<Uint8List> buildFromTemplate(
@@ -55,63 +57,28 @@ Future<pw.Document> _buildPdf(
   ReportTemplate template,
   ReportTheme theme,
 ) async {
-  final pdf = pw.Document(theme: theme.themeData);
-
   // Load font variants
   final dataFont = await _loadFont(template.fontFamily, kFontFamilyPaths, theme.plexSansRegular);
   final dataFontBold = await _loadFont(template.fontFamily, kFontFamilyBoldPaths, theme.plexSansMedium);
   final dataFontItalic = await _loadFont(template.fontFamily, kFontFamilyItalicPaths, theme.plexSansRegular);
 
+  final pdf = pw.Document(
+    theme: theme.themeData.copyWith(
+      defaultTextStyle: pw.TextStyle(
+        font: dataFont,
+        fontFallback: theme.fallbackFonts,
+        fontSize: template.dataFontSize,
+      ),
+    ),
+  );
+
   final pageFormat = template.orientation == 'landscape'
       ? format.landscape
       : format.portrait;
 
-  // 1. Sort fixtures (multi-level)
-  final sortedFixtures = List<FixtureRow>.from(fixtures);
-  if (template.sortLevels.isNotEmpty) {
-    sortedFixtures.sort((a, b) {
-      for (final level in template.sortLevels) {
-        if (level.fieldKey.isEmpty) continue;
-        
-        final valA = getFieldValue(a, level.fieldKey);
-        final valB = getFieldValue(b, level.fieldKey);
-
-        if (valA == valB) continue;
-        
-        // Empty values sort last
-        if (valA.isEmpty) return 1;
-        if (valB.isEmpty) return -1;
-
-        int cmp;
-        final numA = int.tryParse(valA);
-        final numB = int.tryParse(valB);
-
-        if (numA != null && numB != null) {
-          cmp = numA.compareTo(numB);
-        } else {
-          cmp = valA.toLowerCase().compareTo(valB.toLowerCase());
-        }
-
-        if (cmp != 0) return level.ascending ? cmp : -cmp;
-      }
-      return 0;
-    });
-  }
-
-  // 2. Group fixtures
-  final groups = LinkedHashMap<String, List<FixtureRow>>();
-  if (template.groupByFieldKey == null) {
-    groups[''] = sortedFixtures;
-  } else {
-    for (final f in sortedFixtures) {
-      final groupValue = getFieldValue(f, template.groupByFieldKey!) ?? 'NONE';
-      groups.putIfAbsent(groupValue, () => []).add(f);
-    }
-  }
-
   // 3. Build widget list
   final widgets = <pw.Widget>[];
-  
+
   if (fixtures.isEmpty) {
     widgets.add(
       pw.Padding(
@@ -133,15 +100,141 @@ Future<pw.Document> _buildPdf(
     widgets.add(_buildHeaderRow(template, theme));
     widgets.add(pw.SizedBox(height: 8));
 
-    for (final entry in groups.entries) {
-      if (template.groupByFieldKey != null) {
-        widgets.add(_buildGroupHeader(entry.key, theme));
+    if (template.multipartHeader) {
+      // 1. Multipart header mode sorting
+      final sortSpecs = template.sortLevels
+          .where((l) => l.fieldKey.isNotEmpty)
+          .map((l) => SortSpec(column: l.fieldKey, ascending: l.ascending))
+          .toList();
+
+      final descriptors = <MultipartFixtureDescriptor>[];
+      for (final f in fixtures) {
+        // Parent always exists in header mode
+        descriptors.add(MultipartFixtureDescriptor(f: f, partOrder: null));
+        if (f.isMultiPart) {
+          for (final p in f.parts) {
+            descriptors.add(MultipartFixtureDescriptor(f: f, partOrder: p.partOrder));
+          }
+        }
       }
-      for (int i = 0; i < entry.value.length; i++) {
-        widgets.add(_buildDataRow(entry.value[i], i % 2 == 0, template, theme, dataFont, dataFontBold, dataFontItalic));
+
+      descriptors.sort((a, b) => compareFixtureDescriptors(
+            left: a,
+            right: b,
+            sortSpecs: sortSpecs,
+            colById: kColumnById,
+          ));
+
+      // 2. Render as contiguous, unsplittable blocks
+      int zebraIdx = 0;
+      FixtureRow? currentFixture;
+      List<pw.Widget> currentBlockWidgets = [];
+
+      for (final desc in descriptors) {
+        if (desc.partOrder == null) {
+          // Start of a new fixture block
+          if (currentFixture != null && currentBlockWidgets.isNotEmpty) {
+            widgets.add(pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: List.of(currentBlockWidgets),
+            ));
+            currentBlockWidgets.clear();
+          }
+          currentFixture = desc.f;
+          currentBlockWidgets.add(_buildDataRow(desc.f, zebraIdx % 2 == 0, template, theme, dataFont, dataFontBold, dataFontItalic));
+          zebraIdx++;
+        } else {
+          // Part of the current fixture block
+          final part = desc.f.parts.firstWhere((p) => p.partOrder == desc.partOrder);
+          currentBlockWidgets.add(_buildPartDataRow(desc.f, part, (zebraIdx - 1) % 2 == 0, template, theme, dataFont, dataFontBold, dataFontItalic));
+        }
       }
-      if (template.groupByFieldKey != null) {
-        widgets.add(pw.SizedBox(height: 12));
+      // Add the final block
+      if (currentBlockWidgets.isNotEmpty) {
+        widgets.add(pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+          children: currentBlockWidgets,
+        ));
+      }
+    } else {
+      // Standard flow (Spreadsheet "Headerless" Mode Parity)
+      // Single-part fixtures show parent row.
+      // Multi-part fixtures show ONLY part rows.
+      final expandedList = <MultipartFixtureDescriptor>[];
+      for (final f in fixtures) {
+        if (!f.isMultiPart) {
+          expandedList.add(MultipartFixtureDescriptor(f: f, partOrder: null));
+        } else {
+          for (final p in f.parts) {
+            expandedList.add(MultipartFixtureDescriptor(f: f, partOrder: p.partOrder));
+          }
+        }
+      }
+
+      // Sort expanded list using legacy sort rules but applied to parts where possible
+      if (template.sortLevels.isNotEmpty) {
+        expandedList.sort((a, b) {
+          for (final level in template.sortLevels) {
+            if (level.fieldKey.isEmpty) continue;
+            
+            final spec = kColumnById[level.fieldKey];
+            final valA = (a.partOrder != null && spec != null && spec.isPartLevel)
+                ? (spec.getPartValue?.call(a.f, a.f.parts.firstWhere((p) => p.partOrder == a.partOrder)) ?? '')
+                : getFieldValue(a.f, level.fieldKey);
+            final valB = (b.partOrder != null && spec != null && spec.isPartLevel)
+                ? (spec.getPartValue?.call(b.f, b.f.parts.firstWhere((p) => p.partOrder == b.partOrder)) ?? '')
+                : getFieldValue(b.f, level.fieldKey);
+
+            if (valA == valB) continue;
+            if (valA.isEmpty) return 1;
+            if (valB.isEmpty) return -1;
+
+            int cmp;
+            final numA = int.tryParse(valA);
+            final numB = int.tryParse(valB);
+            if (numA != null && numB != null) {
+              cmp = numA.compareTo(numB);
+            } else {
+              cmp = valA.toLowerCase().compareTo(valB.toLowerCase());
+            }
+
+            if (cmp != 0) return level.ascending ? cmp : -cmp;
+          }
+          // Tie-breaker
+          final fCmp = a.f.id.compareTo(b.f.id);
+          if (fCmp != 0) return fCmp;
+          return (a.partOrder ?? -1).compareTo(b.partOrder ?? -1);
+        });
+      }
+
+      final groups = LinkedHashMap<String, List<MultipartFixtureDescriptor>>();
+      if (template.groupByFieldKey == null) {
+        groups[''] = expandedList;
+      } else {
+        for (final item in expandedList) {
+          final groupValue = getFieldValue(item.f, template.groupByFieldKey!) ?? 'NONE';
+          groups.putIfAbsent(groupValue, () => []).add(item);
+        }
+      }
+
+      int zebraIdx = 0;
+      for (final entry in groups.entries) {
+        if (template.groupByFieldKey != null) {
+          widgets.add(_buildGroupHeader(entry.key, theme));
+        }
+        for (final item in entry.value) {
+          if (item.partOrder == null) {
+            widgets.add(_buildDataRow(item.f, zebraIdx % 2 == 0, template, theme, dataFont, dataFontBold, dataFontItalic));
+          } else {
+            final part = item.f.parts.firstWhere((p) => p.partOrder == item.partOrder);
+            widgets.add(_buildPartDataRow(item.f, part, zebraIdx % 2 == 0, template, theme, dataFont, dataFontBold, dataFontItalic));
+          }
+          zebraIdx++;
+        }
+        if (template.groupByFieldKey != null) {
+          widgets.add(pw.SizedBox(height: 12));
+          zebraIdx = 0; // Reset zebra for new groups? No, usually keep it continuous unless grouped.
+        }
       }
     }
   }
@@ -159,19 +252,7 @@ Future<pw.Document> _buildPdf(
       ),
       header: (context) => _buildPageHeader(context, template, theme),
       footer: (context) => _buildPageFooter(context, template, theme),
-      build: (context) => [
-        pw.DefaultTextStyle(
-          style: pw.TextStyle(
-            font: dataFont,
-            fontFallback: theme.fallbackFonts,
-            fontSize: template.dataFontSize,
-          ),
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-            children: widgets,
-          ),
-        ),
-      ],
+      build: (context) => widgets,
     ),
   );
 
@@ -314,6 +395,35 @@ pw.Widget _buildDataRow(
   );
 }
 
+pw.Widget _buildPartDataRow(
+  FixtureRow f,
+  FixturePartRow part,
+  bool isEven,
+  ReportTemplate template,
+  ReportTheme theme,
+  pw.Font dataFont,
+  pw.Font dataFontBold,
+  pw.Font dataFontItalic,
+) {
+  return pw.Container(
+    decoration: pw.BoxDecoration(
+      color: isEven ? ReportTheme.zebraStripe : null,
+    ),
+    child: pw.Row(
+      children: [
+        for (final col in template.columns)
+          _buildColumnWidget(f, col, template, theme,
+            isHeader: false,
+            dataFont: dataFont,
+            dataFontBold: dataFontBold,
+            dataFontItalic: dataFontItalic,
+            part: part,
+          ),
+      ],
+    ),
+  );
+}
+
 pw.Widget _buildGroupHeader(String groupName, ReportTheme theme) {
   return pw.Container(
     padding: const pw.EdgeInsets.only(top: 8, bottom: 8),
@@ -348,15 +458,16 @@ pw.Widget _buildColumnWidget(
   pw.Font? dataFont,
   pw.Font? dataFontBold,
   pw.Font? dataFontItalic,
+  FixturePartRow? part,
 }) {
   pw.Widget content;
 
   if (isHeader) {
     content = _buildHeaderCellContent(column, theme);
   } else if (column.isStacked) {
-    content = _buildStackedCellContent(fixture!, column, template, theme, dataFont!, dataFontBold!, dataFontItalic!);
+    content = _buildStackedCellContent(fixture!, column, template, theme, dataFont!, dataFontBold!, dataFontItalic!, part);
   } else {
-    content = _buildSimpleCellContent(fixture!, column, template, theme, dataFont!, dataFontBold!, dataFontItalic!);
+    content = _buildSimpleCellContent(fixture!, column, template, theme, dataFont!, dataFontBold!, dataFontItalic!, part);
   }
 
   // Draw an inset border box around non-header cells when isBoxed is enabled.
@@ -374,6 +485,14 @@ pw.Widget _buildColumnWidget(
         ),
         child: content,
       ),
+    );
+  }
+
+  // Add visual indent for part rows on the first column
+  if (part != null && template.columns.indexOf(column) == 0) {
+    content = pw.Padding(
+      padding: const pw.EdgeInsets.only(left: 8),
+      child: content,
     );
   }
 
@@ -426,8 +545,11 @@ pw.Widget _buildSimpleCellContent(
   pw.Font dataFont,
   pw.Font dataFontBold,
   pw.Font dataFontItalic,
+  FixturePartRow? part,
 ) {
-  final value = getFieldValue(f, col.fieldKeys.first);
+  final value = part != null
+      ? getPartFieldValue(f, part, col.fieldKeys.first)
+      : getFieldValue(f, col.fieldKeys.first);
   final font = col.isBold ? dataFontBold : (col.isItalic ? dataFontItalic : dataFont);
 
   // Map textAlign string to pdf alignment objects
@@ -477,9 +599,12 @@ pw.Widget _buildStackedCellContent(
   pw.Font dataFont,
   pw.Font dataFontBold,
   pw.Font dataFontItalic,
+  FixturePartRow? part,
 ) {
   final subFontSize = col.fontSize - 2;
-  final values = col.fieldKeys.map((k) => getFieldValue(f, k)).toList();
+  final values = col.fieldKeys.map((k) {
+    return part != null ? getPartFieldValue(f, part, k) : getFieldValue(f, k);
+  }).toList();
   final font = col.isBold ? dataFontBold : (col.isItalic ? dataFontItalic : dataFont);
 
   if (values.every((v) => v.isEmpty)) {

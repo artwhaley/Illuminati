@@ -16,11 +16,7 @@ class Fixtures extends Table {
   TextColumn get fixtureType => text().nullable()();
   // Soft-link to lighting_positions.name — nullable; null = "Unspecified"
   TextColumn get position => text().nullable()();
-  IntColumn get unitNumber => integer().nullable()();
-  TextColumn get wattage => text().nullable()();
-  TextColumn get function => text().nullable()();
-  TextColumn get focus => text().nullable()();
-  IntColumn get flagged => integer().withDefault(const Constant(0))();
+  TextColumn get unitNumber => text().nullable()();
   // Display order — float so midpoint insertion never requires shifting other rows.
   RealColumn get sortOrder => real().withDefault(const Constant(0.0))();
   // v11 additions
@@ -29,6 +25,9 @@ class Fixtures extends Table {
   // v12 additions
   IntColumn get patched => integer().withDefault(const Constant(0))();
   IntColumn get deleted => integer().withDefault(const Constant(0))();
+  // v22 additions
+  TextColumn get purpose => text().nullable()();
+  TextColumn get area => text().nullable()();
 }
 
 class FixtureParts extends Table {
@@ -40,7 +39,9 @@ class FixtureParts extends Table {
   TextColumn get partName => text().nullable()();
   // Soft-links
   TextColumn get channel => text().nullable()();
+  TextColumn get dimmer => text().nullable()();
   TextColumn get address => text().nullable()();
+  TextColumn get wattage => text().nullable()();
   TextColumn get circuit => text().nullable()();
   TextColumn get ipAddress => text().nullable()();
   TextColumn get macAddress => text().nullable()();

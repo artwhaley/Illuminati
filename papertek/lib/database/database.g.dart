@@ -4095,55 +4095,12 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     'unitNumber',
   );
   @override
-  late final GeneratedColumn<int> unitNumber = GeneratedColumn<int>(
+  late final GeneratedColumn<String> unitNumber = GeneratedColumn<String>(
     'unit_number',
     aliasedName,
     true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _wattageMeta = const VerificationMeta(
-    'wattage',
-  );
-  @override
-  late final GeneratedColumn<String> wattage = GeneratedColumn<String>(
-    'wattage',
-    aliasedName,
-    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-  );
-  static const VerificationMeta _functionMeta = const VerificationMeta(
-    'function',
-  );
-  @override
-  late final GeneratedColumn<String> function = GeneratedColumn<String>(
-    'function',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _focusMeta = const VerificationMeta('focus');
-  @override
-  late final GeneratedColumn<String> focus = GeneratedColumn<String>(
-    'focus',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _flaggedMeta = const VerificationMeta(
-    'flagged',
-  );
-  @override
-  late final GeneratedColumn<int> flagged = GeneratedColumn<int>(
-    'flagged',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
   );
   static const VerificationMeta _sortOrderMeta = const VerificationMeta(
     'sortOrder',
@@ -4203,6 +4160,26 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _purposeMeta = const VerificationMeta(
+    'purpose',
+  );
+  @override
+  late final GeneratedColumn<String> purpose = GeneratedColumn<String>(
+    'purpose',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _areaMeta = const VerificationMeta('area');
+  @override
+  late final GeneratedColumn<String> area = GeneratedColumn<String>(
+    'area',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4210,15 +4187,13 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
     fixtureType,
     position,
     unitNumber,
-    wattage,
-    function,
-    focus,
-    flagged,
     sortOrder,
     hung,
     focused,
     patched,
     deleted,
+    purpose,
+    area,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4265,30 +4240,6 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         unitNumber.isAcceptableOrUnknown(data['unit_number']!, _unitNumberMeta),
       );
     }
-    if (data.containsKey('wattage')) {
-      context.handle(
-        _wattageMeta,
-        wattage.isAcceptableOrUnknown(data['wattage']!, _wattageMeta),
-      );
-    }
-    if (data.containsKey('function')) {
-      context.handle(
-        _functionMeta,
-        function.isAcceptableOrUnknown(data['function']!, _functionMeta),
-      );
-    }
-    if (data.containsKey('focus')) {
-      context.handle(
-        _focusMeta,
-        focus.isAcceptableOrUnknown(data['focus']!, _focusMeta),
-      );
-    }
-    if (data.containsKey('flagged')) {
-      context.handle(
-        _flaggedMeta,
-        flagged.isAcceptableOrUnknown(data['flagged']!, _flaggedMeta),
-      );
-    }
     if (data.containsKey('sort_order')) {
       context.handle(
         _sortOrderMeta,
@@ -4319,6 +4270,18 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
       );
     }
+    if (data.containsKey('purpose')) {
+      context.handle(
+        _purposeMeta,
+        purpose.isAcceptableOrUnknown(data['purpose']!, _purposeMeta),
+      );
+    }
+    if (data.containsKey('area')) {
+      context.handle(
+        _areaMeta,
+        area.isAcceptableOrUnknown(data['area']!, _areaMeta),
+      );
+    }
     return context;
   }
 
@@ -4345,25 +4308,9 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         data['${effectivePrefix}position'],
       ),
       unitNumber: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
+        DriftSqlType.string,
         data['${effectivePrefix}unit_number'],
       ),
-      wattage: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}wattage'],
-      ),
-      function: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}function'],
-      ),
-      focus: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}focus'],
-      ),
-      flagged: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}flagged'],
-      )!,
       sortOrder: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}sort_order'],
@@ -4384,6 +4331,14 @@ class $FixturesTable extends Fixtures with TableInfo<$FixturesTable, Fixture> {
         DriftSqlType.int,
         data['${effectivePrefix}deleted'],
       )!,
+      purpose: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}purpose'],
+      ),
+      area: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}area'],
+      ),
     );
   }
 
@@ -4398,31 +4353,27 @@ class Fixture extends DataClass implements Insertable<Fixture> {
   final int? fixtureTypeId;
   final String? fixtureType;
   final String? position;
-  final int? unitNumber;
-  final String? wattage;
-  final String? function;
-  final String? focus;
-  final int flagged;
+  final String? unitNumber;
   final double sortOrder;
   final int hung;
   final int focused;
   final int patched;
   final int deleted;
+  final String? purpose;
+  final String? area;
   const Fixture({
     required this.id,
     this.fixtureTypeId,
     this.fixtureType,
     this.position,
     this.unitNumber,
-    this.wattage,
-    this.function,
-    this.focus,
-    required this.flagged,
     required this.sortOrder,
     required this.hung,
     required this.focused,
     required this.patched,
     required this.deleted,
+    this.purpose,
+    this.area,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4438,23 +4389,19 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       map['position'] = Variable<String>(position);
     }
     if (!nullToAbsent || unitNumber != null) {
-      map['unit_number'] = Variable<int>(unitNumber);
+      map['unit_number'] = Variable<String>(unitNumber);
     }
-    if (!nullToAbsent || wattage != null) {
-      map['wattage'] = Variable<String>(wattage);
-    }
-    if (!nullToAbsent || function != null) {
-      map['function'] = Variable<String>(function);
-    }
-    if (!nullToAbsent || focus != null) {
-      map['focus'] = Variable<String>(focus);
-    }
-    map['flagged'] = Variable<int>(flagged);
     map['sort_order'] = Variable<double>(sortOrder);
     map['hung'] = Variable<int>(hung);
     map['focused'] = Variable<int>(focused);
     map['patched'] = Variable<int>(patched);
     map['deleted'] = Variable<int>(deleted);
+    if (!nullToAbsent || purpose != null) {
+      map['purpose'] = Variable<String>(purpose);
+    }
+    if (!nullToAbsent || area != null) {
+      map['area'] = Variable<String>(area);
+    }
     return map;
   }
 
@@ -4473,21 +4420,15 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       unitNumber: unitNumber == null && nullToAbsent
           ? const Value.absent()
           : Value(unitNumber),
-      wattage: wattage == null && nullToAbsent
-          ? const Value.absent()
-          : Value(wattage),
-      function: function == null && nullToAbsent
-          ? const Value.absent()
-          : Value(function),
-      focus: focus == null && nullToAbsent
-          ? const Value.absent()
-          : Value(focus),
-      flagged: Value(flagged),
       sortOrder: Value(sortOrder),
       hung: Value(hung),
       focused: Value(focused),
       patched: Value(patched),
       deleted: Value(deleted),
+      purpose: purpose == null && nullToAbsent
+          ? const Value.absent()
+          : Value(purpose),
+      area: area == null && nullToAbsent ? const Value.absent() : Value(area),
     );
   }
 
@@ -4501,16 +4442,14 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       fixtureTypeId: serializer.fromJson<int?>(json['fixtureTypeId']),
       fixtureType: serializer.fromJson<String?>(json['fixtureType']),
       position: serializer.fromJson<String?>(json['position']),
-      unitNumber: serializer.fromJson<int?>(json['unitNumber']),
-      wattage: serializer.fromJson<String?>(json['wattage']),
-      function: serializer.fromJson<String?>(json['function']),
-      focus: serializer.fromJson<String?>(json['focus']),
-      flagged: serializer.fromJson<int>(json['flagged']),
+      unitNumber: serializer.fromJson<String?>(json['unitNumber']),
       sortOrder: serializer.fromJson<double>(json['sortOrder']),
       hung: serializer.fromJson<int>(json['hung']),
       focused: serializer.fromJson<int>(json['focused']),
       patched: serializer.fromJson<int>(json['patched']),
       deleted: serializer.fromJson<int>(json['deleted']),
+      purpose: serializer.fromJson<String?>(json['purpose']),
+      area: serializer.fromJson<String?>(json['area']),
     );
   }
   @override
@@ -4521,16 +4460,14 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       'fixtureTypeId': serializer.toJson<int?>(fixtureTypeId),
       'fixtureType': serializer.toJson<String?>(fixtureType),
       'position': serializer.toJson<String?>(position),
-      'unitNumber': serializer.toJson<int?>(unitNumber),
-      'wattage': serializer.toJson<String?>(wattage),
-      'function': serializer.toJson<String?>(function),
-      'focus': serializer.toJson<String?>(focus),
-      'flagged': serializer.toJson<int>(flagged),
+      'unitNumber': serializer.toJson<String?>(unitNumber),
       'sortOrder': serializer.toJson<double>(sortOrder),
       'hung': serializer.toJson<int>(hung),
       'focused': serializer.toJson<int>(focused),
       'patched': serializer.toJson<int>(patched),
       'deleted': serializer.toJson<int>(deleted),
+      'purpose': serializer.toJson<String?>(purpose),
+      'area': serializer.toJson<String?>(area),
     };
   }
 
@@ -4539,16 +4476,14 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     Value<int?> fixtureTypeId = const Value.absent(),
     Value<String?> fixtureType = const Value.absent(),
     Value<String?> position = const Value.absent(),
-    Value<int?> unitNumber = const Value.absent(),
-    Value<String?> wattage = const Value.absent(),
-    Value<String?> function = const Value.absent(),
-    Value<String?> focus = const Value.absent(),
-    int? flagged,
+    Value<String?> unitNumber = const Value.absent(),
     double? sortOrder,
     int? hung,
     int? focused,
     int? patched,
     int? deleted,
+    Value<String?> purpose = const Value.absent(),
+    Value<String?> area = const Value.absent(),
   }) => Fixture(
     id: id ?? this.id,
     fixtureTypeId: fixtureTypeId.present
@@ -4557,15 +4492,13 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     fixtureType: fixtureType.present ? fixtureType.value : this.fixtureType,
     position: position.present ? position.value : this.position,
     unitNumber: unitNumber.present ? unitNumber.value : this.unitNumber,
-    wattage: wattage.present ? wattage.value : this.wattage,
-    function: function.present ? function.value : this.function,
-    focus: focus.present ? focus.value : this.focus,
-    flagged: flagged ?? this.flagged,
     sortOrder: sortOrder ?? this.sortOrder,
     hung: hung ?? this.hung,
     focused: focused ?? this.focused,
     patched: patched ?? this.patched,
     deleted: deleted ?? this.deleted,
+    purpose: purpose.present ? purpose.value : this.purpose,
+    area: area.present ? area.value : this.area,
   );
   Fixture copyWithCompanion(FixturesCompanion data) {
     return Fixture(
@@ -4580,15 +4513,13 @@ class Fixture extends DataClass implements Insertable<Fixture> {
       unitNumber: data.unitNumber.present
           ? data.unitNumber.value
           : this.unitNumber,
-      wattage: data.wattage.present ? data.wattage.value : this.wattage,
-      function: data.function.present ? data.function.value : this.function,
-      focus: data.focus.present ? data.focus.value : this.focus,
-      flagged: data.flagged.present ? data.flagged.value : this.flagged,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       hung: data.hung.present ? data.hung.value : this.hung,
       focused: data.focused.present ? data.focused.value : this.focused,
       patched: data.patched.present ? data.patched.value : this.patched,
       deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      purpose: data.purpose.present ? data.purpose.value : this.purpose,
+      area: data.area.present ? data.area.value : this.area,
     );
   }
 
@@ -4600,15 +4531,13 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           ..write('fixtureType: $fixtureType, ')
           ..write('position: $position, ')
           ..write('unitNumber: $unitNumber, ')
-          ..write('wattage: $wattage, ')
-          ..write('function: $function, ')
-          ..write('focus: $focus, ')
-          ..write('flagged: $flagged, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('hung: $hung, ')
           ..write('focused: $focused, ')
           ..write('patched: $patched, ')
-          ..write('deleted: $deleted')
+          ..write('deleted: $deleted, ')
+          ..write('purpose: $purpose, ')
+          ..write('area: $area')
           ..write(')'))
         .toString();
   }
@@ -4620,15 +4549,13 @@ class Fixture extends DataClass implements Insertable<Fixture> {
     fixtureType,
     position,
     unitNumber,
-    wattage,
-    function,
-    focus,
-    flagged,
     sortOrder,
     hung,
     focused,
     patched,
     deleted,
+    purpose,
+    area,
   );
   @override
   bool operator ==(Object other) =>
@@ -4639,15 +4566,13 @@ class Fixture extends DataClass implements Insertable<Fixture> {
           other.fixtureType == this.fixtureType &&
           other.position == this.position &&
           other.unitNumber == this.unitNumber &&
-          other.wattage == this.wattage &&
-          other.function == this.function &&
-          other.focus == this.focus &&
-          other.flagged == this.flagged &&
           other.sortOrder == this.sortOrder &&
           other.hung == this.hung &&
           other.focused == this.focused &&
           other.patched == this.patched &&
-          other.deleted == this.deleted);
+          other.deleted == this.deleted &&
+          other.purpose == this.purpose &&
+          other.area == this.area);
 }
 
 class FixturesCompanion extends UpdateCompanion<Fixture> {
@@ -4655,31 +4580,27 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
   final Value<int?> fixtureTypeId;
   final Value<String?> fixtureType;
   final Value<String?> position;
-  final Value<int?> unitNumber;
-  final Value<String?> wattage;
-  final Value<String?> function;
-  final Value<String?> focus;
-  final Value<int> flagged;
+  final Value<String?> unitNumber;
   final Value<double> sortOrder;
   final Value<int> hung;
   final Value<int> focused;
   final Value<int> patched;
   final Value<int> deleted;
+  final Value<String?> purpose;
+  final Value<String?> area;
   const FixturesCompanion({
     this.id = const Value.absent(),
     this.fixtureTypeId = const Value.absent(),
     this.fixtureType = const Value.absent(),
     this.position = const Value.absent(),
     this.unitNumber = const Value.absent(),
-    this.wattage = const Value.absent(),
-    this.function = const Value.absent(),
-    this.focus = const Value.absent(),
-    this.flagged = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.hung = const Value.absent(),
     this.focused = const Value.absent(),
     this.patched = const Value.absent(),
     this.deleted = const Value.absent(),
+    this.purpose = const Value.absent(),
+    this.area = const Value.absent(),
   });
   FixturesCompanion.insert({
     this.id = const Value.absent(),
@@ -4687,31 +4608,27 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     this.fixtureType = const Value.absent(),
     this.position = const Value.absent(),
     this.unitNumber = const Value.absent(),
-    this.wattage = const Value.absent(),
-    this.function = const Value.absent(),
-    this.focus = const Value.absent(),
-    this.flagged = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.hung = const Value.absent(),
     this.focused = const Value.absent(),
     this.patched = const Value.absent(),
     this.deleted = const Value.absent(),
+    this.purpose = const Value.absent(),
+    this.area = const Value.absent(),
   });
   static Insertable<Fixture> custom({
     Expression<int>? id,
     Expression<int>? fixtureTypeId,
     Expression<String>? fixtureType,
     Expression<String>? position,
-    Expression<int>? unitNumber,
-    Expression<String>? wattage,
-    Expression<String>? function,
-    Expression<String>? focus,
-    Expression<int>? flagged,
+    Expression<String>? unitNumber,
     Expression<double>? sortOrder,
     Expression<int>? hung,
     Expression<int>? focused,
     Expression<int>? patched,
     Expression<int>? deleted,
+    Expression<String>? purpose,
+    Expression<String>? area,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -4719,15 +4636,13 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       if (fixtureType != null) 'fixture_type': fixtureType,
       if (position != null) 'position': position,
       if (unitNumber != null) 'unit_number': unitNumber,
-      if (wattage != null) 'wattage': wattage,
-      if (function != null) 'function': function,
-      if (focus != null) 'focus': focus,
-      if (flagged != null) 'flagged': flagged,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (hung != null) 'hung': hung,
       if (focused != null) 'focused': focused,
       if (patched != null) 'patched': patched,
       if (deleted != null) 'deleted': deleted,
+      if (purpose != null) 'purpose': purpose,
+      if (area != null) 'area': area,
     });
   }
 
@@ -4736,16 +4651,14 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     Value<int?>? fixtureTypeId,
     Value<String?>? fixtureType,
     Value<String?>? position,
-    Value<int?>? unitNumber,
-    Value<String?>? wattage,
-    Value<String?>? function,
-    Value<String?>? focus,
-    Value<int>? flagged,
+    Value<String?>? unitNumber,
     Value<double>? sortOrder,
     Value<int>? hung,
     Value<int>? focused,
     Value<int>? patched,
     Value<int>? deleted,
+    Value<String?>? purpose,
+    Value<String?>? area,
   }) {
     return FixturesCompanion(
       id: id ?? this.id,
@@ -4753,15 +4666,13 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       fixtureType: fixtureType ?? this.fixtureType,
       position: position ?? this.position,
       unitNumber: unitNumber ?? this.unitNumber,
-      wattage: wattage ?? this.wattage,
-      function: function ?? this.function,
-      focus: focus ?? this.focus,
-      flagged: flagged ?? this.flagged,
       sortOrder: sortOrder ?? this.sortOrder,
       hung: hung ?? this.hung,
       focused: focused ?? this.focused,
       patched: patched ?? this.patched,
       deleted: deleted ?? this.deleted,
+      purpose: purpose ?? this.purpose,
+      area: area ?? this.area,
     );
   }
 
@@ -4781,19 +4692,7 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
       map['position'] = Variable<String>(position.value);
     }
     if (unitNumber.present) {
-      map['unit_number'] = Variable<int>(unitNumber.value);
-    }
-    if (wattage.present) {
-      map['wattage'] = Variable<String>(wattage.value);
-    }
-    if (function.present) {
-      map['function'] = Variable<String>(function.value);
-    }
-    if (focus.present) {
-      map['focus'] = Variable<String>(focus.value);
-    }
-    if (flagged.present) {
-      map['flagged'] = Variable<int>(flagged.value);
+      map['unit_number'] = Variable<String>(unitNumber.value);
     }
     if (sortOrder.present) {
       map['sort_order'] = Variable<double>(sortOrder.value);
@@ -4810,6 +4709,12 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
     if (deleted.present) {
       map['deleted'] = Variable<int>(deleted.value);
     }
+    if (purpose.present) {
+      map['purpose'] = Variable<String>(purpose.value);
+    }
+    if (area.present) {
+      map['area'] = Variable<String>(area.value);
+    }
     return map;
   }
 
@@ -4821,15 +4726,13 @@ class FixturesCompanion extends UpdateCompanion<Fixture> {
           ..write('fixtureType: $fixtureType, ')
           ..write('position: $position, ')
           ..write('unitNumber: $unitNumber, ')
-          ..write('wattage: $wattage, ')
-          ..write('function: $function, ')
-          ..write('focus: $focus, ')
-          ..write('flagged: $flagged, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('hung: $hung, ')
           ..write('focused: $focused, ')
           ..write('patched: $patched, ')
-          ..write('deleted: $deleted')
+          ..write('deleted: $deleted, ')
+          ..write('purpose: $purpose, ')
+          ..write('area: $area')
           ..write(')'))
         .toString();
   }
@@ -4914,12 +4817,32 @@ class $FixturePartsTable extends FixtureParts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _dimmerMeta = const VerificationMeta('dimmer');
+  @override
+  late final GeneratedColumn<String> dimmer = GeneratedColumn<String>(
+    'dimmer',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _addressMeta = const VerificationMeta(
     'address',
   );
   @override
   late final GeneratedColumn<String> address = GeneratedColumn<String>(
     'address',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _wattageMeta = const VerificationMeta(
+    'wattage',
+  );
+  @override
+  late final GeneratedColumn<String> wattage = GeneratedColumn<String>(
+    'wattage',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -5007,7 +4930,9 @@ class $FixturePartsTable extends FixtureParts
     partType,
     partName,
     channel,
+    dimmer,
     address,
+    wattage,
     circuit,
     ipAddress,
     macAddress,
@@ -5065,10 +4990,22 @@ class $FixturePartsTable extends FixtureParts
         channel.isAcceptableOrUnknown(data['channel']!, _channelMeta),
       );
     }
+    if (data.containsKey('dimmer')) {
+      context.handle(
+        _dimmerMeta,
+        dimmer.isAcceptableOrUnknown(data['dimmer']!, _dimmerMeta),
+      );
+    }
     if (data.containsKey('address')) {
       context.handle(
         _addressMeta,
         address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
+    }
+    if (data.containsKey('wattage')) {
+      context.handle(
+        _wattageMeta,
+        wattage.isAcceptableOrUnknown(data['wattage']!, _wattageMeta),
       );
     }
     if (data.containsKey('circuit')) {
@@ -5146,9 +5083,17 @@ class $FixturePartsTable extends FixtureParts
         DriftSqlType.string,
         data['${effectivePrefix}channel'],
       ),
+      dimmer: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dimmer'],
+      ),
       address: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}address'],
+      ),
+      wattage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wattage'],
       ),
       circuit: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -5194,7 +5139,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
   final String? partType;
   final String? partName;
   final String? channel;
+  final String? dimmer;
   final String? address;
+  final String? wattage;
   final String? circuit;
   final String? ipAddress;
   final String? macAddress;
@@ -5209,7 +5156,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     this.partType,
     this.partName,
     this.channel,
+    this.dimmer,
     this.address,
+    this.wattage,
     this.circuit,
     this.ipAddress,
     this.macAddress,
@@ -5233,8 +5182,14 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     if (!nullToAbsent || channel != null) {
       map['channel'] = Variable<String>(channel);
     }
+    if (!nullToAbsent || dimmer != null) {
+      map['dimmer'] = Variable<String>(dimmer);
+    }
     if (!nullToAbsent || address != null) {
       map['address'] = Variable<String>(address);
+    }
+    if (!nullToAbsent || wattage != null) {
+      map['wattage'] = Variable<String>(wattage);
     }
     if (!nullToAbsent || circuit != null) {
       map['circuit'] = Variable<String>(circuit);
@@ -5272,9 +5227,15 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       channel: channel == null && nullToAbsent
           ? const Value.absent()
           : Value(channel),
+      dimmer: dimmer == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dimmer),
       address: address == null && nullToAbsent
           ? const Value.absent()
           : Value(address),
+      wattage: wattage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(wattage),
       circuit: circuit == null && nullToAbsent
           ? const Value.absent()
           : Value(circuit),
@@ -5307,7 +5268,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       partType: serializer.fromJson<String?>(json['partType']),
       partName: serializer.fromJson<String?>(json['partName']),
       channel: serializer.fromJson<String?>(json['channel']),
+      dimmer: serializer.fromJson<String?>(json['dimmer']),
       address: serializer.fromJson<String?>(json['address']),
+      wattage: serializer.fromJson<String?>(json['wattage']),
       circuit: serializer.fromJson<String?>(json['circuit']),
       ipAddress: serializer.fromJson<String?>(json['ipAddress']),
       macAddress: serializer.fromJson<String?>(json['macAddress']),
@@ -5327,7 +5290,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       'partType': serializer.toJson<String?>(partType),
       'partName': serializer.toJson<String?>(partName),
       'channel': serializer.toJson<String?>(channel),
+      'dimmer': serializer.toJson<String?>(dimmer),
       'address': serializer.toJson<String?>(address),
+      'wattage': serializer.toJson<String?>(wattage),
       'circuit': serializer.toJson<String?>(circuit),
       'ipAddress': serializer.toJson<String?>(ipAddress),
       'macAddress': serializer.toJson<String?>(macAddress),
@@ -5345,7 +5310,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     Value<String?> partType = const Value.absent(),
     Value<String?> partName = const Value.absent(),
     Value<String?> channel = const Value.absent(),
+    Value<String?> dimmer = const Value.absent(),
     Value<String?> address = const Value.absent(),
+    Value<String?> wattage = const Value.absent(),
     Value<String?> circuit = const Value.absent(),
     Value<String?> ipAddress = const Value.absent(),
     Value<String?> macAddress = const Value.absent(),
@@ -5360,7 +5327,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     partType: partType.present ? partType.value : this.partType,
     partName: partName.present ? partName.value : this.partName,
     channel: channel.present ? channel.value : this.channel,
+    dimmer: dimmer.present ? dimmer.value : this.dimmer,
     address: address.present ? address.value : this.address,
+    wattage: wattage.present ? wattage.value : this.wattage,
     circuit: circuit.present ? circuit.value : this.circuit,
     ipAddress: ipAddress.present ? ipAddress.value : this.ipAddress,
     macAddress: macAddress.present ? macAddress.value : this.macAddress,
@@ -5377,7 +5346,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
       partType: data.partType.present ? data.partType.value : this.partType,
       partName: data.partName.present ? data.partName.value : this.partName,
       channel: data.channel.present ? data.channel.value : this.channel,
+      dimmer: data.dimmer.present ? data.dimmer.value : this.dimmer,
       address: data.address.present ? data.address.value : this.address,
+      wattage: data.wattage.present ? data.wattage.value : this.wattage,
       circuit: data.circuit.present ? data.circuit.value : this.circuit,
       ipAddress: data.ipAddress.present ? data.ipAddress.value : this.ipAddress,
       macAddress: data.macAddress.present
@@ -5401,7 +5372,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
           ..write('partType: $partType, ')
           ..write('partName: $partName, ')
           ..write('channel: $channel, ')
+          ..write('dimmer: $dimmer, ')
           ..write('address: $address, ')
+          ..write('wattage: $wattage, ')
           ..write('circuit: $circuit, ')
           ..write('ipAddress: $ipAddress, ')
           ..write('macAddress: $macAddress, ')
@@ -5421,7 +5394,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
     partType,
     partName,
     channel,
+    dimmer,
     address,
+    wattage,
     circuit,
     ipAddress,
     macAddress,
@@ -5440,7 +5415,9 @@ class FixturePart extends DataClass implements Insertable<FixturePart> {
           other.partType == this.partType &&
           other.partName == this.partName &&
           other.channel == this.channel &&
+          other.dimmer == this.dimmer &&
           other.address == this.address &&
+          other.wattage == this.wattage &&
           other.circuit == this.circuit &&
           other.ipAddress == this.ipAddress &&
           other.macAddress == this.macAddress &&
@@ -5457,7 +5434,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
   final Value<String?> partType;
   final Value<String?> partName;
   final Value<String?> channel;
+  final Value<String?> dimmer;
   final Value<String?> address;
+  final Value<String?> wattage;
   final Value<String?> circuit;
   final Value<String?> ipAddress;
   final Value<String?> macAddress;
@@ -5472,7 +5451,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     this.partType = const Value.absent(),
     this.partName = const Value.absent(),
     this.channel = const Value.absent(),
+    this.dimmer = const Value.absent(),
     this.address = const Value.absent(),
+    this.wattage = const Value.absent(),
     this.circuit = const Value.absent(),
     this.ipAddress = const Value.absent(),
     this.macAddress = const Value.absent(),
@@ -5488,7 +5469,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     this.partType = const Value.absent(),
     this.partName = const Value.absent(),
     this.channel = const Value.absent(),
+    this.dimmer = const Value.absent(),
     this.address = const Value.absent(),
+    this.wattage = const Value.absent(),
     this.circuit = const Value.absent(),
     this.ipAddress = const Value.absent(),
     this.macAddress = const Value.absent(),
@@ -5505,7 +5488,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     Expression<String>? partType,
     Expression<String>? partName,
     Expression<String>? channel,
+    Expression<String>? dimmer,
     Expression<String>? address,
+    Expression<String>? wattage,
     Expression<String>? circuit,
     Expression<String>? ipAddress,
     Expression<String>? macAddress,
@@ -5521,7 +5506,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
       if (partType != null) 'part_type': partType,
       if (partName != null) 'part_name': partName,
       if (channel != null) 'channel': channel,
+      if (dimmer != null) 'dimmer': dimmer,
       if (address != null) 'address': address,
+      if (wattage != null) 'wattage': wattage,
       if (circuit != null) 'circuit': circuit,
       if (ipAddress != null) 'ip_address': ipAddress,
       if (macAddress != null) 'mac_address': macAddress,
@@ -5539,7 +5526,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     Value<String?>? partType,
     Value<String?>? partName,
     Value<String?>? channel,
+    Value<String?>? dimmer,
     Value<String?>? address,
+    Value<String?>? wattage,
     Value<String?>? circuit,
     Value<String?>? ipAddress,
     Value<String?>? macAddress,
@@ -5555,7 +5544,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
       partType: partType ?? this.partType,
       partName: partName ?? this.partName,
       channel: channel ?? this.channel,
+      dimmer: dimmer ?? this.dimmer,
       address: address ?? this.address,
+      wattage: wattage ?? this.wattage,
       circuit: circuit ?? this.circuit,
       ipAddress: ipAddress ?? this.ipAddress,
       macAddress: macAddress ?? this.macAddress,
@@ -5587,8 +5578,14 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
     if (channel.present) {
       map['channel'] = Variable<String>(channel.value);
     }
+    if (dimmer.present) {
+      map['dimmer'] = Variable<String>(dimmer.value);
+    }
     if (address.present) {
       map['address'] = Variable<String>(address.value);
+    }
+    if (wattage.present) {
+      map['wattage'] = Variable<String>(wattage.value);
     }
     if (circuit.present) {
       map['circuit'] = Variable<String>(circuit.value);
@@ -5623,7 +5620,9 @@ class FixturePartsCompanion extends UpdateCompanion<FixturePart> {
           ..write('partType: $partType, ')
           ..write('partName: $partName, ')
           ..write('channel: $channel, ')
+          ..write('dimmer: $dimmer, ')
           ..write('address: $address, ')
+          ..write('wattage: $wattage, ')
           ..write('circuit: $circuit, ')
           ..write('ipAddress: $ipAddress, ')
           ..write('macAddress: $macAddress, ')
@@ -12199,6 +12198,228 @@ class NotePositionsCompanion extends UpdateCompanion<NotePosition> {
   }
 }
 
+class $FieldNamesTable extends FieldNames
+    with TableInfo<$FieldNamesTable, FieldName> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FieldNamesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _fieldIdMeta = const VerificationMeta(
+    'fieldId',
+  );
+  @override
+  late final GeneratedColumn<String> fieldId = GeneratedColumn<String>(
+    'field_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [fieldId, displayName];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'field_names';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FieldName> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('field_id')) {
+      context.handle(
+        _fieldIdMeta,
+        fieldId.isAcceptableOrUnknown(data['field_id']!, _fieldIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fieldIdMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {fieldId};
+  @override
+  FieldName map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FieldName(
+      fieldId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field_id'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+    );
+  }
+
+  @override
+  $FieldNamesTable createAlias(String alias) {
+    return $FieldNamesTable(attachedDatabase, alias);
+  }
+}
+
+class FieldName extends DataClass implements Insertable<FieldName> {
+  final String fieldId;
+  final String displayName;
+  const FieldName({required this.fieldId, required this.displayName});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['field_id'] = Variable<String>(fieldId);
+    map['display_name'] = Variable<String>(displayName);
+    return map;
+  }
+
+  FieldNamesCompanion toCompanion(bool nullToAbsent) {
+    return FieldNamesCompanion(
+      fieldId: Value(fieldId),
+      displayName: Value(displayName),
+    );
+  }
+
+  factory FieldName.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FieldName(
+      fieldId: serializer.fromJson<String>(json['fieldId']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'fieldId': serializer.toJson<String>(fieldId),
+      'displayName': serializer.toJson<String>(displayName),
+    };
+  }
+
+  FieldName copyWith({String? fieldId, String? displayName}) => FieldName(
+    fieldId: fieldId ?? this.fieldId,
+    displayName: displayName ?? this.displayName,
+  );
+  FieldName copyWithCompanion(FieldNamesCompanion data) {
+    return FieldName(
+      fieldId: data.fieldId.present ? data.fieldId.value : this.fieldId,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FieldName(')
+          ..write('fieldId: $fieldId, ')
+          ..write('displayName: $displayName')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(fieldId, displayName);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FieldName &&
+          other.fieldId == this.fieldId &&
+          other.displayName == this.displayName);
+}
+
+class FieldNamesCompanion extends UpdateCompanion<FieldName> {
+  final Value<String> fieldId;
+  final Value<String> displayName;
+  final Value<int> rowid;
+  const FieldNamesCompanion({
+    this.fieldId = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FieldNamesCompanion.insert({
+    required String fieldId,
+    required String displayName,
+    this.rowid = const Value.absent(),
+  }) : fieldId = Value(fieldId),
+       displayName = Value(displayName);
+  static Insertable<FieldName> custom({
+    Expression<String>? fieldId,
+    Expression<String>? displayName,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (fieldId != null) 'field_id': fieldId,
+      if (displayName != null) 'display_name': displayName,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FieldNamesCompanion copyWith({
+    Value<String>? fieldId,
+    Value<String>? displayName,
+    Value<int>? rowid,
+  }) {
+    return FieldNamesCompanion(
+      fieldId: fieldId ?? this.fieldId,
+      displayName: displayName ?? this.displayName,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (fieldId.present) {
+      map['field_id'] = Variable<String>(fieldId.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FieldNamesCompanion(')
+          ..write('fieldId: $fieldId, ')
+          ..write('displayName: $displayName, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -12232,6 +12453,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $NoteActionsTable noteActions = $NoteActionsTable(this);
   late final $NoteFixturesTable noteFixtures = $NoteFixturesTable(this);
   late final $NotePositionsTable notePositions = $NotePositionsTable(this);
+  late final $FieldNamesTable fieldNames = $FieldNamesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -12264,6 +12486,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     noteActions,
     noteFixtures,
     notePositions,
+    fieldNames,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -14578,16 +14801,14 @@ typedef $$FixturesTableCreateCompanionBuilder =
       Value<int?> fixtureTypeId,
       Value<String?> fixtureType,
       Value<String?> position,
-      Value<int?> unitNumber,
-      Value<String?> wattage,
-      Value<String?> function,
-      Value<String?> focus,
-      Value<int> flagged,
+      Value<String?> unitNumber,
       Value<double> sortOrder,
       Value<int> hung,
       Value<int> focused,
       Value<int> patched,
       Value<int> deleted,
+      Value<String?> purpose,
+      Value<String?> area,
     });
 typedef $$FixturesTableUpdateCompanionBuilder =
     FixturesCompanion Function({
@@ -14595,16 +14816,14 @@ typedef $$FixturesTableUpdateCompanionBuilder =
       Value<int?> fixtureTypeId,
       Value<String?> fixtureType,
       Value<String?> position,
-      Value<int?> unitNumber,
-      Value<String?> wattage,
-      Value<String?> function,
-      Value<String?> focus,
-      Value<int> flagged,
+      Value<String?> unitNumber,
       Value<double> sortOrder,
       Value<int> hung,
       Value<int> focused,
       Value<int> patched,
       Value<int> deleted,
+      Value<String?> purpose,
+      Value<String?> area,
     });
 
 final class $$FixturesTableReferences
@@ -14810,28 +15029,8 @@ class $$FixturesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get unitNumber => $composableBuilder(
+  ColumnFilters<String> get unitNumber => $composableBuilder(
     column: $table.unitNumber,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get wattage => $composableBuilder(
-    column: $table.wattage,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get function => $composableBuilder(
-    column: $table.function,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get focus => $composableBuilder(
-    column: $table.focus,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get flagged => $composableBuilder(
-    column: $table.flagged,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14857,6 +15056,16 @@ class $$FixturesTableFilterComposer
 
   ColumnFilters<int> get deleted => $composableBuilder(
     column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get purpose => $composableBuilder(
+    column: $table.purpose,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get area => $composableBuilder(
+    column: $table.area,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15108,28 +15317,8 @@ class $$FixturesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get unitNumber => $composableBuilder(
+  ColumnOrderings<String> get unitNumber => $composableBuilder(
     column: $table.unitNumber,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get wattage => $composableBuilder(
-    column: $table.wattage,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get function => $composableBuilder(
-    column: $table.function,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get focus => $composableBuilder(
-    column: $table.focus,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get flagged => $composableBuilder(
-    column: $table.flagged,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -15155,6 +15344,16 @@ class $$FixturesTableOrderingComposer
 
   ColumnOrderings<int> get deleted => $composableBuilder(
     column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get purpose => $composableBuilder(
+    column: $table.purpose,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get area => $composableBuilder(
+    column: $table.area,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -15202,22 +15401,10 @@ class $$FixturesTableAnnotationComposer
   GeneratedColumn<String> get position =>
       $composableBuilder(column: $table.position, builder: (column) => column);
 
-  GeneratedColumn<int> get unitNumber => $composableBuilder(
+  GeneratedColumn<String> get unitNumber => $composableBuilder(
     column: $table.unitNumber,
     builder: (column) => column,
   );
-
-  GeneratedColumn<String> get wattage =>
-      $composableBuilder(column: $table.wattage, builder: (column) => column);
-
-  GeneratedColumn<String> get function =>
-      $composableBuilder(column: $table.function, builder: (column) => column);
-
-  GeneratedColumn<String> get focus =>
-      $composableBuilder(column: $table.focus, builder: (column) => column);
-
-  GeneratedColumn<int> get flagged =>
-      $composableBuilder(column: $table.flagged, builder: (column) => column);
 
   GeneratedColumn<double> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
@@ -15233,6 +15420,12 @@ class $$FixturesTableAnnotationComposer
 
   GeneratedColumn<int> get deleted =>
       $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<String> get purpose =>
+      $composableBuilder(column: $table.purpose, builder: (column) => column);
+
+  GeneratedColumn<String> get area =>
+      $composableBuilder(column: $table.area, builder: (column) => column);
 
   $$FixtureTypesTableAnnotationComposer get fixtureTypeId {
     final $$FixtureTypesTableAnnotationComposer composer = $composerBuilder(
@@ -15501,31 +15694,27 @@ class $$FixturesTableTableManager
                 Value<int?> fixtureTypeId = const Value.absent(),
                 Value<String?> fixtureType = const Value.absent(),
                 Value<String?> position = const Value.absent(),
-                Value<int?> unitNumber = const Value.absent(),
-                Value<String?> wattage = const Value.absent(),
-                Value<String?> function = const Value.absent(),
-                Value<String?> focus = const Value.absent(),
-                Value<int> flagged = const Value.absent(),
+                Value<String?> unitNumber = const Value.absent(),
                 Value<double> sortOrder = const Value.absent(),
                 Value<int> hung = const Value.absent(),
                 Value<int> focused = const Value.absent(),
                 Value<int> patched = const Value.absent(),
                 Value<int> deleted = const Value.absent(),
+                Value<String?> purpose = const Value.absent(),
+                Value<String?> area = const Value.absent(),
               }) => FixturesCompanion(
                 id: id,
                 fixtureTypeId: fixtureTypeId,
                 fixtureType: fixtureType,
                 position: position,
                 unitNumber: unitNumber,
-                wattage: wattage,
-                function: function,
-                focus: focus,
-                flagged: flagged,
                 sortOrder: sortOrder,
                 hung: hung,
                 focused: focused,
                 patched: patched,
                 deleted: deleted,
+                purpose: purpose,
+                area: area,
               ),
           createCompanionCallback:
               ({
@@ -15533,31 +15722,27 @@ class $$FixturesTableTableManager
                 Value<int?> fixtureTypeId = const Value.absent(),
                 Value<String?> fixtureType = const Value.absent(),
                 Value<String?> position = const Value.absent(),
-                Value<int?> unitNumber = const Value.absent(),
-                Value<String?> wattage = const Value.absent(),
-                Value<String?> function = const Value.absent(),
-                Value<String?> focus = const Value.absent(),
-                Value<int> flagged = const Value.absent(),
+                Value<String?> unitNumber = const Value.absent(),
                 Value<double> sortOrder = const Value.absent(),
                 Value<int> hung = const Value.absent(),
                 Value<int> focused = const Value.absent(),
                 Value<int> patched = const Value.absent(),
                 Value<int> deleted = const Value.absent(),
+                Value<String?> purpose = const Value.absent(),
+                Value<String?> area = const Value.absent(),
               }) => FixturesCompanion.insert(
                 id: id,
                 fixtureTypeId: fixtureTypeId,
                 fixtureType: fixtureType,
                 position: position,
                 unitNumber: unitNumber,
-                wattage: wattage,
-                function: function,
-                focus: focus,
-                flagged: flagged,
                 sortOrder: sortOrder,
                 hung: hung,
                 focused: focused,
                 patched: patched,
                 deleted: deleted,
+                purpose: purpose,
+                area: area,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -15825,7 +16010,9 @@ typedef $$FixturePartsTableCreateCompanionBuilder =
       Value<String?> partType,
       Value<String?> partName,
       Value<String?> channel,
+      Value<String?> dimmer,
       Value<String?> address,
+      Value<String?> wattage,
       Value<String?> circuit,
       Value<String?> ipAddress,
       Value<String?> macAddress,
@@ -15842,7 +16029,9 @@ typedef $$FixturePartsTableUpdateCompanionBuilder =
       Value<String?> partType,
       Value<String?> partName,
       Value<String?> channel,
+      Value<String?> dimmer,
       Value<String?> address,
+      Value<String?> wattage,
       Value<String?> circuit,
       Value<String?> ipAddress,
       Value<String?> macAddress,
@@ -15969,8 +16158,18 @@ class $$FixturePartsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get dimmer => $composableBuilder(
+    column: $table.dimmer,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get address => $composableBuilder(
     column: $table.address,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get wattage => $composableBuilder(
+    column: $table.wattage,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16142,8 +16341,18 @@ class $$FixturePartsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get dimmer => $composableBuilder(
+    column: $table.dimmer,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get address => $composableBuilder(
     column: $table.address,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get wattage => $composableBuilder(
+    column: $table.wattage,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -16230,8 +16439,14 @@ class $$FixturePartsTableAnnotationComposer
   GeneratedColumn<String> get channel =>
       $composableBuilder(column: $table.channel, builder: (column) => column);
 
+  GeneratedColumn<String> get dimmer =>
+      $composableBuilder(column: $table.dimmer, builder: (column) => column);
+
   GeneratedColumn<String> get address =>
       $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<String> get wattage =>
+      $composableBuilder(column: $table.wattage, builder: (column) => column);
 
   GeneratedColumn<String> get circuit =>
       $composableBuilder(column: $table.circuit, builder: (column) => column);
@@ -16396,7 +16611,9 @@ class $$FixturePartsTableTableManager
                 Value<String?> partType = const Value.absent(),
                 Value<String?> partName = const Value.absent(),
                 Value<String?> channel = const Value.absent(),
+                Value<String?> dimmer = const Value.absent(),
                 Value<String?> address = const Value.absent(),
+                Value<String?> wattage = const Value.absent(),
                 Value<String?> circuit = const Value.absent(),
                 Value<String?> ipAddress = const Value.absent(),
                 Value<String?> macAddress = const Value.absent(),
@@ -16411,7 +16628,9 @@ class $$FixturePartsTableTableManager
                 partType: partType,
                 partName: partName,
                 channel: channel,
+                dimmer: dimmer,
                 address: address,
+                wattage: wattage,
                 circuit: circuit,
                 ipAddress: ipAddress,
                 macAddress: macAddress,
@@ -16428,7 +16647,9 @@ class $$FixturePartsTableTableManager
                 Value<String?> partType = const Value.absent(),
                 Value<String?> partName = const Value.absent(),
                 Value<String?> channel = const Value.absent(),
+                Value<String?> dimmer = const Value.absent(),
                 Value<String?> address = const Value.absent(),
+                Value<String?> wattage = const Value.absent(),
                 Value<String?> circuit = const Value.absent(),
                 Value<String?> ipAddress = const Value.absent(),
                 Value<String?> macAddress = const Value.absent(),
@@ -16443,7 +16664,9 @@ class $$FixturePartsTableTableManager
                 partType: partType,
                 partName: partName,
                 channel: channel,
+                dimmer: dimmer,
                 address: address,
+                wattage: wattage,
                 circuit: circuit,
                 ipAddress: ipAddress,
                 macAddress: macAddress,
@@ -22404,6 +22627,148 @@ typedef $$NotePositionsTableProcessedTableManager =
       NotePosition,
       PrefetchHooks Function({bool noteId})
     >;
+typedef $$FieldNamesTableCreateCompanionBuilder =
+    FieldNamesCompanion Function({
+      required String fieldId,
+      required String displayName,
+      Value<int> rowid,
+    });
+typedef $$FieldNamesTableUpdateCompanionBuilder =
+    FieldNamesCompanion Function({
+      Value<String> fieldId,
+      Value<String> displayName,
+      Value<int> rowid,
+    });
+
+class $$FieldNamesTableFilterComposer
+    extends Composer<_$AppDatabase, $FieldNamesTable> {
+  $$FieldNamesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get fieldId => $composableBuilder(
+    column: $table.fieldId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FieldNamesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FieldNamesTable> {
+  $$FieldNamesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get fieldId => $composableBuilder(
+    column: $table.fieldId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FieldNamesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FieldNamesTable> {
+  $$FieldNamesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get fieldId =>
+      $composableBuilder(column: $table.fieldId, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+}
+
+class $$FieldNamesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FieldNamesTable,
+          FieldName,
+          $$FieldNamesTableFilterComposer,
+          $$FieldNamesTableOrderingComposer,
+          $$FieldNamesTableAnnotationComposer,
+          $$FieldNamesTableCreateCompanionBuilder,
+          $$FieldNamesTableUpdateCompanionBuilder,
+          (
+            FieldName,
+            BaseReferences<_$AppDatabase, $FieldNamesTable, FieldName>,
+          ),
+          FieldName,
+          PrefetchHooks Function()
+        > {
+  $$FieldNamesTableTableManager(_$AppDatabase db, $FieldNamesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FieldNamesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FieldNamesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FieldNamesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> fieldId = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FieldNamesCompanion(
+                fieldId: fieldId,
+                displayName: displayName,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String fieldId,
+                required String displayName,
+                Value<int> rowid = const Value.absent(),
+              }) => FieldNamesCompanion.insert(
+                fieldId: fieldId,
+                displayName: displayName,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FieldNamesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FieldNamesTable,
+      FieldName,
+      $$FieldNamesTableFilterComposer,
+      $$FieldNamesTableOrderingComposer,
+      $$FieldNamesTableAnnotationComposer,
+      $$FieldNamesTableCreateCompanionBuilder,
+      $$FieldNamesTableUpdateCompanionBuilder,
+      (FieldName, BaseReferences<_$AppDatabase, $FieldNamesTable, FieldName>),
+      FieldName,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -22464,4 +22829,6 @@ class $AppDatabaseManager {
       $$NoteFixturesTableTableManager(_db, _db.noteFixtures);
   $$NotePositionsTableTableManager get notePositions =>
       $$NotePositionsTableTableManager(_db, _db.notePositions);
+  $$FieldNamesTableTableManager get fieldNames =>
+      $$FieldNamesTableTableManager(_db, _db.fieldNames);
 }

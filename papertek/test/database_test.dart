@@ -81,7 +81,6 @@ void main() {
             fixtureTypeId: Value(typeId),
             fixtureType: const Value('Source Four 36°'),
             position: const Value('1st Electric'),
-            wattage: const Value('575W'),
           ));
       await db.into(db.fixtureParts).insert(FixturePartsCompanion(
             fixtureId: Value(fixId),
@@ -260,21 +259,21 @@ void main() {
     test('updateField creates one pending update revision', () async {
       final fixId = await db.into(db.fixtures).insert(const FixturesCompanion(
             position: Value('1E'),
-            focus: Value('CS'),
+            area: Value('CS'),
           ));
 
       await tracked.updateField(
         table: 'fixtures',
         id: fixId,
-        field: 'focus',
+        field: 'area',
         newValue: 'USL',
         readCurrentValue: () async {
           final row = await (db.select(db.fixtures)..where((t) => t.id.equals(fixId))).getSingle();
-          return row.focus;
+          return row.area;
         },
         applyUpdate: (v) async {
           await (db.update(db.fixtures)..where((t) => t.id.equals(fixId)))
-              .write(FixturesCompanion(focus: Value(v as String)));
+              .write(FixturesCompanion(area: Value(v as String)));
         },
       );
 
@@ -282,7 +281,7 @@ void main() {
             ..where((t) =>
                 t.targetId.equals(fixId) &
                 t.operation.equals('update') &
-                t.fieldName.equals('focus')))
+                t.fieldName.equals('area')))
           .get();
       expect(revs, hasLength(1));
       expect(revs.first.status, 'pending');
@@ -291,7 +290,7 @@ void main() {
 
       // Verify live row reflects new value
       final updated = await (db.select(db.fixtures)..where((t) => t.id.equals(fixId))).getSingle();
-      expect(updated.focus, 'USL');
+      expect(updated.area, 'USL');
     });
 
     test('insertRow creates one pending insert revision with snapshot', () async {

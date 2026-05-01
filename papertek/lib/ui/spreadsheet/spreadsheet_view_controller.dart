@@ -16,6 +16,7 @@
 /// that the toolbar, sidebar, and grid always stay in sync without redundant 
 /// rebuilds of the entire page.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -212,7 +213,7 @@ class SpreadsheetViewController extends ChangeNotifier {
   bool get filterActive => _filterCol != null || searchController.text.isNotEmpty;
   String? get filterLabel {
     if (_filterCol == null) return null;
-    final spec = _columns.firstWhere((c) => c.id == _filterCol, orElse: () => ColumnSpec(id: _filterCol!, label: _filterCol!, defaultWidth: 100, getValue: (f) => null));
+    final spec = _columns.firstWhere((c) => c.id == _filterCol, orElse: () => ColumnSpec(id: _filterCol!, defaultLabel: _filterCol!, defaultWidth: 100, getValue: (f) => null));
     return '${spec.label}: $_filterValue';
   }
 
@@ -333,20 +334,31 @@ class SpreadsheetViewController extends ChangeNotifier {
   }
 
   // ── Presets ────────────────────────────────────────────────────────────────
+
+  static const _columnIdMigrations = {
+    'function': 'purpose',
+    'focus': 'area',
+    'type': 'instrument',
+    'patch': 'patched',
+  };
+
+  List<String> _migrateColumnIds(List<String> ids) =>
+      ids.map((id) => _columnIdMigrations[id] ?? id).toList();
+
   void applyPreset(SpreadsheetViewPreset preset) {
     final data = jsonDecode(preset.presetJson) as Map<String, dynamic>;
     activePreset = preset;
     isPresetDirty = false;
 
     if (data.containsKey('columnOrder')) {
-      final storedOrder = List<String>.from(data['columnOrder']);
+      final storedOrder = _migrateColumnIds(List<String>.from(data['columnOrder']));
       final validStored = storedOrder.where((c) => kColumnById.containsKey(c)).toList();
       final implicitlyHidden = kDefaultColumnOrder.where((c) => !validStored.contains(c)).toList();
       colOrder = [...validStored, ...implicitlyHidden];
       hiddenCols = implicitlyHidden.toSet();
     }
     if (data.containsKey('hiddenColumns')) {
-      hiddenCols = hiddenCols.union(Set<String>.from(data['hiddenColumns'] as List));
+      hiddenCols = hiddenCols.union(Set<String>.from(_migrateColumnIds(List<String>.from(data['hiddenColumns'] as List))));
     }
     if (data.containsKey('columnWidths')) {
       final widths = Map<String, dynamic>.from(data['columnWidths']);
@@ -484,10 +496,10 @@ class SpreadsheetViewController extends ChangeNotifier {
       case 'dimmer':      d.dimmer      = val; break;
       case 'circuit':     d.circuit     = val; break;
       case 'position':    d.position    = val; break;
-      case 'unit':        d.unitNumber  = int.tryParse(val ?? ''); break;
-      case 'type':        d.fixtureType = val; break;
-      case 'function':    d.function    = val; break;
-      case 'focus':       d.focus       = val; break;
+      case 'unit':        d.unitNumber  = val; break;
+      case 'instrument':  d.fixtureType = val; break;
+      case 'purpose':     d.purpose     = val; break;
+      case 'area':        d.area        = val; break;
       case 'accessories': d.accessories = val; break;
       case 'ip':          d.ipAddress   = val; break;
       case 'subnet':      d.subnet      = val; break;

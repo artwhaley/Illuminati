@@ -17,6 +17,7 @@ import 'widgets/presets_strip.dart';
 import 'widgets/collection_editor_dialog.dart';
 import 'column_provider.dart';
 import '../../repositories/custom_field_repository.dart';
+import 'field_name_notifier.dart';
 
 // ── SPREADSHEET ARCHITECTURE ────────────────────────────────────────────────
 // This file acts as the orchestrator for the spreadsheet tab.
@@ -55,7 +56,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
         final repo = ref.read(fixtureRepoProvider);
         if (repo == null) return;
         switch (col) {
-          case 'patch':   await repo.setPatched(f.id, value: val); break;
+          case 'patched': await repo.setPatched(f.id, value: val); break;
           case 'hung':    await repo.setHung(f.id, value: val); break;
           case 'focused': await repo.setFocused(f.id, value: val); break;
         }
@@ -252,6 +253,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     final theme = Theme.of(context);
     
     // Watch relevant providers
+    ref.watch(fieldNameNotifierProvider); // applies DB display-name overrides to kColumns
     final fixtures = ref.watch(fixtureRowsProvider).valueOrNull ?? [];
     final presets = ref.watch(spreadsheetViewPresetsProvider).valueOrNull ?? [];
     final pendingIds = ref.watch(pendingFixtureIdsProvider).valueOrNull ?? {};
@@ -399,7 +401,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                               if (args.action == DataGridColumnDragAction.dropped) {
                                                 final from = args.from;
                                                 final to = args.to;
-                                                if (from != null && to != null) {
+                                                if (to != null) {
                                                   _controller.reorderVisibleColumn(from, to);
                                                 }
                                               }

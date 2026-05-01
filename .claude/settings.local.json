@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del \"c:\\\\Users\\\\artwh\\\\Documents\\\\illuminati\\\\Illuminati\\\\papertek\\\\lib\\\\ui\\\\reports\\\\field_name_notifier.dart\")",
+      "Bash(xargs grep *)"
+    ]
+  }
+}

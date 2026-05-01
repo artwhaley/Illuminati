@@ -18,9 +18,9 @@ final List<ColumnSpec> _kFixtureCols = [
   kColumnById['dimmer']!,
   kColumnById['position']!,
   kColumnById['unit']!,
-  kColumnById['type']!,
-  kColumnById['function']!,
-  kColumnById['focus']!,
+  kColumnById['instrument']!,
+  kColumnById['purpose']!,
+  kColumnById['area']!,
 ];
 
 // ── Color palette ─────────────────────────────────────────────────────────────
@@ -454,7 +454,6 @@ class _RevisionCard extends ConsumerWidget {
 
 class _TabularCardBody extends ConsumerWidget {
   const _TabularCardBody({
-    super.key,
     required this.fixture,
     required this.revisions,
     required this.columns,
@@ -528,7 +527,7 @@ class _HeaderRow extends StatelessWidget {
 // ── Read-only history row ─────────────────────────────────────────────────────
 
 class _ReadOnlyRow extends StatelessWidget {
-  const _ReadOnlyRow({super.key, required this.row, required this.columns});
+  const _ReadOnlyRow({required this.row, required this.columns});
   final _HistoryRow row;
   final List<ColumnSpec> columns;
 
@@ -794,7 +793,7 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
 // we can't use a fixed column grid — render a plain field-by-field diff list.
 
 class _GenericCardBody extends StatelessWidget {
-  const _GenericCardBody({super.key, required this.revisions});
+  const _GenericCardBody({required this.revisions});
   final List<RevisionView> revisions;
 
   @override
@@ -815,7 +814,7 @@ class _GenericCardBody extends StatelessWidget {
 }
 
 class _RevisionDiffRow extends StatelessWidget {
-  const _RevisionDiffRow({super.key, required this.revision});
+  const _RevisionDiffRow({required this.revision});
   final RevisionView revision;
 
   @override
@@ -936,54 +935,47 @@ class MaintenanceLogTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final flaggedAsync = ref.watch(flaggedFixturesProvider);
     final logsAsync    = ref.watch(unresolvedMaintenanceProvider);
+    final fixturesAsync = ref.watch(fixtureRowsProvider);
 
-    return flaggedAsync.when(
-      data: (flagged) {
-        return logsAsync.when(
-          data: (logs) {
-            if (flagged.isEmpty && logs.isEmpty) {
-              return const Center(
-                child: Text('No unresolved maintenance items.\nEverything is looking good!',
-                    textAlign: TextAlign.center),
-              );
-            }
+    return logsAsync.when(
+      data: (logs) {
+        if (logs.isEmpty) {
+          return const Center(
+            child: Text('No unresolved maintenance items.\nEverything is looking good!',
+                textAlign: TextAlign.center),
+          );
+        }
 
-            // Group logs by fixture
-            final logsByFixture = <int, List<MaintenanceLogData>>{};
-            for (final log in logs) {
-              logsByFixture.putIfAbsent(log.fixtureId, () => []).add(log);
-            }
+        // Group logs by fixture
+        final logsByFixture = <int, List<MaintenanceLogData>>{};
+        for (final log in logs) {
+          logsByFixture.putIfAbsent(log.fixtureId, () => []).add(log);
+        }
 
-            // Combine into a list of "items" to show
-            final fixtureIds = {...flagged.map((f) => f.id), ...logsByFixture.keys}.toList()
-              ..sort();
+        final fixtureIds = logsByFixture.keys.toList()..sort();
+        final fixtureMap = {
+          for (final f in fixturesAsync.valueOrNull ?? <FixtureRow>[]) f.id: f
+        };
 
-            final fixtureMap = {for (final f in flagged) f.id: f};
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: fixtureIds.length,
+          itemBuilder: (context, index) {
+            final fid = fixtureIds[index];
+            final fixture = fixtureMap[fid];
+            final fixtureLogs = logsByFixture[fid] ?? [];
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: fixtureIds.length,
-              itemBuilder: (context, index) {
-                final fid = fixtureIds[index];
-                final fixture = fixtureMap[fid];
-                final fixtureLogs = logsByFixture[fid] ?? [];
-
-                return _MaintenanceItemCard(
-                  fixtureId: fid,
-                  fixture: fixture,
-                  logs: fixtureLogs,
-                );
-              },
+            return _MaintenanceItemCard(
+              fixtureId: fid,
+              fixture: fixture,
+              logs: fixtureLogs,
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error loading logs: $e')),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error loading flagged fixtures: $e')),
+      error: (e, _) => Center(child: Text('Error loading maintenance log: $e')),
     );
   }
 }
@@ -1026,7 +1018,7 @@ class _MaintenanceItemCard extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.flag, color: Colors.red, size: 16),
+                const Icon(Icons.build_outlined, size: 16),
                 const SizedBox(width: 8),
                 Text(title,
                     style: GoogleFonts.jetBrainsMono(
@@ -1044,7 +1036,7 @@ class _MaintenanceItemCard extends ConsumerWidget {
           if (logs.isEmpty)
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Text('Flagged for review (no log entry).',
+              child: Text('No log entries.',
                   style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic)),
             )
           else

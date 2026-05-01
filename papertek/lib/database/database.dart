@@ -21,6 +21,7 @@
 /// block handles the structural transformations required to keep old show 
 /// files compatible with newer versions of the app.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'dart:io';
 import 'package:drift/drift.dart';
@@ -38,6 +39,7 @@ import 'tables/revisions.dart';
 import 'tables/contacts.dart';
 import 'tables/spreadsheet_view_presets.dart';
 import 'tables/notes.dart';
+import 'tables/field_names.dart';
 
 part 'database.g.dart';
 
@@ -79,17 +81,19 @@ part 'database.g.dart';
   NoteActions,
   NoteFixtures,
   NotePositions,
+  // Migration 22: User-editable field display names
+  FieldNames,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
-  AppDatabase.forTesting(NativeDatabase connection) : super(connection);
+  AppDatabase.forTesting(NativeDatabase super.connection);
 
   /// Opens a specific .papertek file at the given path.
   static AppDatabase openFile(String path) =>
       AppDatabase(NativeDatabase(File(path)));
 
-  static const currentSchemaVersion = 21;
+  static const currentSchemaVersion = 22;
 
   /// Utility to open the default show file in the system's documents directory.
   static Future<AppDatabase> openDefault(String showName) async {
@@ -125,6 +129,59 @@ class AppDatabase extends _$AppDatabase {
           if (from < 21) {
             // No-op for now as we are abandoning old files.
           }
+
+          if (from < 22) {
+            // ── Fixtures table ──────────────────────────────────────────────────
+            await customStatement('ALTER TABLE fixtures RENAME COLUMN function TO purpose;');
+            await customStatement('ALTER TABLE fixtures RENAME COLUMN focus TO area;');
+
+            // ── FixtureParts table ──────────────────────────────────────────────
+            await customStatement('ALTER TABLE fixture_parts RENAME COLUMN address TO dimmer;');
+            await _tryAddColumn(m, fixtureParts, fixtureParts.address);
+            await _tryAddColumn(m, fixtureParts, fixtureParts.wattage);
+
+            // Migrate wattage from fixtures → intensity parts
+            await customStatement('''
+              UPDATE fixture_parts
+              SET wattage = (
+                SELECT wattage FROM fixtures WHERE fixtures.id = fixture_parts.fixture_id
+              )
+              WHERE part_type = 'intensity' AND deleted = 0;
+            ''');
+
+            // ── field_names table ───────────────────────────────────────────────
+            await customStatement('''
+              CREATE TABLE IF NOT EXISTS field_names (
+                field_id TEXT PRIMARY KEY,
+                display_name TEXT NOT NULL
+              );
+            ''');
+
+            await customStatement("""
+              INSERT OR IGNORE INTO field_names (field_id, display_name) VALUES
+                ('instrument', 'Instrument'),
+                ('unit', 'Unit'),
+                ('purpose', 'Purpose'),
+                ('area', 'Area'),
+                ('dimmer', 'Dimmer'),
+                ('address', 'Address'),
+                ('channel', 'Channel'),
+                ('circuit', 'Circuit'),
+                ('wattage', 'Wattage'),
+                ('color', 'Color'),
+                ('gobo', 'Gobo'),
+                ('accessories', 'Accessories'),
+                ('position', 'Position'),
+                ('notes', 'Notes');
+            """);
+
+            // ── Rebuild FTS5 ────────────────────────────────────────────────────
+            await customStatement('DROP TRIGGER IF EXISTS fixtures_after_insert;');
+            await customStatement('DROP TRIGGER IF EXISTS fixtures_after_update;');
+            await customStatement('DROP TRIGGER IF EXISTS fixture_parts_after_update;');
+            await customStatement('DROP TABLE IF EXISTS fixtures_fts;');
+            await _createFts5Table();
+          }
         },
         beforeOpen: (details) async {
           // Enforce foreign key constraints.
@@ -145,42 +202,42 @@ class AppDatabase extends _$AppDatabase {
         channel,
         position,
         fixture_type,
-        function,
-        focus
+        purpose,
+        area
       );
     ''');
 
     // Initial population: Populate the index with current database content.
     await customStatement('''
-      INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+      INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, purpose, area)
       SELECT
         f.id,
         (SELECT fp.channel FROM fixture_parts fp
          WHERE fp.fixture_id = f.id AND fp.part_type = 'intensity' LIMIT 1),
         f.position,
         f.fixture_type,
-        f.function,
-        f.focus
+        f.purpose,
+        f.area
       FROM fixtures f
       WHERE (f.deleted IS NULL OR f.deleted = 0);
     ''');
 
     // ── SYNC TRIGGERS ──
-    // These triggers ensure that whenever data changes in 'fixtures' or 
+    // These triggers ensure that whenever data changes in 'fixtures' or
     // 'fixture_parts', the 'fixtures_fts' index stays updated automatically.
-    
+
     // 1. Update index after a new fixture is inserted.
     await customStatement('''
       CREATE TRIGGER IF NOT EXISTS fixtures_after_insert AFTER INSERT ON fixtures BEGIN
-        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, purpose, area)
         SELECT
           new.id,
           (SELECT fp.channel FROM fixture_parts fp
            WHERE fp.fixture_id = new.id AND fp.part_type = 'intensity' LIMIT 1),
           new.position,
           new.fixture_type,
-          new.function,
-          new.focus;
+          new.purpose,
+          new.area;
       END;
     ''');
 
@@ -188,16 +245,16 @@ class AppDatabase extends _$AppDatabase {
     await customStatement('''
       CREATE TRIGGER IF NOT EXISTS fixtures_after_update AFTER UPDATE ON fixtures BEGIN
         DELETE FROM fixtures_fts WHERE rowid = old.id;
-        
-        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+
+        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, purpose, area)
         SELECT
           new.id,
           (SELECT fp.channel FROM fixture_parts fp
            WHERE fp.fixture_id = new.id AND fp.part_type = 'intensity' LIMIT 1),
           new.position,
           new.fixture_type,
-          new.function,
-          new.focus
+          new.purpose,
+          new.area
         WHERE (new.deleted IS NULL OR new.deleted = 0);
       END;
     ''');
@@ -205,20 +262,20 @@ class AppDatabase extends _$AppDatabase {
     // 3. Update index when a fixture_part (Channel or Address) changes.
     // This is critical because Channel data lives in a different table.
     await customStatement('''
-      CREATE TRIGGER IF NOT EXISTS fixture_parts_after_update AFTER UPDATE ON fixture_parts 
+      CREATE TRIGGER IF NOT EXISTS fixture_parts_after_update AFTER UPDATE ON fixture_parts
       WHEN new.part_type = 'intensity' OR old.part_type = 'intensity'
       BEGIN
         DELETE FROM fixtures_fts WHERE rowid = new.fixture_id;
 
-        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, purpose, area)
         SELECT
           f.id,
           (SELECT fp.channel FROM fixture_parts fp
            WHERE fp.fixture_id = f.id AND fp.part_type = 'intensity' LIMIT 1),
           f.position,
           f.fixture_type,
-          f.function,
-          f.focus
+          f.purpose,
+          f.area
         FROM fixtures f
         WHERE f.id = new.fixture_id AND (f.deleted IS NULL OR f.deleted = 0);
       END;

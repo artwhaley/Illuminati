@@ -449,60 +449,14 @@ class TrackedWriteRepository {
     final partsData = (snapshot['parts'] as List<dynamic>? ?? [])
         .cast<Map<String, dynamic>>();
 
-    // Re-insert the fixture row with the original ID.
-    await _db.customInsert(
-      '''
-      INSERT OR IGNORE INTO fixtures
-        (id, fixture_type_id, fixture_type, position, unit_number,
-         wattage, function, focus, flagged, sort_order,
-         hung, focused, patched)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-      ''',
-      variables: [
-        Variable<int>(fixtureData['id']),
-        Variable<int>(fixtureData['fixture_type_id']),
-        Variable<String>(fixtureData['fixture_type']),
-        Variable<String>(fixtureData['position']),
-        Variable<int>(fixtureData['unit_number']),
-        Variable<String>(fixtureData['wattage']),
-        Variable<String>(fixtureData['function']),
-        Variable<String>(fixtureData['focus']),
-        Variable<int>(fixtureData['flagged'] ?? 0),
-        Variable<double>(fixtureData['sort_order'] ?? 0.0),
-        Variable<int>(fixtureData['hung'] ?? 0),
-        Variable<int>(fixtureData['focused'] ?? 0),
-        Variable<int>(fixtureData['patched'] ?? 0),
-      ],
-      updates: {_db.fixtures},
-    );
+    // Re-insert the fixture row using whatever columns the snapshot carries.
+    // This is intentionally schema-agnostic so it remains correct across
+    // future migrations without needing to update this method.
+    await _restoreGenericRow('fixtures', fixtureData);
 
     // Re-insert parts.
     for (final part in partsData) {
-      await _db.customInsert(
-        '''
-        INSERT OR IGNORE INTO fixture_parts
-          (id, fixture_id, part_order, part_type, part_name,
-           channel, address, circuit, ip_address, mac_address,
-           subnet, ipv6, extras_json)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ''',
-        variables: [
-          Variable<int>(part['id']),
-          Variable<int>(part['fixture_id']),
-          Variable<int>(part['part_order']),
-          Variable<String>(part['part_type']),
-          Variable<String>(part['part_name']),
-          Variable<String>(part['channel']),
-          Variable<String>(part['address']),
-          Variable<String>(part['circuit']),
-          Variable<String>(part['ip_address']),
-          Variable<String>(part['mac_address']),
-          Variable<String>(part['subnet']),
-          Variable<String>(part['ipv6']),
-          Variable<String>(part['extras_json']),
-        ],
-        updates: {_db.fixtureParts},
-      );
+      await _restoreGenericRow('fixture_parts', part);
     }
 
     // Re-insert Gels

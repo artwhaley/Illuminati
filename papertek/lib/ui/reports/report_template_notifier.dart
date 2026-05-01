@@ -221,4 +221,9 @@ class ReportTemplateNotifier extends StateNotifier<ReportTemplate> {
   void setDataFontSize(double size) {
     state = state.copyWith(dataFontSize: size);
   }
+
+  /// Sets whether to use header-mode multipart sorting.
+  void setMultipartHeader(bool value) {
+    state = state.copyWith(multipartHeader: value);
+  }
 }

@@ -17,8 +17,9 @@ enum PaperTekImportField {
   color, // creates a Gel row when present and non-empty
   gobo1, // creates a Gobo row
   gobo2, // creates a second Gobo row
-  function,
-  focus,
+  purpose,
+  area,
+  address, // DMX address — distinct from dimmer
   notes,
   // When present, rows sharing the same position+unit+type are grouped into
   // one multi-part fixture (e.g. the three cells of a cyc unit).
@@ -38,8 +39,9 @@ extension PaperTekImportFieldX on PaperTekImportField {
         PaperTekImportField.color => 'Color / Gel',
         PaperTekImportField.gobo1 => 'Gobo 1',
         PaperTekImportField.gobo2 => 'Gobo 2',
-        PaperTekImportField.function => 'Function',
-        PaperTekImportField.focus => 'Focus',
+        PaperTekImportField.purpose => 'Purpose',
+        PaperTekImportField.area => 'Area',
+        PaperTekImportField.address => 'Address',
         PaperTekImportField.notes => 'Notes',
         PaperTekImportField.partNumber => 'Part #',
         PaperTekImportField.accessories => 'Accessories',
@@ -57,8 +59,9 @@ extension PaperTekImportFieldX on PaperTekImportField {
         PaperTekImportField.color => 'Gel color (creates a Gel record)',
         PaperTekImportField.gobo1 => 'First gobo (creates a Gobo record)',
         PaperTekImportField.gobo2 => 'Second gobo wheel',
-        PaperTekImportField.function => 'Designer function label',
-        PaperTekImportField.focus => 'Focus position or area',
+        PaperTekImportField.purpose => 'Function / Use',
+        PaperTekImportField.area => 'Focus Area / Zone',
+        PaperTekImportField.address => 'DMX Address',
         PaperTekImportField.notes => 'Instrument notes',
         PaperTekImportField.partNumber => 'Part number for multi-cell fixtures (e.g. 1, 2, 3 for a 3-cell cyc)',
         PaperTekImportField.accessories => 'Accessories (creates Accessory records)',

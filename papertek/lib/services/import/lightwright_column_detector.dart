@@ -60,11 +60,14 @@ class LightwrightColumnDetector implements ColumnDetector {
     PaperTekImportField.gobo2: [
       'gobo2', 'gobo 2', 'gobo#2', 'g2', 'pattern2', 'pattern 2',
     ],
-    PaperTekImportField.function: [
-      'function', 'purpose', 'use', 'use/function', 'func',
+    PaperTekImportField.purpose: [
+      'purpose', 'function', 'use', 'use/function', 'func',
     ],
-    PaperTekImportField.focus: [
-      'focus', 'foc', 'focus point', 'focus area', 'area',
+    PaperTekImportField.area: [
+      'area', 'focus', 'foc', 'focus point', 'focus area',
+    ],
+    PaperTekImportField.address: [
+      'address', 'dmx', 'dmx address', 'dmx addr', 'universe/address',
     ],
     PaperTekImportField.notes: [
       'notes', 'note', 'memo', 'comments', 'comment', 'remarks',

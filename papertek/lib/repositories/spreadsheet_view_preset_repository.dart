@@ -53,8 +53,8 @@ class SpreadsheetViewPresetRepository {
     final now = DateTime.now().toIso8601String();
     
     const hiddenNetworkCols = [
-      'type', 'focus', 'accessories', 'ip', 'subnet', 'mac', 'ipv6',
-      'hung', 'patch', 'focused', 'circuit', 'notes',
+      'instrument', 'area', 'accessories', 'ip', 'subnet', 'mac', 'ipv6',
+      'hung', 'patched', 'focused', 'circuit', 'notes',
     ];
 
     final defaults = [
@@ -63,7 +63,7 @@ class SpreadsheetViewPresetRepository {
         'json': {
           'version': 1,
           'columnOrder': [
-            '#', 'chan', 'dimmer', 'position', 'unit', 'function',
+            'chan', 'dimmer', 'address', 'position', 'unit', 'purpose',
             ...hiddenNetworkCols,
           ],
           'hiddenColumns': hiddenNetworkCols,
@@ -75,7 +75,7 @@ class SpreadsheetViewPresetRepository {
         'json': {
           'version': 1,
           'columnOrder': [
-            '#', 'dimmer', 'chan', 'position', 'unit', 'function',
+            'dimmer', 'address', 'chan', 'position', 'unit', 'purpose',
             ...hiddenNetworkCols,
           ],
           'hiddenColumns': hiddenNetworkCols,
@@ -87,7 +87,7 @@ class SpreadsheetViewPresetRepository {
         'json': {
           'version': 1,
           'columnOrder': [
-            '#', 'position', 'unit', 'chan', 'dimmer', 'function',
+            'position', 'unit', 'chan', 'dimmer', 'purpose', 'area',
             ...hiddenNetworkCols,
           ],
           'hiddenColumns': hiddenNetworkCols,

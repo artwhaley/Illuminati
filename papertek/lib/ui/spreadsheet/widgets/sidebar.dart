@@ -1,5 +1,6 @@
 /// The property inspector sidebar for the spreadsheet. 
 /// Contains CRUD actions (Add/Delete) and the [PropertiesPanel].
+library;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../repositories/fixture_repository.dart';
@@ -267,10 +268,10 @@ class _DraftEditorPanelState extends State<_DraftEditorPanel> {
       'dimmer'      => widget.draft.dimmer,
       'circuit'     => widget.draft.circuit,
       'position'    => widget.draft.position,
-      'unit'        => widget.draft.unitNumber?.toString(),
-      'type'        => widget.draft.fixtureType,
-      'function'    => widget.draft.function,
-      'focus'       => widget.draft.focus,
+      'unit'        => widget.draft.unitNumber,
+      'instrument'  => widget.draft.fixtureType,
+      'purpose'     => widget.draft.purpose,
+      'area'        => widget.draft.area,
       'accessories' => widget.draft.accessories,
       'color'       => widget.draft.color,
       'gobo'        => widget.draft.gobo,
@@ -399,21 +400,21 @@ class PropertiesPanel extends StatelessWidget {
           label: 'Type',
           value: f.fixtureType,
           theme: theme,
-          onSubmit: (v) => onEdit('type', v),
+          onSubmit: (v) => onEdit('instrument', v),
         ),
         PropertyEditRow(
-          key: ValueKey('func-${f.id}'),
+          key: ValueKey('purpose-${f.id}'),
           label: 'Purpose',
-          value: f.function,
+          value: f.purpose,
           theme: theme,
-          onSubmit: (v) => onEdit('function', v),
+          onSubmit: (v) => onEdit('purpose', v),
         ),
         PropertyEditRow(
-          key: ValueKey('focus-${f.id}'),
-          label: 'Focus Area',
-          value: f.focus,
+          key: ValueKey('area-${f.id}'),
+          label: 'Area',
+          value: f.area,
           theme: theme,
-          onSubmit: (v) => onEdit('focus', v),
+          onSubmit: (v) => onEdit('area', v),
         ),
         _CollectionPropertyRow(
           label: 'Color',
@@ -497,12 +498,6 @@ class PropertiesPanel extends StatelessWidget {
           label: 'Focused',
           value: f.focused ? 'Yes' : 'No',
           valueColor: f.focused ? Colors.green : null,
-          theme: theme,
-        ),
-        PropertyReadRow(
-          label: 'Flagged',
-          value: f.flagged ? 'Yes' : 'No',
-          valueColor: f.flagged ? theme.colorScheme.primary : null,
           theme: theme,
         ),
       ],

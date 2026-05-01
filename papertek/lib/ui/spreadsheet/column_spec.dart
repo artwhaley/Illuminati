@@ -11,6 +11,7 @@
 /// 3. Consistency: Labels, widths, and edit logic are identical across the 
 ///    grid, the sidebar, and any export tools.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import '../../../repositories/fixture_repository.dart';
 import '../../../repositories/custom_field_repository.dart';
@@ -27,9 +28,10 @@ enum ColumnSection {
 
 /// A comprehensive definition of a single spreadsheet column.
 class ColumnSpec {
-  const ColumnSpec({
+  ColumnSpec({
     required this.id,
-    required this.label,
+    required this.defaultLabel,
+    String? label,
     required this.defaultWidth,
     required this.getValue,
     this.dbField,
@@ -43,13 +45,13 @@ class ColumnSpec {
     this.onEdit,
     this.isCollection = false,
     this.customFieldId,
-  });
+  }) : label = label ?? defaultLabel;
 
   /// Factory for dynamic columns based on user-defined fields.
   factory ColumnSpec.custom(int dbId, String name) {
     return ColumnSpec(
       id: 'custom_$dbId',
-      label: name.toUpperCase(),
+      defaultLabel: name.toUpperCase(),
       defaultWidth: 100.0,
       section: ColumnSection.other,
       customFieldId: dbId,
@@ -66,7 +68,8 @@ class ColumnSpec {
   }
 
   final String id;
-  final String label;
+  final String defaultLabel;
+  String label;  // mutable; overridden at runtime by FieldNameNotifier
   final double defaultWidth;
   final String? Function(FixtureRow) getValue;
   final String? dbField;
@@ -104,19 +107,9 @@ class ColumnSpec {
 
 /// The single, canonical list of all columns in the spreadsheet.
 final List<ColumnSpec> kColumns = [
-  // ColumnSpec(
-  //   id: '#',
-  //   label: '#',
-  //   defaultWidth: 40.0,
-  //   section: ColumnSection.number,
-  //   getValue: (f) => f.id.toString(),
-  //   isReadOnly: true,
-  //   isNumeric: true,
-  //   isAlwaysVisible: true,
-  // ),
   ColumnSpec(
     id: 'chan',
-    label: 'CHAN',
+    defaultLabel: 'CHAN',
     dbField: 'channel',
     defaultWidth: 60.0,
     section: ColumnSection.patch,
@@ -124,24 +117,39 @@ final List<ColumnSpec> kColumns = [
     isNumeric: true,
     isPartLevel: true,
     getPartValue: (f, p) => p.channel,
-    onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null 
+    onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null
         ? repo.updatePartChannel(id, partOrder, val)
         : repo.updateIntensityChannel(id, val),
   ),
   ColumnSpec(
     id: 'dimmer',
-    label: 'ADDRESS',
-    dbField: 'address',
+    defaultLabel: 'Dimmer',
+    dbField: 'dimmer',
     defaultWidth: 80.0,
     section: ColumnSection.patch,
     getValue: (f) => f.dimmer,
     isPartLevel: true,
+    getPartValue: (f, p) => p.dimmer,
+    onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null
+        ? repo.updatePartDimmer(id, partOrder, val)
+        : repo.updateIntensityDimmer(id, val),
+  ),
+  ColumnSpec(
+    id: 'address',
+    defaultLabel: 'Address',
+    dbField: 'address',
+    defaultWidth: 80.0,
+    section: ColumnSection.patch,
+    getValue: (f) => f.address,
+    isPartLevel: true,
     getPartValue: (f, p) => p.address,
-    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePartAddress(id, partOrder ?? 0, val),
+    onEdit: (id, val, repo, {partOrder, customRepo}) => partOrder != null
+        ? repo.updatePartAddress(id, partOrder, val)
+        : repo.updateIntensityAddress(id, val),
   ),
   ColumnSpec(
     id: 'circuit',
-    label: 'CIRCUIT',
+    defaultLabel: 'CIRCUIT',
     dbField: 'circuit',
     defaultWidth: 80.0,
     section: ColumnSection.patch,
@@ -152,7 +160,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'position',
-    label: 'POSITION',
+    defaultLabel: 'POSITION',
     dbField: 'position',
     defaultWidth: 140.0,
     section: ColumnSection.fixture,
@@ -161,57 +169,62 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'unit',
-    label: 'U#',
+    defaultLabel: 'Unit',
     dbField: 'unit_number',
     defaultWidth: 50.0,
     section: ColumnSection.fixture,
-    getValue: (f) => f.unitNumber?.toString(),
-    isNumeric: true,
-    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateUnitNumber(id, int.tryParse(val ?? '')),
+    getValue: (f) => f.unitNumber,
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateUnitNumber(id, val),
   ),
   ColumnSpec(
-    id: 'type',
-    label: 'FIXTURE TYPE',
+    id: 'instrument',
+    defaultLabel: 'Instrument',
     dbField: 'fixture_type',
     defaultWidth: 160.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.fixtureType,
     getPartValue: (f, p) {
       final name = p.partName ?? 'Part ${p.partOrder + 1}';
-      return '${f.fixtureType ?? "Fixture"} $name';
+      return '${f.fixtureType ?? "Fixture"} - $name';
     },
     onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateFixtureType(id, val),
   ),
   ColumnSpec(
     id: 'wattage',
-    label: 'WATTAGE',
+    defaultLabel: 'Wattage',
     dbField: 'wattage',
     defaultWidth: 60.0,
     section: ColumnSection.fixture,
-    getValue: (f) => f.wattage,
-    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateWattage(id, val),
+    isPartLevel: true,
+    getValue: (f) => f.parts
+        .where((p) => p.wattage != null)
+        .map((p) => p.wattage!)
+        .join(' / '),
+    getPartValue: (f, p) => p.wattage,
+    onEdit: (id, val, repo, {partOrder, customRepo}) =>
+        repo.updatePartWattage(id, partOrder ?? 0, val),
   ),
   ColumnSpec(
-    id: 'function',
-    label: 'PURPOSE',
-    dbField: 'function',
+    id: 'purpose',
+    defaultLabel: 'Purpose',
+    dbField: 'purpose',
     defaultWidth: 120.0,
     section: ColumnSection.fixture,
-    getValue: (f) => f.function,
-    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateFunction(id, val),
+    getValue: (f) => f.purpose,
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updatePurpose(id, val),
   ),
   ColumnSpec(
-    id: 'focus',
-    label: 'FOCUS AREA',
-    dbField: 'focus',
+    id: 'area',
+    defaultLabel: 'Area',
+    dbField: 'area',
     defaultWidth: 120.0,
     section: ColumnSection.fixture,
-    getValue: (f) => f.focus,
-    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateFocus(id, val),
+    getValue: (f) => f.area,
+    onEdit: (id, val, repo, {partOrder, customRepo}) => repo.updateArea(id, val),
   ),
   ColumnSpec(
     id: 'accessories',
-    label: 'ACCESSORIES',
+    defaultLabel: 'ACCESSORIES',
     defaultWidth: 120.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.accessories,
@@ -221,7 +234,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'color',
-    label: 'COLOR',
+    defaultLabel: 'COLOR',
     defaultWidth: 100.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.color,
@@ -231,7 +244,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'gobo',
-    label: 'GOBO',
+    defaultLabel: 'GOBO',
     defaultWidth: 100.0,
     section: ColumnSection.fixture,
     getValue: (f) => f.gobo,
@@ -241,7 +254,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'ip',
-    label: 'IP ADDRESS',
+    defaultLabel: 'IP ADDRESS',
     dbField: 'ip_address',
     defaultWidth: 120.0,
     section: ColumnSection.network,
@@ -252,7 +265,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'subnet',
-    label: 'SUBNET',
+    defaultLabel: 'SUBNET',
     dbField: 'subnet',
     defaultWidth: 110.0,
     section: ColumnSection.network,
@@ -263,7 +276,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'mac',
-    label: 'MAC ADDRESS',
+    defaultLabel: 'MAC ADDRESS',
     dbField: 'mac_address',
     defaultWidth: 130.0,
     section: ColumnSection.network,
@@ -274,7 +287,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'ipv6',
-    label: 'IPV6',
+    defaultLabel: 'IPV6',
     dbField: 'ipv6',
     defaultWidth: 150.0,
     section: ColumnSection.network,
@@ -285,7 +298,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'hung',
-    label: 'HUNG',
+    defaultLabel: 'HUNG',
     dbField: 'hung',
     defaultWidth: 55.0,
     section: ColumnSection.status,
@@ -294,8 +307,8 @@ final List<ColumnSpec> kColumns = [
     isReadOnly: true,
   ),
   ColumnSpec(
-    id: 'patch',
-    label: 'PATCHED',
+    id: 'patched',
+    defaultLabel: 'Patched',
     dbField: 'patched',
     defaultWidth: 60.0,
     section: ColumnSection.status,
@@ -305,7 +318,7 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'focused',
-    label: 'FOCUSED',
+    defaultLabel: 'FOCUSED',
     dbField: 'focused',
     defaultWidth: 65.0,
     section: ColumnSection.status,
@@ -315,11 +328,11 @@ final List<ColumnSpec> kColumns = [
   ),
   ColumnSpec(
     id: 'notes',
-    label: 'NOTES',
+    defaultLabel: 'NOTES',
     dbField: null,
     defaultWidth: 120.0,
     section: ColumnSection.other,
-    getValue: (f) => '', // Notes are not currently backed by a field
+    getValue: (f) => '',
   ),
 ];
 

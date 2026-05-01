@@ -351,7 +351,7 @@ class _LiveNotesTabState extends ConsumerState<LiveNotesTab> {
                           ? const Icon(Icons.check_circle, color: Colors.green)
                           : const Icon(Icons.circle_outlined),
                         title: Text('Ch ${f.channel ?? "-"} | ${f.position ?? "No Pos"} | ${f.fixtureType ?? "No Type"}'),
-                        subtitle: Text('${f.function ?? ""} ${f.focus ?? ""}'),
+                        subtitle: Text('${f.purpose ?? ""} ${f.area ?? ""}'),
                         onTap: () {
                           setState(() {
                             if (isAttached) {

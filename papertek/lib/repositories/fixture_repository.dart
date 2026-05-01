@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
 import 'tracked_write_repository.dart';
@@ -12,7 +11,9 @@ class FixturePartRow {
     required this.partOrder,
     this.partName,
     this.channel,
+    this.dimmer,
     this.address,
+    this.wattage,
     this.circuit,
     this.ipAddress,
     this.subnet,
@@ -27,7 +28,9 @@ class FixturePartRow {
   final int partOrder;
   final String? partName;
   final String? channel;
-  final String? address;
+  final String? dimmer;    // physical dimmer from intensity part (fixture_parts.dimmer)
+  final String? address;   // DMX address from intensity part (fixture_parts.address)
+  final String? wattage;   // moved from fixture level
   final String? circuit;
   final String? ipAddress;
   final String? subnet;
@@ -43,16 +46,15 @@ class FixtureRow {
     required this.id,
     this.channel,
     this.dimmer,
+    this.address,
     this.circuit,
     required this.position,
     this.unitNumber,
     this.fixtureType,
-    this.wattage,
     this.color = '',
     this.gobo = '',
-    this.function,
-    this.focus,
-    required this.flagged,
+    this.purpose,
+    this.area,
     required this.patched,
     required this.sortOrder,
     this.accessories = '',
@@ -71,17 +73,16 @@ class FixtureRow {
 
   final int id;
   final String? channel;
-  final String? dimmer;   // raw address from intensity part (fixture_parts.address)
-  final String? circuit;  // raw circuit from intensity part (fixture_parts.circuit)
+  final String? dimmer;    // physical dimmer from intensity part (fixture_parts.dimmer)
+  final String? address;   // DMX address from intensity part (fixture_parts.address)
+  final String? circuit;   // raw circuit from intensity part (fixture_parts.circuit)
   final String? position;
-  final int? unitNumber;
+  final String? unitNumber;
   final String? fixtureType;
-  final String? wattage;
   final String color;
   final String gobo;
-  final String? function;
-  final String? focus;
-  final bool flagged;
+  final String? purpose;
+  final String? area;
   final bool patched;
   final double sortOrder;
   final String accessories;
@@ -201,18 +202,17 @@ class FixtureRepository {
         return FixtureRow(
           id: f.id,
           channel: intensityPart?.channel,
-          dimmer: intensityPart?.address,
+          dimmer: intensityPart?.dimmer,
+          address: intensityPart?.address,
           circuit: intensityPart?.circuit,
           position: f.position,
           unitNumber: f.unitNumber,
           fixtureType: f.fixtureType,
-          wattage: f.wattage,
           color: colorStr,
           gobo: goboStr,
           accessories: accStr,
-          function: f.function,
-          focus: f.focus,
-          flagged: f.flagged != 0,
+          purpose: f.purpose,
+          area: f.area,
           patched: f.patched != 0,
           sortOrder: f.sortOrder,
           ipAddress: intensityPart?.ipAddress,
@@ -230,7 +230,9 @@ class FixtureRepository {
             partOrder: p.partOrder,
             partName: p.partName,
             channel: p.channel,
+            dimmer: p.dimmer,
             address: p.address,
+            wattage: p.wattage,
             circuit: p.circuit,
             ipAddress: p.ipAddress,
             subnet: p.subnet,
@@ -275,7 +277,7 @@ class FixtureRepository {
       table: 'fixtures',
       doInsert: () async {
         final fixtureId = await _db.into(_db.fixtures).insert(
-              FixturesCompanion(flagged: const Value(0), sortOrder: Value(sort)),
+              FixturesCompanion(sortOrder: Value(sort)),
             );
         await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
               fixtureId: Value(fixtureId),
@@ -304,10 +306,8 @@ class FixtureRepository {
             position:    Value(draft.position),
             unitNumber:  Value(draft.unitNumber),
             fixtureType: Value(draft.fixtureType),
-            wattage:     Value(draft.wattage),
-            function:    Value(draft.function),
-            focus:       Value(draft.focus),
-            flagged:     const Value(0),
+            purpose:     Value(draft.purpose),
+            area:        Value(draft.area),
             sortOrder:   Value(sort),
           )),
           buildSnapshot: _buildSnapshot,
@@ -322,7 +322,8 @@ class FixtureRepository {
           partOrder:  const Value(0),
           partType:   const Value('intensity'),
           channel:    Value(draft.channel),
-          address:    Value(draft.dimmer),
+          dimmer:     Value(draft.dimmer),
+          wattage:    Value(draft.wattage),
           circuit:    Value(draft.circuit),
           ipAddress:  Value(draft.ipAddress),
           subnet:     Value(draft.subnet),
@@ -371,12 +372,9 @@ class FixtureRepository {
               fixtureTypeId: Value(source.fixtureTypeId),
               fixtureType: Value(source.fixtureType),
               position: Value(source.position),
-              unitNumber:
-                  Value(source.unitNumber != null ? source.unitNumber! + 1 : null),
-              wattage: Value(source.wattage),
-              function: Value(source.function),
-              focus: Value(source.focus),
-              flagged: const Value(0),
+              unitNumber: Value(source.unitNumber),
+              purpose: Value(source.purpose),
+              area: Value(source.area),
               patched: Value(source.patched),
               sortOrder: Value(sort),
               hung: Value(source.hung),
@@ -395,7 +393,9 @@ class FixtureRepository {
                   partType: Value(part.partType),
                   partName: Value(part.partName),
                   channel: Value(part.channel),
+                  dimmer: Value(part.dimmer),
                   address: Value(part.address),
+                  wattage: Value(part.wattage),
                   circuit: Value(part.circuit),
                   ipAddress: Value(part.ipAddress),
                   subnet: Value(part.subnet),
@@ -472,28 +472,17 @@ class FixtureRepository {
   Future<void> updatePosition(int id, String? position) => _updateField(
       id, 'position', position, (f) => f.position, (v) => FixturesCompanion(position: Value(v)));
 
-  Future<void> updateUnitNumber(int id, int? unitNumber) => _updateField(
+  Future<void> updateUnitNumber(int id, String? unitNumber) => _updateField(
       id, 'unit_number', unitNumber, (f) => f.unitNumber, (v) => FixturesCompanion(unitNumber: Value(v)));
 
   Future<void> updateFixtureType(int id, String? type) => _updateField(
       id, 'fixture_type', type, (f) => f.fixtureType, (v) => FixturesCompanion(fixtureType: Value(v)));
 
-  Future<void> updateWattage(int id, String? wattage) => _updateField(
-      id, 'wattage', wattage, (f) => f.wattage, (v) => FixturesCompanion(wattage: Value(v)));
+  Future<void> updatePurpose(int id, String? purpose) => _updateField(
+      id, 'purpose', purpose, (f) => f.purpose, (v) => FixturesCompanion(purpose: Value(v)));
 
-  Future<void> updateFunction(int id, String? fn) => _updateField(
-      id, 'function', fn, (f) => f.function, (v) => FixturesCompanion(function: Value(v)));
-
-  Future<void> updateFocus(int id, String? focus) => _updateField(
-      id, 'focus', focus, (f) => f.focus, (v) => FixturesCompanion(focus: Value(v)));
-
-
-  Future<void> toggleFlag(int id) async {
-    // Flagged is operational - not tracked.
-    final f = await (_db.select(_db.fixtures)..where((r) => r.id.equals(id))).getSingle();
-    await (_db.update(_db.fixtures)..where((r) => r.id.equals(id)))
-        .write(FixturesCompanion(flagged: Value(f.flagged == 0 ? 1 : 0)));
-  }
+  Future<void> updateArea(int id, String? area) => _updateField(
+      id, 'area', area, (f) => f.area, (v) => FixturesCompanion(area: Value(v)));
 
   Future<void> setPatched(int id, {required bool value}) => _updateField(
       id, 'patched', value ? 1 : 0, (f) => f.patched, (v) => FixturesCompanion(patched: Value(v)));
@@ -542,6 +531,14 @@ class FixtureRepository {
   Future<void> updateIntensityIpv6(int fixtureId, String? ipv6) =>
       _updateIntensityField(fixtureId, 'ipv6', ipv6, (p) => p.ipv6,
           (v) => FixturePartsCompanion(ipv6: Value(v)));
+
+  Future<void> updateIntensityDimmer(int fixtureId, String? dimmer) =>
+      _updateIntensityField(fixtureId, 'dimmer', dimmer, (p) => p.dimmer,
+          (v) => FixturePartsCompanion(dimmer: Value(v)));
+
+  Future<void> updateIntensityAddress(int fixtureId, String? address) =>
+      _updateIntensityField(fixtureId, 'address', address, (p) => p.address,
+          (v) => FixturePartsCompanion(address: Value(v)));
 
   Future<void> _updateIntensityField<T>(
     int fixtureId,
@@ -802,11 +799,27 @@ class FixtureRepository {
     }
   }
 
+  Future<void> updatePartDimmer(int fixtureId, int partOrder, String? dimmer) async {
+    final part = await _partByOrder(fixtureId, partOrder);
+    if (part != null) {
+      await _updatePartField(fixtureId, part.id, 'dimmer', dimmer,
+          (p) => p.dimmer, (v) => FixturePartsCompanion(dimmer: Value(v)));
+    }
+  }
+
   Future<void> updatePartAddress(int fixtureId, int partOrder, String? address) async {
     final part = await _partByOrder(fixtureId, partOrder);
     if (part != null) {
       await _updatePartField(fixtureId, part.id, 'address', address,
           (p) => p.address, (v) => FixturePartsCompanion(address: Value(v)));
+    }
+  }
+
+  Future<void> updatePartWattage(int fixtureId, int partOrder, String? wattage) async {
+    final part = await _partByOrder(fixtureId, partOrder);
+    if (part != null) {
+      await _updatePartField(fixtureId, part.id, 'wattage', wattage,
+          (p) => p.wattage, (v) => FixturePartsCompanion(wattage: Value(v)));
     }
   }
 

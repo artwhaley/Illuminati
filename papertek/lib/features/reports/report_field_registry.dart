@@ -44,13 +44,52 @@ String getFieldValue(FixtureRow fixture, String fieldKey) {
   return def.getValue(fixture) ?? '';
 }
 
+/// Helper to read a field value for a specific fixture part.
+/// Falls back to parent-level value if the field is not part-specific.
+String getPartFieldValue(FixtureRow fixture, FixturePartRow part, String fieldKey) {
+  // 1. Try to use the canonical ColumnSpec.getPartValue if available.
+  // This ensures parity with spreadsheet special formatting (like compound fixture names).
+  final spec = kColumnById[fieldKey];
+  if (spec != null && spec.getPartValue != null) {
+    return spec.getPartValue!(fixture, part) ?? '';
+  }
+
+  // 2. Manual mappings for specific part-level data fields
+  switch (fieldKey) {
+    case 'chan':
+      return part.channel ?? '';
+    case 'dimmer':
+      return part.dimmer ?? '';
+    case 'address':
+      return part.address ?? '';
+    case 'circuit':
+      return part.circuit ?? '';
+    case 'ip':
+      return part.ipAddress ?? '';
+    case 'subnet':
+      return part.subnet ?? '';
+    case 'mac':
+      return part.macAddress ?? '';
+    case 'ipv6':
+      return part.ipv6 ?? '';
+    case 'color':
+      return part.color;
+    case 'gobo':
+      return part.gobo;
+    case 'accessories':
+      return part.accessories;
+    default:
+      return getFieldValue(fixture, fieldKey);
+  }
+}
+
 /// Pre-built stacked column definitions.
 /// These appear in the column picker alongside simple fields.
 final Map<String, ReportColumn> kStackedColumns = {
   'stack_instrument': const ReportColumn(
     id: 'stack_instrument',
     label: 'Full Definition',
-    fieldKeys: ['type', 'wattage'],
+    fieldKeys: ['instrument', 'wattage'],
     widthPercent: 20.0,
   ),
   'stack_color_template': const ReportColumn(
@@ -62,7 +101,7 @@ final Map<String, ReportColumn> kStackedColumns = {
   'stack_purpose_area': const ReportColumn(
     id: 'stack_purpose_area',
     label: 'Purpose and Area',
-    fieldKeys: ['function', 'focus'],
+    fieldKeys: ['purpose', 'area'],
     widthPercent: 20.0,
   ),
 };

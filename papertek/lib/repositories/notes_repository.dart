@@ -60,8 +60,8 @@ class FixtureSearchResult {
     this.position,
     this.unitNumber,
     this.fixtureType,
-    this.function,
-    this.focus,
+    this.purpose,
+    this.area,
     required this.rank,
   });
 
@@ -70,8 +70,8 @@ class FixtureSearchResult {
   final String? position;
   final int? unitNumber;
   final String? fixtureType;
-  final String? function;
-  final String? focus;
+  final String? purpose;
+  final String? area;
   final double rank;
 }
 
@@ -325,11 +325,10 @@ class NotesRepository {
     if (tokens.isEmpty) return [];
 
     // Build FTS5 prefix-match phrase: "token1"* AND "token2"*
-    final matchPhrase = tokens.map((t) => '"' + t + '"*').join(' AND ');
-    print('SEARCH query=' + query + ' matchPhrase=' + matchPhrase);
+    final matchPhrase = tokens.map((t) => '"$t"*').join(' AND ');
 
-    final sql = '''
-      SELECT f.id AS fixture_id, fts.channel, fts.position, fts.fixture_type, fts.function, fts.focus,
+    const sql = '''
+      SELECT f.id AS fixture_id, fts.channel, fts.position, fts.fixture_type, fts.purpose, fts.area,
              f.unit_number,
              bm25(fixtures_fts) AS rank
       FROM fixtures_fts fts
@@ -341,11 +340,6 @@ class NotesRepository {
 
     try {
       final rows = await _db.customSelect(sql, variables: [Variable.withString(matchPhrase)]).get();
-      print('SEARCH: found \${rows.length} rows');
-      for (var r in rows) {
-        print("  - \${r.data['channel']} | \${r.data['position']} | \${r.data['fixture_type']}");
-      }
-
       return rows.map((r) {
         final d = r.data;
         return FixtureSearchResult(
@@ -354,13 +348,12 @@ class NotesRepository {
           position: d['position'],
           unitNumber: d['unit_number'],
           fixtureType: d['fixture_type'],
-          function: d['function'],
-          focus: d['focus'],
+          purpose: d['purpose'],
+          area: d['area'],
           rank: (d['rank'] as num).toDouble(),
         );
       }).toList();
-    } catch (e, st) {
-      print('SEARCH ERROR: \$e\\n\$st');
+    } catch (_) {
       return [];
     }
   }
@@ -369,13 +362,13 @@ class NotesRepository {
     await _db.transaction(() async {
       await _db.customStatement('DELETE FROM fixtures_fts');
       await _db.customStatement('''
-        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, function, focus)
+        INSERT INTO fixtures_fts(rowid, channel, position, fixture_type, purpose, area)
         SELECT f.id, 
                (SELECT channel FROM fixture_parts WHERE fixture_id = f.id AND part_type = 'intensity' LIMIT 1),
                f.position, 
                f.fixture_type, 
-               f.function, 
-               f.focus
+               f.purpose, 
+               f.area
         FROM fixtures f
         WHERE f.deleted = 0;
       ''');

@@ -61,6 +61,15 @@ class ReportColumn {
     'isBoxed': isBoxed,
   };
 
+  // Maps old field key IDs to their v22 replacements.
+  static const _fieldKeyMigrations = {
+    'function': 'purpose',
+    'focus': 'area',
+    'type': 'instrument',
+  };
+
+  static String _migrateKey(String k) => _fieldKeyMigrations[k] ?? k;
+
   factory ReportColumn.fromJson(Map<String, dynamic> json) {
     // Migration: convert old fixedWidth/flex to widthPercent
     // widthPercent takes precedence if present
@@ -70,10 +79,15 @@ class ReportColumn {
     }
     // (Old fixedWidth/flex keys are silently ignored after this point)
 
+    final rawId = json['id'] as String;
+    final migratedId = _migrateKey(rawId);
+    final rawFieldKeys = (json['fieldKeys'] as List).cast<String>();
+    final migratedFieldKeys = rawFieldKeys.map(_migrateKey).toList();
+
     return ReportColumn(
-      id: json['id'] as String,
+      id: migratedId,
       label: json['label'] as String,
-      fieldKeys: (json['fieldKeys'] as List).cast<String>(),
+      fieldKeys: migratedFieldKeys,
       widthPercent: widthPercent,
       isBold: (json['isBold'] as bool?) ?? false,
       isItalic: (json['isItalic'] as bool?) ?? false,
@@ -171,6 +185,7 @@ class ReportTemplate {
     this.fontFamily = 'IBM Plex Sans',
     this.dataFontSize = 9.0,
     this.rowHeight,  // null = auto-detect based on stacked columns
+    this.multipartHeader = false,
   });
 
   final String name;
@@ -181,6 +196,7 @@ class ReportTemplate {
   final String fontFamily;
   final double dataFontSize;
   final double? rowHeight;
+  final bool multipartHeader;
 
   /// Auto-detect row height: 26 if any column is stacked, 22 otherwise.
   double get effectiveRowHeight {
@@ -197,6 +213,7 @@ class ReportTemplate {
     String? fontFamily,
     double? dataFontSize,
     double? Function()? rowHeight,
+    bool? multipartHeader,
   }) {
     return ReportTemplate(
       name: name ?? this.name,
@@ -207,6 +224,7 @@ class ReportTemplate {
       fontFamily: fontFamily ?? this.fontFamily,
       dataFontSize: dataFontSize ?? this.dataFontSize,
       rowHeight: rowHeight != null ? rowHeight() : this.rowHeight,
+      multipartHeader: multipartHeader ?? this.multipartHeader,
     );
   }
 
@@ -222,7 +240,8 @@ class ReportTemplate {
           orientation == other.orientation &&
           fontFamily == other.fontFamily &&
           dataFontSize == other.dataFontSize &&
-          rowHeight == other.rowHeight;
+          rowHeight == other.rowHeight &&
+          multipartHeader == other.multipartHeader;
 
   @override
   int get hashCode =>
@@ -233,7 +252,8 @@ class ReportTemplate {
       orientation.hashCode ^
       fontFamily.hashCode ^
       dataFontSize.hashCode ^
-      rowHeight.hashCode;
+      rowHeight.hashCode ^
+      multipartHeader.hashCode;
 
   Map<String, dynamic> toJson() => {
     'version': 1,
@@ -245,6 +265,7 @@ class ReportTemplate {
     'fontFamily': fontFamily,
     'dataFontSize': dataFontSize,
     if (rowHeight != null) 'rowHeight': rowHeight,
+    'multipartHeader': multipartHeader,
   };
 
   factory ReportTemplate.fromJson(Map<String, dynamic> json) {
@@ -283,15 +304,27 @@ class ReportTemplate {
       }
     }
 
+    final rawGroupBy = json['groupByFieldKey'] as String?;
+    final migratedGroupBy = rawGroupBy != null
+        ? ReportColumn._migrateKey(rawGroupBy)
+        : null;
+    final migratedSortLevels = sortLevels
+        .map((s) => SortLevel(
+              fieldKey: ReportColumn._migrateKey(s.fieldKey),
+              ascending: s.ascending,
+            ))
+        .toList();
+
     return ReportTemplate(
       name: json['name'] as String,
       columns: columns,
-      groupByFieldKey: json['groupByFieldKey'] as String?,
-      sortLevels: sortLevels,
+      groupByFieldKey: migratedGroupBy,
+      sortLevels: migratedSortLevels,
       orientation: (json['orientation'] as String?) ?? 'portrait',
       fontFamily: (json['fontFamily'] as String?) ?? 'IBM Plex Sans',
       dataFontSize: (json['dataFontSize'] as num?)?.toDouble() ?? 9.0,
       rowHeight: (json['rowHeight'] as num?)?.toDouble(),
+      multipartHeader: (json['multipartHeader'] as bool?) ?? false,
     );
   }
 }

@@ -19,6 +19,7 @@
 /// `importRows` automatically detects these duplicates and merges them into 
 /// a single parent Fixture in the database with multiple FixturePart children.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'dart:convert';
 import 'package:drift/drift.dart';
@@ -200,9 +201,6 @@ class ImportService {
       );
     }
 
-    final unitStr = primary.get(PaperTekImportField.unitNumber);
-    final unitNumber = unitStr != null ? int.tryParse(unitStr) : null;
-
     // Create the fixture row.
     final res = await _tracked.insertRow(
       table: 'fixtures',
@@ -211,23 +209,26 @@ class ImportService {
               fixtureTypeId: Value(fixtureTypeId),
               fixtureType: Value(typeName),
               position: Value(positionName),
-              unitNumber: Value(unitNumber),
-              wattage: Value(primary.get(PaperTekImportField.wattage)),
-              function: Value(primary.get(PaperTekImportField.function)),
-              focus: Value(primary.get(PaperTekImportField.focus)),
+              unitNumber: Value(primary.get(PaperTekImportField.unitNumber)),
+              purpose: Value(primary.get(PaperTekImportField.purpose)),
+              area: Value(primary.get(PaperTekImportField.area)),
             ));
 
         // Intensity parts — one per row in the group (partOrder = row index).
         int? firstPartId;
         for (var i = 0; i < rowGroup.length; i++) {
           final partRow = rowGroup[i];
+          final notes = partRow.get(PaperTekImportField.notes);
           final partId = await _db.into(_db.fixtureParts).insert(FixturePartsCompanion(
                 fixtureId: Value(fixtureId),
                 partOrder: Value(i),
                 partType: const Value('intensity'),
                 channel: Value(partRow.get(PaperTekImportField.channel)),
-                address: Value(partRow.get(PaperTekImportField.circuit)),
-                extrasJson: _buildExtrasJson(partRow),
+                dimmer: Value(partRow.get(PaperTekImportField.dimmer)),
+                address: Value(partRow.get(PaperTekImportField.address)),
+                circuit: Value(partRow.get(PaperTekImportField.circuit)),
+                wattage: Value(partRow.get(PaperTekImportField.wattage)),
+                extrasJson: Value(notes != null ? jsonEncode({'notes': notes}) : null),
               ));
           if (i == 0) firstPartId = partId;
         }
@@ -351,15 +352,4 @@ class ImportService {
     return sentinels.contains(value.toLowerCase().trim());
   }
 
-  /// Stores dimmer in extras_json since there is no dedicated column on
-  /// fixture_parts. Future schema versions may promote this to a real column.
-  Value<String?> _buildExtrasJson(NormalizedRow row) {
-    final dimmer = row.get(PaperTekImportField.dimmer);
-    final notes = row.get(PaperTekImportField.notes);
-    if (dimmer == null && notes == null) return const Value(null);
-    return Value(jsonEncode({
-      if (dimmer != null) 'dimmer': dimmer,
-      if (notes != null) 'notes': notes,
-    }));
-  }
 }

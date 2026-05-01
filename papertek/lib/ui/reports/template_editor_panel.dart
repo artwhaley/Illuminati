@@ -159,6 +159,15 @@ class TemplateEditorPanel extends ConsumerWidget {
             icon: const Icon(Icons.add, size: 16),
             label: const Text('Add Sort Level', style: TextStyle(fontSize: 12)),
           ),
+        const SizedBox(height: 8),
+        CheckboxListTile(
+          value: template.multipartHeader,
+          onChanged: (v) => notifier.setMultipartHeader(v ?? false),
+          title: const Text('Use header-mode multipart sorting', style: TextStyle(fontSize: 12)),
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          controlAffinity: ListTileControlAffinity.leading,
+        ),
       ],
     );
   }

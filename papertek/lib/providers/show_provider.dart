@@ -24,6 +24,7 @@
 ///      These must stay alive as long as the show is open because they 
 ///      maintain critical state like the Undo/Redo stack.
 /// ─────────────────────────────────────────────────────────────────────────────
+library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/database.dart';
@@ -44,6 +45,7 @@ import '../repositories/report_template_repository.dart';
 import '../ui/reports/report_template_notifier.dart';
 import '../features/reports/report_template.dart';
 import '../repositories/custom_field_repository.dart';
+import '../repositories/field_name_repository.dart';
 
 // ── CORE PROVIDERS ───────────────────────────────────────────────────────────
 
@@ -331,12 +333,11 @@ final unresolvedMaintenanceProvider = StreamProvider.autoDispose<List<Maintenanc
   return (db.select(db.maintenanceLog)..where((t) => t.resolved.equals(0))).watch();
 });
 
-final flaggedFixturesProvider = StreamProvider.autoDispose<List<FixtureRow>>((ref) {
-  final repo = ref.watch(fixtureRepoProvider);
-  if (repo == null) return Stream.value([]);
-  // We can't filter flagged=1 directly in watchRows() without adding a param, 
-  // so we'll filter the stream here.
-  return repo.watchRows().map((list) => list.where((f) => f.flagged == 1).toList());
+/// Repository for user-editable field display names (e.g. "Instrument" → "Fixture Type").
+final fieldNameRepositoryProvider = Provider.autoDispose<FieldNameRepository?>((ref) {
+  final db = ref.watch(databaseProvider);
+  if (db == null) return null;
+  return FieldNameRepository(db);
 });
 
 

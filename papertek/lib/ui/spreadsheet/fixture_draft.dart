@@ -7,16 +7,16 @@ import '../../repositories/fixture_repository.dart';
 class FixtureDraft {
   // ── Fixture-level fields ────────────────────────────────────────────────────
   String? position;
-  int?    unitNumber;
+  String? unitNumber;
   String? fixtureType;
-  String? wattage;
-  String? function;
-  String? focus;
+  String? purpose;
+  String? area;
   String? accessories;
 
   // ── Intensity-part fields ───────────────────────────────────────────────────
   String? channel;
-  String? dimmer;    // stored as `address` in fixture_parts
+  String? dimmer;    // stored as `dimmer` in fixture_parts
+  String? wattage;   // part-level wattage
   String? circuit;
   String? ipAddress;
   String? subnet;
@@ -32,12 +32,12 @@ class FixtureDraft {
     this.position,
     this.unitNumber,
     this.fixtureType,
-    this.wattage,
-    this.function,
-    this.focus,
+    this.purpose,
+    this.area,
     this.accessories,
     this.channel,
     this.dimmer,
+    this.wattage,
     this.circuit,
     this.ipAddress,
     this.subnet,
@@ -52,10 +52,9 @@ class FixtureDraft {
     final d = FixtureDraft();
     if (mask.contains('position'))    d.position    = donor.position;
     if (mask.contains('unit'))        d.unitNumber  = donor.unitNumber;
-    if (mask.contains('type'))        d.fixtureType = donor.fixtureType;
-    if (mask.contains('wattage'))     d.wattage     = donor.wattage;
-    if (mask.contains('function'))    d.function    = donor.function;
-    if (mask.contains('focus'))       d.focus       = donor.focus;
+    if (mask.contains('instrument'))  d.fixtureType = donor.fixtureType;
+    if (mask.contains('purpose'))     d.purpose     = donor.purpose;
+    if (mask.contains('area'))        d.area        = donor.area;
     if (mask.contains('accessories')) d.accessories = donor.accessories;
     if (mask.contains('chan'))        d.channel     = donor.channel;
     if (mask.contains('dimmer'))      d.dimmer      = donor.dimmer;
@@ -69,13 +68,9 @@ class FixtureDraft {
     return d;
   }
 
-  /// After a successful insert with [continueAdding] = true, advance
-  /// fields that should auto-increment and clear fields that should reset.
-  ///
-  /// - unitNumber is incremented if non-null.
-  /// - channel, dimmer, circuit are cleared (they are almost always unique per fixture).
+  /// After a successful insert with [continueAdding] = true, clear transient
+  /// fields that are almost always unique per fixture.
   void advanceForContinue() {
-    if (unitNumber != null) unitNumber = unitNumber! + 1;
     channel = null;
     dimmer  = null;
     circuit = null;

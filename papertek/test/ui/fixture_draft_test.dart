@@ -5,8 +5,8 @@ import 'package:papertek/repositories/fixture_repository.dart';
 void main() {
   group('FixtureDraft', () {
     final donor = FixtureRow(
-      id: 1, position: 'Balcony Rail', unitNumber: 5,
-      fixtureType: 'Source Four', flagged: false, patched: false,
+      id: 1, position: 'Balcony Rail', unitNumber: '5',
+      fixtureType: 'Source Four', patched: false,
       sortOrder: 1.0, hung: false, focused: false,
       channel: '42', dimmer: '42/5',
     );
@@ -18,17 +18,17 @@ void main() {
     });
 
     test('fromDonor copies only masked fields', () {
-      final d = FixtureDraft.fromDonor(donor, {'position', 'type'});
+      final d = FixtureDraft.fromDonor(donor, {'position', 'instrument'});
       expect(d.position, 'Balcony Rail');
       expect(d.fixtureType, 'Source Four');
       expect(d.channel, isNull); // chan not in mask
       expect(d.unitNumber, isNull); // unit not in mask
     });
 
-    test('advanceForContinue increments unitNumber and clears patch fields', () {
+    test('advanceForContinue clears transient patch fields but preserves unit', () {
       final d = FixtureDraft.fromDonor(donor, {'unit', 'chan', 'dimmer'});
       d.advanceForContinue();
-      expect(d.unitNumber, 6);
+      expect(d.unitNumber, '5');
       expect(d.channel, isNull);
       expect(d.dimmer, isNull);
     });
