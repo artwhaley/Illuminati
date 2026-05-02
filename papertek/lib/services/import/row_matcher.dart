@@ -71,4 +71,43 @@ class RowMatcher {
 
     return result;
   }
+
+  Map<ColumnSpec, String?> greedyAssign(List<String> importHeaders) {
+    final pairs = <({ColumnSpec column, String header, int score})>[];
+
+    for (final column in kColumns) {
+      if (!column.isImportable || column.importAliases == null) continue;
+      for (final header in importHeaders) {
+        final score = _score(header, column.importAliases!);
+        if (score >= _threshold) {
+          pairs.add((column: column, header: header, score: score));
+        }
+      }
+    }
+
+    pairs.sort((a, b) {
+      final s = b.score.compareTo(a.score);
+      if (s != 0) return s;
+      return b.header.length.compareTo(a.header.length);
+    });
+
+    final result = <ColumnSpec, String?>{
+      for (final col in kColumns)
+        if (col.isImportable && col.importAliases != null) col: null,
+    };
+
+    final usedHeaders = <String>{};
+    final usedColumns = <ColumnSpec>{};
+
+    for (final pair in pairs) {
+      if (usedColumns.contains(pair.column) || usedHeaders.contains(pair.header)) {
+        continue;
+      }
+      result[pair.column] = pair.header;
+      usedColumns.add(pair.column);
+      usedHeaders.add(pair.header);
+    }
+
+    return result;
+  }
 }

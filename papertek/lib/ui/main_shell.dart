@@ -408,14 +408,41 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     // Step 3: Build suggestions and initial mapping
     final suggestions = RowMatcher().suggest(importHeaders);
-    final initialMapping = <ColumnSpec, List<String>>{
-      for (final entry in suggestions.entries)
-        entry.key: entry.value.isNotEmpty ? [entry.value.first.importHeader] : [],
+    final initialMapping = RowMatcher().greedyAssign(importHeaders);
+
+    // Step 4: Read full rows (needed for data-tier hints in the mapping dialog)
+    if (!mounted) return;
+    final List<Map<String, String>> rawRows;
+    try {
+      rawRows = await reader.readRows(path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Could not read file: $e')));
+      }
+      return;
+    }
+
+    // Compute which headers have at least one non-empty value across all rows.
+    // Strip surrounding CSV quotes before testing — the reader preserves them,
+    // so an empty quoted cell is stored as the two-character string "" rather
+    // than an empty string.
+    String stripQuotes(String s) {
+      final t = s.trim();
+      return (t.length >= 2 && t.startsWith('"') && t.endsWith('"'))
+          ? t.substring(1, t.length - 1).trim()
+          : t;
+    }
+
+    final headersWithData = <String>{
+      for (final row in rawRows)
+        for (final entry in row.entries)
+          if (stripQuotes(entry.value).isNotEmpty && stripQuotes(entry.value) != '-') entry.key,
     };
 
-    // Step 4: Show column mapping screen → get confirmed mapping
+    // Step 5: Show column mapping screen → get confirmed mapping
     if (!mounted) return;
-    final confirmedMapping = await showDialog<Map<ColumnSpec, List<String>>>(
+    final confirmedMapping = await showDialog<Map<ColumnSpec, String?>>(
       context: context,
       barrierDismissible: false,
       builder: (_) => ColumnMappingScreen(
@@ -424,22 +451,11 @@ class _MainShellState extends ConsumerState<MainShell> {
         importHeaders: importHeaders,
         suggestions: suggestions,
         initialMapping: initialMapping,
+        headersWithData: headersWithData,
         importServiceProvider: importServiceProvider,
       ),
     );
     if (confirmedMapping == null) return;
-
-    // Step 5: Read full rows
-    final List<Map<String, String>> rawRows;
-    try {
-      rawRows = await reader.readRows(path);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Could not parse file: $e')));
-      }
-      return;
-    }
 
     // Step 6: Multipart detection
     final candidates = detectMultipartCandidates(rawRows, confirmedMapping);

@@ -60,7 +60,7 @@ class ImportService {
   /// [multipartDecisions] is accepted but ignored — it will be wired in Ticket 07.
   Future<ImportResult> importRows(
     List<Map<String, String>> rawRows,
-    Map<ColumnSpec, List<String>> columnMapping, {
+    Map<ColumnSpec, String?> columnMapping, {
     String? sourceFileName,
     List<dynamic>? multipartDecisions,
   }) async {
@@ -135,37 +135,30 @@ class ImportService {
 
   // ── Value resolution ─────────────────────────────────────────────────────
 
-  /// Resolves a single column's value from a raw row using the confirmed mapping.
+  /// Resolves a column's value from a raw row using the confirmed 1:1 mapping.
   ///
-  /// For collection columns, tokens from multiple headers are split on common
-  /// separators and joined with '|' for downstream DB splitting.
-  /// For non-collection columns, multiple header values are joined with ' + '.
+  /// For collection columns, the single cell value is split on [+,/;] and
+  /// rejoined with '|' for downstream DB splitting (e.g. "R80, L201" → "R80|L201").
+  /// For non-collection columns, the raw cell value is returned as-is.
   String? _resolveValue(
     Map<String, String> row,
     ColumnSpec col,
-    Map<ColumnSpec, List<String>> mapping,
+    Map<ColumnSpec, String?> mapping,
   ) {
-    final headers = mapping[col];
-    if (headers == null || headers.isEmpty) return null;
-
-    final values = headers
-        .map((h) => (row[h] ?? '').trim())
-        .where((v) => v.isNotEmpty)
-        .toList();
-
-    if (values.isEmpty) return null;
-
+    final header = mapping[col];
+    if (header == null) return null;
+    final raw = (row[header] ?? '').trim();
+    if (raw.isEmpty || raw == '-') return null;
     if (col.isCollection) {
-      final tokens = values
-          .expand((v) => v.split(RegExp(r'[+,/;]')))
+      final tokens = raw
+          .split(RegExp(r'[+,/;]'))
           .map((t) => t.trim())
           .where((t) =>
               t.isNotEmpty && !_noColorSentinels.contains(t.toLowerCase()))
           .toList();
       return tokens.isEmpty ? null : tokens.join('|');
     }
-
-    return values.join(' + ');
+    return raw;
   }
 
   // ── Row grouping ─────────────────────────────────────────────────────────
@@ -174,7 +167,7 @@ class ImportService {
   /// multipart groups. All other rows form single-element groups.
   List<List<Map<String, String>>> _buildRowGroups(
     List<Map<String, String>> rows,
-    Map<ColumnSpec, List<String>> mapping,
+    Map<ColumnSpec, String?> mapping,
   ) {
     final groups = <List<Map<String, String>>>[];
     final keyToGroup = <String, List<Map<String, String>>>{};
@@ -211,7 +204,7 @@ class ImportService {
 
   Future<int> _importRowGroup({
     required List<Map<String, String>> rowGroup,
-    required Map<ColumnSpec, List<String>> columnMapping,
+    required Map<ColumnSpec, String?> columnMapping,
     required String batchId,
     required Map<String, int> positionCache,
     required Map<String, int> fixtureTypeCache,

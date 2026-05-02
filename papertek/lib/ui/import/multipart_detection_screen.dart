@@ -28,19 +28,18 @@ class MultipartDecision {
 /// Returns only groups with 2+ rows (multipart candidates).
 List<MultipartGroup> detectMultipartCandidates(
   List<Map<String, String>> rawRows,
-  Map<ColumnSpec, List<String>> mapping,
+  Map<ColumnSpec, String?> mapping,
 ) {
-  final posHeaders = mapping.entries
+  final posHeader = mapping.entries
       .where((e) => e.key.id == 'position')
-      .expand((e) => e.value)
-      .toList();
-  final unitHeaders = mapping.entries
+      .map((e) => e.value)
+      .whereType<String>()
+      .firstOrNull;
+  final unitHeader = mapping.entries
       .where((e) => e.key.id == 'unit')
-      .expand((e) => e.value)
-      .toList();
-
-  final posHeader = posHeaders.isNotEmpty ? posHeaders.first : null;
-  final unitHeader = unitHeaders.isNotEmpty ? unitHeaders.first : null;
+      .map((e) => e.value)
+      .whereType<String>()
+      .firstOrNull;
 
   if (posHeader == null || unitHeader == null) return [];
 
@@ -52,7 +51,7 @@ List<MultipartGroup> detectMultipartCandidates(
     groups.putIfAbsent((pos, unit), () => []).add(row);
   }
 
-  final allHeaders = mapping.values.expand((v) => v).toList();
+  final allHeaders = mapping.values.whereType<String>().toList();
   final partIndicator = RegExp(r'^[1-9][a-cA-C]?$|^[a-cA-C]$');
 
   final result = <MultipartGroup>[];

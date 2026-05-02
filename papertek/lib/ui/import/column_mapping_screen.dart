@@ -5,9 +5,6 @@ import '../../services/import/row_matcher.dart';
 import '../../services/import/import_service.dart';
 import '../spreadsheet/column_spec.dart';
 
-/// Modal dialog: maps import file columns → PaperTek fields, then triggers import.
-///
-/// Supports multi-header assignment per field via removable chips.
 class ColumnMappingScreen extends ConsumerStatefulWidget {
   const ColumnMappingScreen({
     super.key,
@@ -16,21 +13,16 @@ class ColumnMappingScreen extends ConsumerStatefulWidget {
     required this.importHeaders,
     required this.suggestions,
     required this.initialMapping,
+    required this.headersWithData,
     required this.importServiceProvider,
   });
 
   final String path;
   final RowReader rowReader;
-
-  /// All column headers from the import file (row 1).
   final List<String> importHeaders;
-
-  /// Per-ColumnSpec ranked suggestions from RowMatcher.
   final Map<ColumnSpec, List<MatchSuggestion>> suggestions;
-
-  /// Initial mapping (deep-copied into state).
-  final Map<ColumnSpec, List<String>> initialMapping;
-
+  final Map<ColumnSpec, String?> initialMapping;
+  final Set<String> headersWithData;
   final ProviderBase<ImportService?> importServiceProvider;
 
   @override
@@ -39,32 +31,27 @@ class ColumnMappingScreen extends ConsumerStatefulWidget {
 }
 
 class _ColumnMappingScreenState extends ConsumerState<ColumnMappingScreen> {
-  late Map<ColumnSpec, List<String>> _mapping;
+  late Map<ColumnSpec, String?> _mapping;
   bool _isLoading = false;
-
   late final List<ColumnSpec> _importableColumns;
 
   @override
   void initState() {
     super.initState();
     _importableColumns = kColumns.where((c) => c.isImportable).toList();
-    _mapping = {
-      for (final e in widget.initialMapping.entries)
-        e.key: List<String>.from(e.value),
-    };
+    _mapping = Map<ColumnSpec, String?>.from(widget.initialMapping);
     for (final col in _importableColumns) {
-      _mapping.putIfAbsent(col, () => []);
+      _mapping.putIfAbsent(col, () => null);
     }
   }
 
   bool get _canImport {
     final posSpec = kColumns.firstWhere((c) => c.id == 'position');
-    return (_mapping[posSpec]?.isNotEmpty == true) && !_isLoading;
+    return _mapping[posSpec] != null && !_isLoading;
   }
 
   Future<void> _runImport() async {
-    // Return the confirmed mapping to the caller; import is orchestrated by main_shell.
-    Navigator.of(context).pop(Map<ColumnSpec, List<String>>.from(_mapping));
+    Navigator.of(context).pop(Map<ColumnSpec, String?>.from(_mapping));
   }
 
   @override
@@ -78,11 +65,10 @@ class _ColumnMappingScreenState extends ConsumerState<ColumnMappingScreen> {
         width: 640,
         height: 520,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              'Match each PaperTek field to one or more columns from your file. '
-              'Auto-detected matches are pre-filled.',
+              'Match each PaperTek field to a column from your file.',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: const Color(0xFF6B7280)),
             ),
@@ -95,13 +81,21 @@ class _ColumnMappingScreenState extends ConsumerState<ColumnMappingScreen> {
                   final col = _importableColumns[i];
                   return _ColumnMappingRow(
                     column: col,
-                    assignedHeaders: List.from(_mapping[col] ?? []),
+                    currentHeader: _mapping[col],
                     allHeaders: widget.importHeaders,
                     suggestions: widget.suggestions[col] ?? [],
-                    onAddHeader: (h) => setState(
-                        () => (_mapping[col] ??= []).add(h)),
-                    onRemoveHeader: (h) =>
-                        setState(() => _mapping[col]?.remove(h)),
+                    headersWithData: widget.headersWithData,
+                    onChanged: (newValue) => setState(() {
+                      // Release any other field that holds this header.
+                      if (newValue != null) {
+                        for (final key in _mapping.keys) {
+                          if (key != col && _mapping[key] == newValue) {
+                            _mapping[key] = null;
+                          }
+                        }
+                      }
+                      _mapping[col] = newValue;
+                    }),
                   );
                 },
               ),
@@ -133,141 +127,98 @@ class _ColumnMappingScreenState extends ConsumerState<ColumnMappingScreen> {
 class _ColumnMappingRow extends StatelessWidget {
   const _ColumnMappingRow({
     required this.column,
-    required this.assignedHeaders,
+    required this.currentHeader,
     required this.allHeaders,
     required this.suggestions,
-    required this.onAddHeader,
-    required this.onRemoveHeader,
+    required this.headersWithData,
+    required this.onChanged,
   });
 
   final ColumnSpec column;
-  final List<String> assignedHeaders;
+  final String? currentHeader;
   final List<String> allHeaders;
   final List<MatchSuggestion> suggestions;
-  final ValueChanged<String> onAddHeader;
-  final ValueChanged<String> onRemoveHeader;
+  final Set<String> headersWithData;
+  final ValueChanged<String?> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final filteredSuggestions =
-        suggestions.where((s) => !assignedHeaders.contains(s.importHeader)).toList();
+    final suggestionHeaders = suggestions.map((s) => s.importHeader).toSet();
 
-    final sortedRemaining = ([...allHeaders]..sort())
-        .where((h) => !assignedHeaders.contains(h))
-        .toList();
+    final withData = allHeaders
+        .where((h) => !suggestionHeaders.contains(h) && headersWithData.contains(h))
+        .toList()
+      ..sort();
+
+    final withoutData = allHeaders
+        .where((h) => !suggestionHeaders.contains(h) && !headersWithData.contains(h))
+        .toList()
+      ..sort();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 140,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                column.label,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w500),
-              ),
+            width: 160,
+            child: Text(
+              column.label,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (assignedHeaders.isNotEmpty)
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: assignedHeaders
-                        .map(
-                          (h) => Chip(
-                            label: Text(
-                              h,
-                              style: theme.textTheme.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            deleteIcon: const Icon(Icons.close, size: 14),
-                            onDeleted: () => onRemoveHeader(h),
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 4),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                PopupMenuButton<String>(
-                  tooltip: 'Add a column',
-                  onSelected: (value) {
-                    if (value.isNotEmpty) onAddHeader(value);
-                  },
-                  itemBuilder: (_) {
-                    final items = <PopupMenuEntry<String>>[];
-
-                    if (filteredSuggestions.isNotEmpty) {
-                      for (final s in filteredSuggestions) {
-                        items.add(PopupMenuItem<String>(
-                          value: s.importHeader,
-                          child: Row(
-                            children: [
-                              Icon(Icons.auto_awesome,
-                                  size: 14,
-                                  color: theme.colorScheme.primary),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  s.importHeader,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ));
-                      }
-                      items.add(const PopupMenuDivider());
-                    }
-
-                    for (final h in sortedRemaining) {
-                      items.add(PopupMenuItem<String>(
-                        value: h,
-                        child: Text(h, overflow: TextOverflow.ellipsis),
-                      ));
-                    }
-
-                    if (items.isEmpty || (items.length == 1 && items.first is PopupMenuDivider)) {
-                      return [
-                        const PopupMenuItem<String>(
-                          value: '',
-                          child: Text('— not imported —'),
-                        ),
-                      ];
-                    }
-
-                    return items;
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add, size: 16,
-                            color: theme.colorScheme.primary),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Add column',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 260,
+            child: DropdownButton<String?>(
+              value: currentHeader,
+              isExpanded: true,
+              onChanged: (v) => onChanged(v == '\x00' ? null : v),
+              items: [
+                // Always-present null option
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('— none —'),
                 ),
+
+                // Tier 1: auto-match suggestions — amber text
+                // Tier 1: auto-match suggestions — amber color provides
+                // visual separation; no divider needed here.
+                ...suggestions.map((s) => DropdownMenuItem<String?>(
+                      value: s.importHeader,
+                      child: Text(
+                        s.importHeader,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Color(0xFFC8960C)),
+                      ),
+                    )),
+
+                // Tier 2: headers with data — normal text
+                ...withData.map((h) => DropdownMenuItem<String?>(
+                      value: h,
+                      child: Text(h, overflow: TextOverflow.ellipsis),
+                    )),
+
+                // Divider only when both populated and empty tiers are present.
+                if (withData.isNotEmpty && withoutData.isNotEmpty)
+                  const DropdownMenuItem<String?>(
+                    value: '\x00',
+                    enabled: false,
+                    child: Divider(),
+                  ),
+
+                // Tier 3: headers without data — grey text
+                ...withoutData.map((h) => DropdownMenuItem<String?>(
+                      value: h,
+                      child: Text(
+                        h,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Color(0xFF9E9E9E)),
+                      ),
+                    )),
               ],
             ),
           ),
