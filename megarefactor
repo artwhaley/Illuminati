@@ -1,0 +1,218 @@
+You are a Flutter refactor execution agent on repo: C:\Users\artwh\Downloads\Illuminati.
+Do only what is requested, do not explain high-level strategy, and do not run tests unless explicitly asked.
+Use the ticket files exactly and execute one stage at a time.
+
+Global rules:
+1) Do not use the original monolith files as the final design target — only extract/create as instructed.
+2) Prefer exact behavior preservation over cleanup.
+3) Never delete public imports used by callers (`show_tab.dart`, `main_shell.dart`) unless explicitly required.
+4) After each stage, report status in this exact format:
+
+{
+  "stage": "<stage-id>",
+  "status": "PASS" | "FAIL",
+  "changed_files": ["..."],
+  "validation": ["check1", "check2"],
+  "blockers": ["if any"]
+}
+
+If status is FAIL, STOP immediately and return blockers only. Do not continue to next stage.
+If PASS, continue to the next stage.
+
+-------------------------------------------------------------------------------
+
+STAGE VENUE-1
+ticket: tickets/REFACTOR-venue-tabs-1-shared-infrastructure.md
+
+Preconditions:
+- Only `papertek/lib/ui/positions/venue_tabs.dart` must be read.
+- Do not modify `venue_tabs.dart` in this stage.
+
+Execute exactly:
+- Read `papertek/lib/ui/positions/venue_tabs.dart`
+- Create:
+  - `papertek/lib/ui/positions/venue/venue_field_widgets.dart`
+  - `papertek/lib/ui/positions/venue/venue_dialogs.dart`
+  - `papertek/lib/ui/positions/venue/venue_shared_widgets.dart`
+- Preserve all logic in the source classes; do not rename private symbols inside these new files.
+- Preserve `_DropdownField` stale soft-link behavior.
+- Preserve Escape-to-cancel rename behavior in `_VenueCard`.
+- Preserve `_confirmDelete` visual styling and behavior.
+
+Validation:
+- venue_tabs.dart unchanged
+- three files exist and include expected classes/functions
+- no import errors from the three new files themselves
+
+Output format exactly as specified in Global rules with stage `"venue-1"`.
+
+-------------------------------------------------------------------------------
+
+STAGE VENUE-2
+ticket: tickets/REFACTOR-venue-tabs-2-tab-extraction.md
+
+Preconditions:
+- Stage VENUE-1 must have PASS.
+- Verify the three Part 1 files exist.
+
+Execute exactly:
+- Create:
+  - `papertek/lib/ui/positions/venue/channels_tab.dart`
+  - `papertek/lib/ui/positions/venue/addresses_tab.dart`
+  - `papertek/lib/ui/positions/venue/dimmers_tab.dart`
+  - `papertek/lib/ui/positions/venue/circuits_tab.dart`
+- Rewrite:
+  - `papertek/lib/ui/positions/venue_tabs.dart` as a barrel export
+- Preserve known onTap bug and annotate exactly:
+  - `// FIXME: == should be =` in Addresses, Dimmers, Circuits tabs.
+- Keep `onTap` bug behavior unchanged except FIXME comment.
+
+Validation:
+- no class definitions remain in `venue_tabs.dart` except exports
+- each of 4 new files contains expected tab + private info panel
+- `show_tab.dart` import shape remains valid: `import 'positions/venue_tabs.dart';`
+
+Output JSON with stage `"venue-2"` and PASS/FAIL.
+
+-------------------------------------------------------------------------------
+
+STAGE MAINT-1
+ticket: tickets/REFACTOR-maintenance-tab-1-helpers-and-leaves.md
+
+Preconditions:
+- None beyond repo state.
+
+Execute exactly:
+- Read `papertek/lib/ui/maintenance/maintenance_tab.dart`
+- Create:
+  - `papertek/lib/ui/maintenance/maintenance_helpers.dart`
+  - `papertek/lib/ui/maintenance/widgets/generic_card_body.dart`
+  - `papertek/lib/ui/maintenance/widgets/maintenance_log_tab.dart`
+- Apply mandatory renames in new helper file and references:
+  - `_kFixtureCols` -> `kMaintenanceFixtureCols`
+  - `_formatTs` -> `formatMaintenanceTs`
+  - `_buildHistoryRows` -> `buildHistoryRows`
+  - `_initialStagingValues` -> `buildInitialStagingValues`
+
+Validation:
+- `maintenance_tab.dart` unchanged in this stage
+- three files exist
+- renamed symbols present and consistent with names above
+- no old names remain in newly created files
+
+Output JSON with stage `"maintenance-1"` and PASS/FAIL.
+
+-------------------------------------------------------------------------------
+
+STAGE MAINT-2
+ticket: tickets/REFACTOR-maintenance-tab-2-composing-and-orchestrator.md
+
+Preconditions:
+- Stage MAINT-1 PASS and helper symbol renames verified.
+
+Execute exactly:
+- Create:
+  - `papertek/lib/ui/maintenance/widgets/tabular_card_body.dart`
+  - `papertek/lib/ui/maintenance/widgets/revision_card.dart`
+- Rewrite:
+  - `papertek/lib/ui/maintenance/maintenance_tab.dart` as orchestrator-only
+- Keep:
+  - `_StagingRow` save logic:
+    - existing pending revision update path first via Drift companion `newValue` write
+    - fallback create path via `ColumnSpec.onEdit`
+  - commit guard and snackbars in `_EditReviewTabState`
+- Use `kMaintenanceFixtureCols` in revision card default.
+- Keep `GoogleFonts` usage and visual semantics.
+
+Validation:
+- maintenance_tab.dart contains only orchestrator + EditReviewTab
+- tabular file compiles with `drift` `Value` import present
+- all three maintenance files (from part1 + part2) present and coherent
+
+Output JSON with stage `"maintenance-2"` and PASS/FAIL.
+
+-------------------------------------------------------------------------------
+
+STAGE INVENTORY
+ticket: tickets/REFACTOR-PLACEHOLDER-inventory-tab.md
+
+Execute exactly:
+- Create:
+  - `papertek/lib/ui/positions/inventory/inventory_shared_widgets.dart`
+  - `papertek/lib/ui/positions/inventory/inventory_dialogs.dart`
+  - `papertek/lib/ui/positions/inventory/type_card.dart`
+  - `papertek/lib/ui/positions/inventory/type_info_panel.dart`
+  - `papertek/lib/ui/positions/inventory/inventory_tab_impl.dart`
+- Rewrite:
+  - `papertek/lib/ui/positions/inventory_tab.dart` into explicit barrel export (`show InventoryTab`)
+- Preserve behavior:
+  - scroll-linked toolbar padding (`_toolbarPad`)
+  - multi-select semantics
+  - async `_loadCount` fire-and-forget pattern
+  - part count save guard (`v > 0`)
+  - `_mergeSelected` 2-select flow
+
+Validation:
+- inventory_tab.dart is barrel-only
+- all five new files exist
+- merge dialog still returns `({int keepId, String? newName})`
+- no direct export of private widgets outside `inventory/`
+
+Output JSON with stage `"inventory"` and PASS/FAIL.
+
+-------------------------------------------------------------------------------
+
+STAGE SHOW
+ticket: tickets/REFACTOR-PLACEHOLDER-show-tab.md
+
+Execute exactly:
+- Create:
+  - `papertek/lib/ui/show/show_field_widgets.dart`
+  - `papertek/lib/ui/show/playbill_field.dart`
+  - `papertek/lib/ui/show/role_panel.dart`
+  - `papertek/lib/ui/show/show_info_panel.dart`
+  - `papertek/lib/ui/show/sub_tab_panel.dart`
+  - `papertek/lib/ui/show/show_tab_impl.dart`
+- Rewrite:
+  - `papertek/lib/ui/show_tab.dart` as barrel export (`show ShowTab`)
+- Rename:
+  - `_VenuePanel` -> `_SubTabPanel`
+  - `_VenuePanelState` -> `_SubTabPanelState`
+- Fix `_PlaybillFieldState._save` typo to:
+  - `widget.onSave(v);`
+- Preserve `LayoutBuilder + SizedBox(height: constraints.maxHeight)` comment block verbatim and logic.
+- Keep `_defaultLabels` in role panel file and preserve role/custom label behavior.
+
+Validation:
+- barrel export intact and `main_shell.dart` still imports same path
+- all six new files exist
+- no compile-risk references to removed old class names
+
+Output JSON with stage `"show"` and PASS/FAIL.
+
+-------------------------------------------------------------------------------
+
+STAGE VERIFY
+Execute a final consistency pass only.
+
+Verify:
+- only barrels were written in:
+  - `papertek/lib/ui/positions/venue_tabs.dart`
+  - `papertek/lib/ui/positions/inventory_tab.dart`
+  - `papertek/lib/ui/maintenance/maintenance_tab.dart` (orchestrator split)
+  - `papertek/lib/ui/show_tab.dart`
+- symbol references updated:
+  - no stale `kFixtureCols`, `_formatTs`, `_buildHistoryRows`, `_initialStagingValues`
+- all file imports resolve between new maintenance/venue/inventory/show structure
+- call sites still include `const` constructors for tabs in `sub_tab_panel.dart` after rewrites.
+
+Final output format:
+{
+  "stage": "verify",
+  "status": "PASS" | "FAIL",
+  "summary": "short list",
+  "risks": ["top 3 remaining risks / TODO notes"]
+}
+
+If PASS: provide concise final handoff message and stop.
+

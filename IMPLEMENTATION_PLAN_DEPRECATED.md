@@ -1,3 +1,11 @@
+IMPORTANT: 
+
+THIS IS THE IMPLEMENTATION PLAN WE BUILT FROM.  IT IS NO LONGER CURRENT.  THE PROJECT HAS EVOLVED.  TREAT THIS AS A HISTORICAL ARTIFACT FOR REFERENCE PURPOSES.  DO NOT EXECUTE ANY ACTIONS BASED ON THIS INFO ALONE.
+
+
+
+
+
 # PaperTek — Implementation Plan
 
 This plan aligns with [SPEC.md](SPEC.md) (local schema, revision rules, file format). Each step ends with a **"Verify"** block — what you should be able to do in the running app (or in a test harness) to confirm the step worked before moving on. Steps within a phase are sequential. Phases are sequential.
