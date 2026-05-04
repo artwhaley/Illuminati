@@ -55,6 +55,8 @@ class _LightingPositionsTabState extends ConsumerState<LightingPositionsTab> {
     final positionsAsync = ref.watch(lightingPositionsProvider);
     final groupsAsync = ref.watch(positionGroupsProvider);
     final repo = ref.watch(positionRepoProvider);
+    final fixtureCounts =
+        ref.watch(fixtureCountsByPositionProvider).valueOrNull ?? {};
 
     final positions = positionsAsync.valueOrNull ?? [];
     final groups = groupsAsync.valueOrNull ?? [];
@@ -87,46 +89,67 @@ class _LightingPositionsTabState extends ConsumerState<LightingPositionsTab> {
           decoration: const BoxDecoration(
             border: Border(right: BorderSide(color: Color(0xFF23272E))),
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                SizedBox(height: _toolbarPad),
-                PositionToolButton(
-                  icon: Icons.add,
-                  tooltip: 'Add Position',
-                  onPressed: repo != null ? () => controller.addPosition(context) : null,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      SizedBox(height: _toolbarPad),
+                      PositionToolButton(
+                        icon: Icons.add,
+                        tooltip: 'Add Position',
+                        onPressed: repo != null
+                            ? () => controller.addPosition(context)
+                            : null,
+                      ),
+                      PositionToolButton(
+                        icon: Icons.delete_outline,
+                        tooltip: 'Delete Selected',
+                        onPressed: (repo != null && selected.isNotEmpty)
+                            ? () => controller.deleteSelected(
+                                context, items, fixtureCounts, positions)
+                            : null,
+                      ),
+                      const Divider(indent: 8, endIndent: 8),
+                      PositionToolButton(
+                        icon: Icons.merge,
+                        tooltip: 'Combine 2 Positions',
+                        onPressed: (repo != null && selPosIds.length == 2)
+                            ? () =>
+                                controller.combineSelected(context, positions)
+                            : null,
+                      ),
+                      PositionToolButton(
+                        icon: Icons.folder_outlined,
+                        tooltip: 'Group Selected',
+                        onPressed: (repo != null && selPosIds.length >= 2)
+                            ? () => controller.groupSelected(context, positions)
+                            : null,
+                      ),
+                      PositionToolButton(
+                        icon: Icons.folder_off_outlined,
+                        tooltip: 'Remove from Group',
+                        onPressed: (repo != null && selectedAreGrouped)
+                            ? () => controller.ungroupSelected()
+                            : null,
+                      ),
+                    ],
+                  ),
                 ),
-                PositionToolButton(
-                  icon: Icons.delete_outline,
-                  tooltip: 'Delete Selected',
-                  onPressed: (repo != null && selected.isNotEmpty)
-                      ? () => controller.deleteSelected(context, items)
-                      : null,
-                ),
-                const Divider(indent: 8, endIndent: 8),
-                PositionToolButton(
-                  icon: Icons.merge,
-                  tooltip: 'Combine 2 Positions',
-                  onPressed: (repo != null && selPosIds.length == 2)
-                      ? () => controller.combineSelected(context, positions)
-                      : null,
-                ),
-                PositionToolButton(
-                  icon: Icons.folder_outlined,
-                  tooltip: 'Group Selected',
-                  onPressed: (repo != null && selPosIds.length >= 2)
-                      ? () => controller.groupSelected(context, positions)
-                      : null,
-                ),
-                PositionToolButton(
-                  icon: Icons.folder_off_outlined,
-                  tooltip: 'Remove from Group',
-                  onPressed: (repo != null && selectedAreGrouped)
-                      ? () => controller.ungroupSelected()
-                      : null,
-                ),
-              ],
-            ),
+              ),
+              const Divider(height: 1, indent: 6, endIndent: 6),
+              const SizedBox(height: 4),
+              PositionToolButton(
+                icon: Icons.playlist_remove,
+                tooltip: 'Remove Empty Positions',
+                onPressed: repo != null
+                    ? () => controller.removeEmptyPositions(
+                        context, positions, fixtureCounts)
+                    : null,
+              ),
+              const SizedBox(height: 8),
+            ],
           ),
         ),
 
@@ -191,6 +214,8 @@ class _LightingPositionsTabState extends ConsumerState<LightingPositionsTab> {
                                     key: ValueKey(item.listKey),
                                     index: i,
                                     position: item.pos,
+                                    fixtureCount:
+                                        fixtureCounts[item.pos.name] ?? 0,
                                     selected: selected.contains(item.listKey),
                                     onTap: () => controller.primaryTap(item.listKey),
                                     onSecondaryTap: () =>
@@ -208,6 +233,7 @@ class _LightingPositionsTabState extends ConsumerState<LightingPositionsTab> {
                                     index: i,
                                     group: grp.group,
                                     members: grp.members,
+                                    fixtureCounts: fixtureCounts,
                                     selected: selected.contains(item.listKey),
                                     selectedPositionKeys: selected,
                                     onGroupTap: () =>

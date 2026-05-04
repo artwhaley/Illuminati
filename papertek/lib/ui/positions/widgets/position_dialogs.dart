@@ -2,6 +2,23 @@ import 'package:flutter/material.dart';
 import '../../../database/database.dart';
 import '../position_list_item.dart';
 
+sealed class DeleteWithFixturesResult {
+  const DeleteWithFixturesResult();
+}
+
+class MergeFixturesInto extends DeleteWithFixturesResult {
+  const MergeFixturesInto(this.target);
+  final LightingPosition target;
+}
+
+class OrphanFixtures extends DeleteWithFixturesResult {
+  const OrphanFixtures();
+}
+
+class DeleteFixturesToo extends DeleteWithFixturesResult {
+  const DeleteFixturesToo();
+}
+
 Future<String?> showPositionNameDialog(
   BuildContext context, {
   required String title,
@@ -312,6 +329,147 @@ class _PositionCombineDialogState extends State<PositionCombineDialog> {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
+class PositionDeleteWithFixturesDialog extends StatefulWidget {
+  const PositionDeleteWithFixturesDialog({
+    super.key,
+    required this.positionsWithFixtures,
+    required this.availableTargets,
+  });
+
+  final List<({LightingPosition pos, int count})> positionsWithFixtures;
+  final List<LightingPosition> availableTargets;
+
+  @override
+  State<PositionDeleteWithFixturesDialog> createState() =>
+      _PositionDeleteWithFixturesDialogState();
+}
+
+class _PositionDeleteWithFixturesDialogState
+    extends State<PositionDeleteWithFixturesDialog> {
+  LightingPosition? _selectedTarget;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.availableTargets.isNotEmpty) {
+      _selectedTarget = _bestMatch(
+        widget.availableTargets,
+        widget.positionsWithFixtures.first.pos.name,
+      );
+    }
+  }
+
+  LightingPosition? _bestMatch(
+      List<LightingPosition> targets, String referenceName) {
+    if (targets.isEmpty) return null;
+    return targets.reduce((best, t) {
+      int sharedLength(String a, String b) {
+        int i = 0;
+        while (i < a.length && i < b.length && a[i] == b[i]) {
+          i++;
+        }
+        return i;
+      }
+
+      return sharedLength(t.name, referenceName) >=
+              sharedLength(best.name, referenceName)
+          ? t
+          : best;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.labelSmall
+        ?.copyWith(color: const Color(0xFF6B7280));
+
+    return AlertDialog(
+      title: const Text('Positions Have Fixtures'),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('The following positions have fixtures assigned:'),
+            const SizedBox(height: 8),
+            ...widget.positionsWithFixtures.map(
+              (e) => Text(
+                '• ${e.pos.name} — ${e.count} fixture${e.count == 1 ? '' : 's'}',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: const Color(0xFF6B7280)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            if (widget.availableTargets.isNotEmpty) ...[
+              Text('Move all fixtures to:', style: labelStyle),
+              const SizedBox(height: 8),
+              DropdownButton<LightingPosition>(
+                value: _selectedTarget,
+                isExpanded: true,
+                items: widget.availableTargets
+                    .map((t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t.name),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedTarget = v),
+              ),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: _selectedTarget == null
+                    ? null
+                    : () => Navigator.of(context)
+                        .pop(MergeFixturesInto(_selectedTarget!)),
+                child: const Text('Move Fixtures'),
+              ),
+              const SizedBox(height: 12),
+              const Divider(),
+            ],
+            Text('Or leave fixtures unassigned:', style: labelStyle),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(const OrphanFixtures()),
+              child: const Text('Leave as Unassigned'),
+            ),
+            Text(
+              '(fixtures remain in the show but have no position)',
+              style: labelStyle?.copyWith(fontSize: 10),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Divider(),
+            Text('Or remove them entirely:', style: labelStyle),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(const DeleteFixturesToo()),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+                side: BorderSide(color: theme.colorScheme.error),
+              ),
+              child: const Text('Delete Fixtures Too'),
+            ),
+            Text(
+              '(permanently deletes the fixture records)',
+              style: labelStyle?.copyWith(fontSize: 10),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

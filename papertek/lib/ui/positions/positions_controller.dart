@@ -96,7 +96,11 @@ class PositionsController extends StateNotifier<PositionsState> {
   }
 
   Future<void> deleteSelected(
-      BuildContext context, List<PositionListItem> items) async {
+    BuildContext context,
+    List<PositionListItem> items,
+    Map<String, int> fixtureCounts,
+    List<LightingPosition> allPositions,
+  ) async {
     final repo = _ref.read(positionRepoProvider);
     if (repo == null) return;
 
@@ -104,21 +108,99 @@ class PositionsController extends StateNotifier<PositionsState> {
     final grpIds = selectedGroupIds;
     if (posIds.isEmpty && grpIds.isEmpty) return;
 
-    final ok = await showPositionConfirmDialog(
-      context,
-      title: 'Delete',
-      message: 'Delete ${posIds.length + grpIds.length} item(s)?\n'
-          'Fixtures in deleted positions will lose their position assignment.',
-    );
-    if (!ok) return;
+    // Identify positions with fixtures.
+    final positionsWithFixtures = allPositions
+        .where((p) => posIds.contains(p.id) && (fixtureCounts[p.name] ?? 0) > 0)
+        .map((p) => (pos: p, count: fixtureCounts[p.name]!))
+        .toList();
 
-    for (final id in posIds) {
-      await repo.deletePosition(id);
+    if (positionsWithFixtures.isEmpty) {
+      final ok = await showPositionConfirmDialog(
+        context,
+        title: 'Delete',
+        message: 'Delete ${posIds.length + grpIds.length} item(s)?\n'
+            'Fixtures in deleted positions will lose their position assignment.',
+      );
+      if (!ok) return;
+
+      for (final id in posIds) {
+        await repo.deletePosition(id);
+      }
+    } else {
+      final availableTargets =
+          allPositions.where((p) => !posIds.contains(p.id)).toList();
+
+      final result = await showDialog<DeleteWithFixturesResult>(
+        context: context,
+        builder: (_) => PositionDeleteWithFixturesDialog(
+          positionsWithFixtures: positionsWithFixtures,
+          availableTargets: availableTargets,
+        ),
+      );
+
+      if (result == null) return;
+
+      if (result is MergeFixturesInto) {
+        final target = result.target;
+        for (final entry in positionsWithFixtures) {
+          await repo.combinePositions(keepId: target.id, deleteId: entry.pos.id);
+        }
+        for (final id in posIds) {
+          if (!positionsWithFixtures.any((e) => e.pos.id == id)) {
+            await repo.deletePosition(id);
+          }
+        }
+      } else if (result is OrphanFixtures) {
+        for (final entry in positionsWithFixtures) {
+          await repo.nullifyFixturesAtPosition(entry.pos.name);
+        }
+        for (final id in posIds) {
+          await repo.deletePosition(id);
+        }
+      } else if (result is DeleteFixturesToo) {
+        for (final entry in positionsWithFixtures) {
+          await repo.deleteFixturesAtPosition(entry.pos.name);
+        }
+        for (final id in posIds) {
+          await repo.deletePosition(id);
+        }
+      }
     }
+
     for (final id in grpIds) {
       await repo.deleteGroup(id);
     }
     clearSelection();
+  }
+
+  Future<void> removeEmptyPositions(
+    BuildContext context,
+    List<LightingPosition> allPositions,
+    Map<String, int> fixtureCounts,
+  ) async {
+    final repo = _ref.read(positionRepoProvider);
+    if (repo == null) return;
+
+    final empty =
+        allPositions.where((p) => (fixtureCounts[p.name] ?? 0) == 0).toList();
+
+    if (empty.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No empty positions found.')));
+      return;
+    }
+
+    final ok = await showPositionConfirmDialog(
+      context,
+      title: 'Remove Empty Positions',
+      message: 'Remove ${empty.length} position(s) with no fixtures assigned?\n'
+          'This cannot be undone.',
+    );
+    if (!ok) return;
+
+    for (final p in empty) {
+      await repo.deletePosition(p.id);
+    }
   }
 
   Future<void> combineSelected(
