@@ -21,7 +21,7 @@ class _SubTabPanelState extends State<SubTabPanel>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 6, vsync: this);
+    _tab = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -44,10 +44,6 @@ class _SubTabPanelState extends State<SubTabPanel>
             tabs: const [
               Tab(text: 'Positions'),
               Tab(text: 'Inventory'),
-              Tab(text: 'Channels'),
-              Tab(text: 'Addresses'),
-              Tab(text: 'Dimmers'),
-              Tab(text: 'Circuits'),
             ],
           ),
           const Divider(height: 1),
@@ -59,10 +55,6 @@ class _SubTabPanelState extends State<SubTabPanel>
               children: const [
                 LightingPositionsTab(),
                 InventoryTab(),
-                ChannelsTab(),
-                AddressesTab(),
-                DimmersTab(),
-                CircuitsTab(),
               ],
             ),
           ),

@@ -213,7 +213,6 @@ class ImportService {
   }) async {
     // Fixture-level fields (isPartLevel: false) share one value across all parts.
     String? firstNonNull(ColumnSpec spec) {
-      assert(!spec.isPartLevel, '${spec.id} is part-level; resolve per row');
       for (final row in rowGroup) {
         final v = _resolveValue(row, spec, columnMapping);
         if (v != null && v.isNotEmpty) return v;
