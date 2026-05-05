@@ -47,11 +47,15 @@ class RevisionCard extends ConsumerWidget {
     final isApproved = cardDecision == ReviewDecision.approve;
     final isRejected = cardDecision == ReviewDecision.reject;
     final f = fixture;
+    final isBulk = revisions.any((r) =>
+        r.operation == 'import_batch' || r.operation == 'designer_session');
 
     final label = f != null
         ? 'Ch ${f.channel ?? "�"}  �  ${f.position ?? "No Position"}  �  U#${f.unitNumber ?? "?"}  �  ${f.fixtureType ?? "No Type"}'
         : fixtureId == null
-            ? 'Global / Other'
+            ? isBulk
+                ? 'Batch Summary'
+                : 'Global / Other'
             : 'Fixture #$fixtureId (Deleted)';
 
     return Card(
@@ -61,7 +65,7 @@ class RevisionCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(6),
         side: BorderSide(
           color: isApproved
-              ? Colors.green.withValues(alpha: 0.5)
+              ? (isBulk ? Colors.orange : Colors.green).withValues(alpha: 0.5)
               : isRejected
                   ? Colors.red.withValues(alpha: 0.5)
                   : theme.dividerColor.withValues(alpha: 0.15),
@@ -86,20 +90,30 @@ class RevisionCard extends ConsumerWidget {
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.primary)),
                 const Spacer(),
-                _ActionButton(
-                  label: 'REJECT',
-                  color: Colors.red,
-                  isActive: isRejected,
-                  onPressed: onReject,
-                ),
-                const SizedBox(width: 8),
-                _ActionButton(
-                  label: 'APPROVE',
-                  color: Colors.green,
-                  isActive: isApproved,
-                  icon: Icons.chevron_right,
-                  onPressed: onApprove,
-                ),
+                if (isBulk)
+                  _ActionButton(
+                    label: 'DISMISS',
+                    color: isApproved ? Colors.orange : Colors.grey,
+                    isActive: isApproved,
+                    icon: isApproved ? Icons.check : null,
+                    onPressed: onApprove,
+                  )
+                else ...[
+                  _ActionButton(
+                    label: 'REJECT',
+                    color: Colors.red,
+                    isActive: isRejected,
+                    onPressed: onReject,
+                  ),
+                  const SizedBox(width: 8),
+                  _ActionButton(
+                    label: 'APPROVE',
+                    color: Colors.green,
+                    isActive: isApproved,
+                    icon: Icons.chevron_right,
+                    onPressed: onApprove,
+                  ),
+                ],
               ],
             ),
           ),

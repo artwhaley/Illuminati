@@ -39,7 +39,12 @@ class _RevisionDiffRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final fieldLabel = revision.fieldName ?? revision.operation;
     final oldVal = revision.oldValue?.toString();
-    final newVal = revision.newValue?.toString();
+    String? newVal;
+
+    if (revision.operation == 'import_batch' && revision.newValue is Map) {
+      newVal = (revision.newValue as Map)['description']?.toString();
+    }
+    newVal ??= revision.newValue?.toString();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -57,9 +62,11 @@ class _RevisionDiffRow extends StatelessWidget {
             spacing: 8,
             runSpacing: 4,
             children: [
-              _ValueChip(label: oldVal ?? '�', fg: kFgPurple, bg: kBgPurple),
-              const Icon(Icons.arrow_forward, size: 12, color: Colors.grey),
-              _ValueChip(label: newVal ?? '�', fg: kFgCyan, bg: kBgCyan),
+              if (oldVal != null) ...[
+                _ValueChip(label: oldVal, fg: kFgPurple, bg: kBgPurple),
+                const Icon(Icons.arrow_forward, size: 12, color: Colors.grey),
+              ],
+              _ValueChip(label: newVal ?? '', fg: kFgCyan, bg: kBgCyan),
               const SizedBox(width: 4),
               Text('${formatMaintenanceTs(revision.timestamp)}  ${revision.userId}',
                   style: GoogleFonts.jetBrainsMono(

@@ -74,54 +74,77 @@ class ImportService {
     final createdIds = <int>[];
 
     final batchId = _tracked.beginImportBatch();
+    final wasDesigner = _tracked.designerMode;
+    if (!wasDesigner) _tracked.enterDesignerMode();
 
-    final positionSpec = kColumnById['position']!;
+    final positionTally = <String, int>{};
 
-    // Filter rows missing a position value.
-    final validRows = <Map<String, String>>[];
-    for (var i = 0; i < rawRows.length; i++) {
-      final position = _resolveValue(rawRows[i], positionSpec, columnMapping);
-      if (position == null || position.isEmpty) {
-        rowsSkipped++;
-        warnings.add('Row ${i + 2}: skipped — no position value');
-      } else {
-        validRows.add(rawRows[i]);
-      }
-    }
+    try {
+      final positionSpec = kColumnById['position']!;
 
-    final rowGroups = _buildRowGroups(validRows, columnMapping);
-
-    await _db.transaction(() async {
-      for (final group in rowGroups) {
-        try {
-          final fixtureId = await _importRowGroup(
-            rowGroup: group,
-            columnMapping: columnMapping,
-            batchId: batchId,
-            positionCache: positionCache,
-            fixtureTypeCache: fixtureTypeCache,
-            onPositionCreated: () => positionsCreated++,
-            onTypeCreated: () => fixtureTypesCreated++,
-          );
-          createdIds.add(fixtureId);
-          fixturesCreated++;
-        } catch (e) {
+      // Filter rows missing a position value.
+      final validRows = <Map<String, String>>[];
+      for (var i = 0; i < rawRows.length; i++) {
+        final position = _resolveValue(rawRows[i], positionSpec, columnMapping);
+        if (position == null || position.isEmpty) {
           rowsSkipped++;
-          warnings.add('Row skipped — $e');
+          warnings.add('Row ${i + 2}: skipped — no position value');
+        } else {
+          validRows.add(rawRows[i]);
         }
       }
-    });
 
-    await _tracked.endImportBatch(
-      batchId: batchId,
-      summary: {
-        'source': sourceFileName ?? '',
-        'fixture_count': fixturesCreated,
-        'positions_created': positionsCreated,
-        'rows_skipped': rowsSkipped,
-        'fixture_ids': createdIds,
-      },
-    );
+      final rowGroups = _buildRowGroups(validRows, columnMapping);
+
+      await _db.transaction(() async {
+        for (final group in rowGroups) {
+          try {
+            final fixtureId = await _importRowGroup(
+              rowGroup: group,
+              columnMapping: columnMapping,
+              batchId: batchId,
+              positionCache: positionCache,
+              fixtureTypeCache: fixtureTypeCache,
+              onPositionCreated: () => positionsCreated++,
+              onTypeCreated: () => fixtureTypesCreated++,
+            );
+            createdIds.add(fixtureId);
+            fixturesCreated++;
+
+            // Tally by position for summary
+            final posName = _resolveValue(group.first, positionSpec, columnMapping)!;
+            positionTally[posName] = (positionTally[posName] ?? 0) + 1;
+          } catch (e) {
+            rowsSkipped++;
+            warnings.add('Row skipped — $e');
+          }
+        }
+      });
+
+      // Build descriptive summary string
+      final sortedPositions = positionTally.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      final posSummaryLines =
+          sortedPositions.map((e) => '${e.value} on ${e.key}').join(', ');
+      final fullSummary =
+          'Imported $fixturesCreated fixtures from ${sourceFileName ?? 'unknown source'}. $posSummaryLines.';
+
+      await _tracked.endImportBatch(
+        batchId: batchId,
+        summary: {
+          'description': fullSummary,
+          'source': sourceFileName ?? '',
+          'fixture_count': fixturesCreated,
+          'positions_created': positionsCreated,
+          'rows_skipped': rowsSkipped,
+          'fixture_ids': createdIds,
+        },
+      );
+    } finally {
+      if (!wasDesigner) {
+        await _tracked.exitDesignerMode(silent: true);
+      }
+    }
 
     return ImportResult(
       fixturesCreated: fixturesCreated,

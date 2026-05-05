@@ -78,12 +78,15 @@ class TrackedWriteRepository {
   /// Switch back to tracked mode. 
   /// Writes a single summary revision capturing what changed during the 
   /// designer session (e.g. "10 fixtures added, 50 fields edited").
-  Future<String> exitDesignerMode() async {
+  /// If [silent] is true, no revision row is created (useful for imports).
+  Future<String> exitDesignerMode({bool silent = false}) async {
     if (!_designerMode) return '';
     _designerMode = false;
 
     final stats = _designerStats ?? _DesignerSessionStats();
     _designerStats = null;
+
+    if (silent) return '';
 
     final date =
         '${stats.start.year}-${stats.start.month.toString().padLeft(2, '0')}-${stats.start.day.toString().padLeft(2, '0')}';
