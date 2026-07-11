@@ -278,7 +278,6 @@ class RevisionRepository {
       final result = <int?, List<RevisionView>>{};
       for (final row in rows) {
         final rev = RevisionView.fromRow(_rowToRevision(row));
-        if (rev.operation == 'import_batch') continue;
 
         final parentId = row.read<int?>('parent_fixture_id');
         result.putIfAbsent(parentId, () => []).add(rev);

@@ -1,12 +1,32 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../database/database.dart';
+
+Widget _platformDrag({required int index, required Widget child, Key? key}) {
+  final isDesktop = defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.linux;
+  return isDesktop
+      ? ReorderableDragStartListener(key: key, index: index, child: child)
+      : ReorderableDelayedDragStartListener(
+          key: key, index: index, child: child);
+}
+
+Widget _detailText(String text, ThemeData theme) => Text(
+      text,
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: const Color(0xFF4B5263),
+        fontSize: 10,
+      ),
+    );
 
 class PositionCard extends StatefulWidget {
   const PositionCard({
     super.key,
     required this.index,
     required this.position,
+    required this.fixtureCount,
     required this.selected,
     required this.onTap,
     required this.onSecondaryTap,
@@ -15,6 +35,7 @@ class PositionCard extends StatefulWidget {
 
   final int index;
   final LightingPosition position;
+  final int fixtureCount;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onSecondaryTap;
@@ -59,74 +80,95 @@ class _PositionCardState extends State<PositionCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Material(
-        color: widget.selected
-            ? theme.colorScheme.primary.withValues(alpha: 0.15)
-            : theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
+    return _platformDrag(
+      index: widget.index,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Material(
+          color: widget.selected
+              ? theme.colorScheme.primary.withValues(alpha: 0.15)
+              : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
-          onTap: _editing ? null : widget.onTap,
-          onSecondaryTap: _editing ? null : widget.onSecondaryTap,
-          onDoubleTap: widget.onRename == null
-              ? null
-              : () {
-                  _ctrl.text = widget.position.name;
-                  setState(() => _editing = true);
-                },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _editing
-                      ? CallbackShortcuts(
-                          bindings: {
-                            const SingleActivator(LogicalKeyboardKey.escape):
-                                () => setState(() => _editing = false),
-                          },
-                          child: Focus(
-                            onFocusChange: (has) {
-                              if (!has) _commitRename();
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: _editing ? null : widget.onTap,
+            onSecondaryTap: _editing ? null : widget.onSecondaryTap,
+            onDoubleTap: widget.onRename == null
+                ? null
+                : () {
+                    _ctrl.text = widget.position.name;
+                    setState(() => _editing = true);
+                  },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _editing
+                        ? CallbackShortcuts(
+                            bindings: {
+                              const SingleActivator(LogicalKeyboardKey.escape):
+                                  () => setState(() => _editing = false),
                             },
-                            child: TextField(
-                              controller: _ctrl,
-                              autofocus: true,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: widget.selected
-                                    ? theme.colorScheme.primary
-                                    : null,
+                            child: Focus(
+                              onFocusChange: (has) {
+                                if (!has) _commitRename();
+                              },
+                              child: TextField(
+                                controller: _ctrl,
+                                autofocus: true,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: widget.selected
+                                      ? theme.colorScheme.primary
+                                      : null,
+                                ),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                                onSubmitted: (_) => _commitRename(),
                               ),
-                              decoration: const InputDecoration(
-                                isDense: true,
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                              onSubmitted: (_) => _commitRename(),
+                            ),
+                          )
+                        : Text(
+                            widget.position.name,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: widget.selected
+                                  ? theme.colorScheme.primary
+                                  : null,
+                              fontWeight: widget.selected
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
                             ),
                           ),
-                        )
-                      : Text(
-                          widget.position.name,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: widget.selected
-                                ? theme.colorScheme.primary
-                                : null,
-                            fontWeight: widget.selected
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${widget.fixtureCount} fixture${widget.fixtureCount == 1 ? '' : 's'}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: widget.fixtureCount > 0
+                              ? theme.colorScheme.primary.withValues(alpha: 0.85)
+                              : const Color(0xFF4B5263),
                         ),
-                ),
-                const SizedBox(width: 8),
-                ReorderableDragStartListener(
-                  index: widget.index,
-                  child: const Icon(Icons.drag_indicator,
-                      size: 18, color: Color(0xFF4B5263)),
-                ),
-              ],
+                      ),
+                      if (widget.position.trim != null)
+                        _detailText('trim ${widget.position.trim}', theme),
+                      if (widget.position.fromPlasterLine != null)
+                        _detailText(
+                            '${widget.position.fromPlasterLine} from plaster',
+                            theme),
+                      if (widget.position.fromCenterLine != null)
+                        _detailText(
+                            '${widget.position.fromCenterLine} OC', theme),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

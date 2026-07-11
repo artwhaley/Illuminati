@@ -11,7 +11,6 @@ import 'fixture_data_source.dart';
 import 'spreadsheet_view_controller.dart';
 import 'widgets/sidebar.dart';
 import 'widgets/toolbar.dart';
-import 'widgets/status_bar.dart';
 import 'widgets/column_picker.dart';
 import 'widgets/presets_strip.dart';
 import 'widgets/collection_editor_dialog.dart';
@@ -258,7 +257,6 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     final presets = ref.watch(spreadsheetViewPresetsProvider).valueOrNull ?? [];
     final pendingIds = ref.watch(pendingFixtureIdsProvider).valueOrNull ?? {};
     final conflictIds = ref.watch(conflictFixtureIdsProvider).valueOrNull ?? {};
-    final showName = ref.watch(currentShowMetaProvider).valueOrNull?.showName ?? '';
     final columns = ref.watch(allColumnsProvider);
 
     // Update Data Source
@@ -526,18 +524,6 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                            }
                         },
                         onClearFilter: _controller.clearFilter,
-                      ),
-                      Listener(
-                        onPointerDown: (e) {
-                          if (e.buttons == 1 || e.buttons == 2) _clearSelection();
-                        },
-                        child: SpreadsheetStatusBar(
-                          totalFixtures: fixtures.length,
-                          visibleCount: _source.rows.length,
-                          filterActive: _controller.filterActive,
-                          showName: showName,
-                          theme: theme,
-                        ),
                       ),
                     ],
                   ),

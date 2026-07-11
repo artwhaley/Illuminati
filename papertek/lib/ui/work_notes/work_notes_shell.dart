@@ -16,7 +16,7 @@ class _WorkNotesShellState extends State<WorkNotesShell> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
   }
 
   @override
@@ -36,8 +36,8 @@ class _WorkNotesShellState extends State<WorkNotesShell> with SingleTickerProvid
             isScrollable: false,
             tabs: const [
               Tab(text: 'Work Notes'),
+              Tab(text: 'Create Notes'),
               Tab(text: 'Board Notes'),
-              Tab(text: 'Live Notes'),
             ],
           ),
         ),
@@ -46,8 +46,8 @@ class _WorkNotesShellState extends State<WorkNotesShell> with SingleTickerProvid
             controller: _tabController,
             children: const [
               WorkNotesTab(),
-              BoardNotesTab(),
               LiveNotesTab(),
+              BoardNotesTab(),
             ],
           ),
         ),

@@ -193,6 +193,22 @@ final positionGroupsProvider = StreamProvider.autoDispose<List<PositionGroup>>((
   return repo.watchGroups();
 });
 
+/// Streams a map of position-name → fixture count.
+final fixtureCountsByPositionProvider =
+    StreamProvider.autoDispose<Map<String, int>>((ref) {
+  final db = ref.watch(databaseProvider);
+  if (db == null) return Stream.value({});
+  return db.select(db.fixtures).watch().map((fixtures) {
+    final counts = <String, int>{};
+    for (final f in fixtures) {
+      if (f.position != null) {
+        counts[f.position!] = (counts[f.position!] ?? 0) + 1;
+      }
+    }
+    return counts;
+  });
+});
+
 /// Repository for the show's contact list (ME, ALD, Production Electricians).
 final roleContactRepoProvider = Provider.autoDispose<RoleContactRepository?>((
   ref,

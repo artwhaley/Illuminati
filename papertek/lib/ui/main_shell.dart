@@ -353,7 +353,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       const NavigationDestination(
         icon: Icon(Icons.sticky_note_2_outlined),
         selectedIcon: Icon(Icons.sticky_note_2),
-        label: 'Work Notes',
+        label: 'Notes',
       ),
       NavigationDestination(
         icon: Badge(

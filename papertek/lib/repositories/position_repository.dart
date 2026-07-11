@@ -92,6 +92,49 @@ class PositionRepository {
         doDelete: () => (_db.delete(_db.lightingPositions)..where((t) => t.id.equals(id))).go(),
       );
 
+  /// Sets position = null on all fixtures currently assigned to [positionName].
+  /// Used when a position is deleted and the user chooses to orphan its fixtures
+  /// (they will appear as "Unassigned" in any fixture view that handles null positions).
+  Future<void> nullifyFixturesAtPosition(String positionName) async {
+    final affected = await (_db.select(_db.fixtures)
+          ..where((f) => f.position.equals(positionName)))
+        .get();
+    final batchId = _tracked.beginImportBatch();
+    for (final f in affected) {
+      await _tracked.updateField(
+        table: 'fixtures',
+        id: f.id,
+        field: 'position',
+        newValue: null,
+        readCurrentValue: () async => f.position,
+        applyUpdate: (v) async {
+          await (_db.update(_db.fixtures)..where((r) => r.id.equals(f.id)))
+              .write(FixturesCompanion(position: Value(v)));
+        },
+        batchId: batchId,
+      );
+    }
+  }
+
+  /// Deletes all fixture records assigned to [positionName].
+  /// Destructive — use only when the user explicitly confirms fixture deletion.
+  Future<void> deleteFixturesAtPosition(String positionName) async {
+    final affected = await (_db.select(_db.fixtures)
+          ..where((f) => f.position.equals(positionName)))
+        .get();
+    final batchId = _tracked.beginImportBatch();
+    for (final f in affected) {
+      await _tracked.deleteRow(
+        table: 'fixtures',
+        id: f.id,
+        buildSnapshot: () async => f.toJson(),
+        doDelete: () =>
+            (_db.delete(_db.fixtures)..where((r) => r.id.equals(f.id))).go(),
+        batchId: batchId,
+      );
+    }
+  }
+
   /// Persists a new ordering for all top-level items in one transaction.
   ///
   /// [orderedItems] is the complete list of top-level items in their desired
