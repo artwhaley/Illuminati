@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/show_provider.dart';
+import 'recovery/recover_backup_dialog.dart';
 
 class StartScreen extends ConsumerWidget {
   const StartScreen({super.key});
@@ -43,6 +44,14 @@ class StartScreen extends ConsumerWidget {
                 onPressed: () => _openShow(context, ref),
                 child: const Text('Open Show'),
               ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => const RecoverBackupDialog(),
+                ),
+                child: const Text('Recover Backup...'),
+              ),
             ],
           ),
         ),
@@ -66,14 +75,14 @@ class StartScreen extends ConsumerWidget {
     );
     if (savePath == null || !context.mounted) return;
 
-    final path =
-        savePath.endsWith('.papertek') ? savePath : '$savePath.papertek';
+    final path = savePath.endsWith('.papertek')
+        ? savePath
+        : '$savePath.papertek';
 
     try {
-      final db = await ref
-          .read(showFileServiceProvider)
+      await ref
+          .read(showSessionProvider.notifier)
           .createShow(path, showName: showName);
-      ref.read(databaseProvider.notifier).state = db;
     } catch (e) {
       if (!context.mounted) return;
       _showError(context, 'Could not create show:\n$e');
@@ -91,13 +100,10 @@ class StartScreen extends ConsumerWidget {
 
     final path = result.files.single.path!;
     try {
-      final (db, error) =
-          await ref.read(showFileServiceProvider).openShow(path);
+      final error = await ref.read(showSessionProvider.notifier).openShow(path);
       if (!context.mounted) return;
       if (error != null) {
         _showError(context, error);
-      } else if (db != null) {
-        ref.read(databaseProvider.notifier).state = db;
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -162,10 +168,7 @@ class _NewShowDialogState extends State<_NewShowDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Next'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Next')),
       ],
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme_settings_section.dart';
+import 'backup_settings_section.dart';
 
 class SettingsDialog extends StatelessWidget {
   const SettingsDialog({super.key});
@@ -21,7 +22,9 @@ class SettingsDialog extends StatelessWidget {
                 children: [
                   Text(
                     'Settings',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
@@ -31,6 +34,8 @@ class SettingsDialog extends StatelessWidget {
               ),
               const Divider(height: 32),
               const ThemeSettingsSection(),
+              const SizedBox(height: 24),
+              const BackupSettingsSection(),
               const SizedBox(height: 32),
               Align(
                 alignment: Alignment.centerRight,

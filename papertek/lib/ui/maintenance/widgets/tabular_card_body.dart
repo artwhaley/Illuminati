@@ -10,14 +10,10 @@
 // _StagingRow saves edits either by updating an existing revision's newValue
 // in-place (Drift direct write) or by creating a new revision via ColumnSpec.onEdit.
 
-import 'dart:convert';
-
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../database/database.dart';
 import '../../../providers/show_provider.dart';
 import '../../../repositories/fixture_repository.dart';
 import '../../../repositories/revision_repository.dart';
@@ -234,9 +230,7 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
   }
 
   Future<void> _save(String colKey, String? newValue) async {
-    final db = ref.read(databaseProvider);
     final fixtureRepo = ref.read(fixtureRepoProvider);
-    if (db == null) return;
 
     // If a pending revision already covers this column, update its newValue
     // in-place rather than creating an additional revision row.
@@ -246,9 +240,10 @@ class _StagingRowState extends ConsumerState<_StagingRow> {
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     if (pendingMatch.isNotEmpty) {
-      await (db.update(db.revisions)
-            ..where((r) => r.id.equals(pendingMatch.last.id)))
-          .write(RevisionsCompanion(newValue: Value(jsonEncode(newValue))));
+      await ref.read(revisionRepoProvider)?.editPendingProposal(
+            pendingMatch.last.id,
+            newValue,
+          );
       return;
     }
 

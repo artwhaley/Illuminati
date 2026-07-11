@@ -3,6 +3,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../repositories/tracked_write_repository.dart';
 import '../providers/show_provider.dart';
 import '../services/import/delimited_row_reader.dart';
@@ -17,6 +19,7 @@ import 'maintenance/maintenance_tab.dart';
 import 'reports/reports_tab.dart';
 import 'settings/settings_dialog.dart';
 import '../services/commit_service.dart';
+import '../services/show_session.dart';
 import 'work_notes/work_notes_shell.dart';
 
 // ── Designer mode toggle widget ───────────────────────────────────────────────
@@ -27,15 +30,15 @@ class _DesignerModeToggle extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDesigner = ref.watch(designerModeProvider);
-    final tracked    = ref.watch(trackedWriteProvider);
-    final theme      = Theme.of(context);
+    final tracked = ref.watch(trackedWriteProvider);
+    final theme = Theme.of(context);
 
     // Themed colors: designer = warm amber; tracked = cool teal
-    final activeColor   = isDesigner
+    final activeColor = isDesigner
         ? theme.colorScheme.primary.withValues(alpha: 0.9)
         : theme.colorScheme.primary;
     final inactiveColor = theme.colorScheme.onSurface.withValues(alpha: 0.1);
-    final indicatorCol  = isDesigner ? Colors.white : Colors.white70;
+    final indicatorCol = isDesigner ? Colors.white : Colors.white70;
 
     return InkWell(
       borderRadius: BorderRadius.circular(20),
@@ -113,7 +116,9 @@ class _DesignerModeToggle extends ConsumerWidget {
           final repo = ref.read(revisionRepoProvider);
           final pending = await repo?.watchAllPending().first;
           if (pending != null && pending.isNotEmpty) {
-            final decisions = {for (final r in pending) r.id: ReviewDecision.approve};
+            final decisions = {
+              for (final r in pending) r.id: ReviewDecision.approve,
+            };
             await service.commitBatch(decisions: decisions);
           }
         }
@@ -211,13 +216,13 @@ class _GlobalStatusBarState extends ConsumerState<_GlobalStatusBar> {
 
   @override
   Widget build(BuildContext context) {
-    final theme   = Theme.of(context);
+    final theme = Theme.of(context);
     final tracked = ref.watch(trackedWriteProvider);
-    final stack   = tracked?.undoStack;
+    final stack = tracked?.undoStack;
 
-    final bg      = theme.colorScheme.surfaceContainer;
-    final fg      = theme.colorScheme.onSurfaceVariant;
-    final accent  = theme.colorScheme.primary;
+    final bg = theme.colorScheme.surfaceContainer;
+    final fg = theme.colorScheme.onSurfaceVariant;
+    final accent = theme.colorScheme.primary;
 
     String centerText = '—';
     if (stack != null) {
@@ -243,10 +248,7 @@ class _GlobalStatusBarState extends ConsumerState<_GlobalStatusBar> {
             child: Row(
               children: [
                 // Left pane (25%)
-                Expanded(
-                  flex: 25,
-                  child: const SizedBox.shrink(),
-                ),
+                Expanded(flex: 25, child: const SizedBox.shrink()),
                 // Center pane (50%) — undo/redo hint
                 Expanded(
                   flex: 50,
@@ -254,7 +256,9 @@ class _GlobalStatusBarState extends ConsumerState<_GlobalStatusBar> {
                     child: Text(
                       centerText,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: centerText == '—' ? fg.withValues(alpha: 0.4) : fg,
+                        color: centerText == '—'
+                            ? fg.withValues(alpha: 0.4)
+                            : fg,
                         fontSize: 11,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -262,10 +266,7 @@ class _GlobalStatusBarState extends ConsumerState<_GlobalStatusBar> {
                   ),
                 ),
                 // Right pane (25%)
-                Expanded(
-                  flex: 25,
-                  child: const SizedBox.shrink(),
-                ),
+                Expanded(flex: 25, child: const SizedBox.shrink()),
               ],
             ),
           ),
@@ -377,10 +378,41 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  void _closeShow() async {
-    final db = ref.read(databaseProvider);
-    await db?.close();
-    if (mounted) ref.read(databaseProvider.notifier).state = null;
+  Future<void> _closeShow() async {
+    final result = await ref.read(showSessionProvider.notifier).closeShow();
+    if (mounted && result.status == CloseShowStatus.failed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not close show: ${result.error}')),
+      );
+    }
+  }
+
+  Future<void> _saveAs() async {
+    final current = ref.read(currentShowPathProvider);
+    if (current == null) return;
+    final path = await FilePicker.platform.saveFile(
+      dialogTitle: 'Save Show As',
+      fileName: current.split(Platform.pathSeparator).last,
+      allowedExtensions: ['papertek'],
+      type: FileType.custom,
+      lockParentWindow: true,
+    );
+    if (path == null || !mounted) return;
+    final destination = path.toLowerCase().endsWith('.papertek')
+        ? path
+        : '$path.papertek';
+    try {
+      await ref.read(showSessionProvider.notifier).saveAs(destination);
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Saved As $destination')));
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Save As failed: $error')));
+    }
   }
 
   Future<void> _importFixtures() async {
@@ -400,8 +432,9 @@ class _MainShellState extends ConsumerState<MainShell> {
       importHeaders = await reader.readHeaders(path);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Could not read file: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not read file: $e')));
       }
       return;
     }
@@ -417,8 +450,9 @@ class _MainShellState extends ConsumerState<MainShell> {
       rawRows = await reader.readRows(path);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Could not read file: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not read file: $e')));
       }
       return;
     }
@@ -437,7 +471,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     final headersWithData = <String>{
       for (final row in rawRows)
         for (final entry in row.entries)
-          if (stripQuotes(entry.value).isNotEmpty && stripQuotes(entry.value) != '-') entry.key,
+          if (stripQuotes(entry.value).isNotEmpty &&
+              stripQuotes(entry.value) != '-')
+            entry.key,
     };
 
     // Step 5: Show column mapping screen → get confirmed mapping
@@ -461,7 +497,8 @@ class _MainShellState extends ConsumerState<MainShell> {
     final candidates = detectMultipartCandidates(rawRows, confirmedMapping);
     List<MultipartDecision> decisions = [];
     if (candidates.isNotEmpty && mounted) {
-      decisions = await showDialog<List<MultipartDecision>>(
+      decisions =
+          await showDialog<List<MultipartDecision>>(
             context: context,
             barrierDismissible: false,
             builder: (_) => MultipartDetectionScreen(candidates: candidates),
@@ -488,8 +525,9 @@ class _MainShellState extends ConsumerState<MainShell> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
   }
@@ -524,11 +562,13 @@ class _MainShellState extends ConsumerState<MainShell> {
     }
   }
 
-  void _showAbout() {
+  Future<void> _showAbout() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
     showAboutDialog(
       context: context,
       applicationName: 'PaperTek',
-      applicationVersion: '0.1.0',
+      applicationVersion: info.version,
       applicationLegalese: '© 2026',
     );
   }
@@ -537,10 +577,10 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final theme      = Theme.of(context);
-    final menuBg     = theme.colorScheme.surface;
-    final menuFg     = theme.colorScheme.onSurface;
-    final tracked    = ref.watch(trackedWriteProvider);
+    final theme = Theme.of(context);
+    final menuBg = theme.colorScheme.surface;
+    final menuFg = theme.colorScheme.onSurface;
+    final tracked = ref.watch(trackedWriteProvider);
     final pendingCount = ref.watch(pendingCountProvider).valueOrNull ?? 0;
 
     return Focus(
@@ -558,10 +598,12 @@ class _MainShellState extends ConsumerState<MainShell> {
                       backgroundColor: WidgetStatePropertyAll(menuBg),
                       elevation: const WidgetStatePropertyAll(0),
                       padding: const WidgetStatePropertyAll(
-                          EdgeInsets.symmetric(horizontal: 2, vertical: 2)),
+                        EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                      ),
                     ),
                     children: [
                       _menu('File', [
+                        _item('Save As...', Icons.save_as, _saveAs),
                         _item('Settings...', Icons.settings, () {
                           showDialog(
                             context: context,
@@ -571,7 +613,11 @@ class _MainShellState extends ConsumerState<MainShell> {
                         const Divider(height: 1),
                         _item('Close Show', Icons.close, _closeShow),
                         const Divider(height: 1),
-                        _item('Exit', Icons.exit_to_app, () => exit(0)),
+                        _item(
+                          'Exit',
+                          Icons.exit_to_app,
+                          () => windowManager.close(),
+                        ),
                       ], menuFg),
                       _menu('Edit', [
                         _item(
@@ -590,20 +636,21 @@ class _MainShellState extends ConsumerState<MainShell> {
                         ),
                       ], menuFg),
                       _menu('Operations', [
-                        _item('Import Fixtures', Icons.upload_file,
-                            _importFixtures),
+                        _item(
+                          'Import Fixtures',
+                          Icons.upload_file,
+                          _importFixtures,
+                        ),
                       ], menuFg),
                       _menu('Help', [
-                        _item('About PaperTek', Icons.info_outline,
-                            _showAbout),
+                        _item('About PaperTek', Icons.info_outline, _showAbout),
                       ], menuFg),
                     ],
                   ),
                   const Spacer(),
                   // Designer mode toggle — top right of menu bar
                   const Padding(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     child: _DesignerModeToggle(),
                   ),
                 ],
@@ -646,9 +693,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget _menu(String label, List<Widget> children, Color foreground) {
     return SubmenuButton(
       menuChildren: children,
-      style: ButtonStyle(
-        foregroundColor: WidgetStatePropertyAll(foreground),
-      ),
+      style: ButtonStyle(foregroundColor: WidgetStatePropertyAll(foreground)),
       child: Text(label),
     );
   }
@@ -672,11 +717,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     final index = _selectedIndex < 0 || _selectedIndex >= tabs.length
         ? 0
         : _selectedIndex;
-    return IndexedStack(
-      index: index,
-      sizing: StackFit.expand,
-      children: tabs,
-    );
+    return IndexedStack(index: index, sizing: StackFit.expand, children: tabs);
   }
 }
 

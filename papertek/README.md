@@ -1,16 +1,10 @@
-# papertek
+# PaperTek
 
-A new Flutter project.
+PaperTek 0.1.0 is a desktop-first, offline-first theatrical lighting data manager.
 
-## Getting Started
+## Windows development
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```powershell
+flutter run -d windows
+flutter build windows --release
+```

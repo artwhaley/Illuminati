@@ -164,12 +164,6 @@ class FixtureDataSource extends DataGridSource {
   FixtureRow? fixtureForRow(DataGridRow row) => _rowToFixture[row];
   int? partOrderByRow(DataGridRow row) => _rowToPartOrder[row];
 
-  @override
-  Future<void> handleSort() async {
-    _rebuildFilteredRows();
-    notifyListeners();
-  }
-
   static final _naturalRegExp = RegExp(r'(\d+|\D+)');
 
   int _naturalCompare(String a, String b) {

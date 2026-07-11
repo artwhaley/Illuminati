@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'providers/show_provider.dart';
 import 'providers/theme_provider.dart';
+import 'services/backup_settings.dart';
 import 'ui/app.dart';
 
 void main() async {
@@ -23,14 +24,14 @@ void main() async {
   final container = ProviderContainer();
   // Initialize theme settings from storage before starting the app.
   await container.read(themeProvider.notifier).initialize();
+  await container.read(backupSettingsProvider.notifier).initialize();
 
   windowManager.addListener(_AppWindowListener(container));
   await windowManager.setPreventClose(true);
 
-  runApp(UncontrolledProviderScope(
-    container: container,
-    child: const PaperTekApp(),
-  ));
+  runApp(
+    UncontrolledProviderScope(container: container, child: const PaperTekApp()),
+  );
 }
 
 class _AppWindowListener extends WindowListener {
@@ -40,8 +41,16 @@ class _AppWindowListener extends WindowListener {
 
   @override
   void onWindowClose() async {
-    final db = _container.read(databaseProvider);
-    await db?.close();
-    await windowManager.destroy();
+    if (_closing) return;
+    _closing = true;
+    try {
+      await _container.read(showSessionProvider.notifier).shutdown();
+    } finally {
+      await windowManager.setPreventClose(false);
+      _container.dispose();
+      await windowManager.destroy();
+    }
   }
 }
+
+bool _closing = false;

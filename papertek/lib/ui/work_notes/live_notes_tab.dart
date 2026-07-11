@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../services/app_logger.dart';
 import '../../providers/notes_providers.dart';
 import '../../repositories/notes_repository.dart';
 import 'dart:async';
@@ -128,15 +129,14 @@ class _LiveNotesTabState extends ConsumerState<LiveNotesTab> {
     } catch (e, st) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving note: \$e'), 
+        SnackBar(
+            content: const Text('Could not save note. Check the show file and try again.'),
             duration: const Duration(seconds: 5),
             backgroundColor: Colors.red,
           ),
         );
       }
-      print('ERROR SAVING NOTE: \$e');
-      print('STACK TRACE: \$st');
+      appLogger.error('live_notes.save', e, st);
     }
   }
 

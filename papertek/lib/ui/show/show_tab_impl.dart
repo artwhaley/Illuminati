@@ -10,6 +10,7 @@ import '../../providers/show_provider.dart';
 import '../../repositories/show_meta_repository.dart';
 import 'show_info_panel.dart';
 import 'sub_tab_panel.dart';
+import 'show_file_actions.dart';
 
 class ShowTab extends ConsumerWidget {
   const ShowTab({super.key});
@@ -62,6 +63,7 @@ class _ShowTabBody extends StatelessWidget {
       builder: (context, constraints) => SingleChildScrollView(
         child: Column(
           children: [
+            const ShowFileActions(),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
               child: Container(
@@ -96,5 +98,3 @@ class _ShowTabBody extends StatelessWidget {
     );
   }
 }
-
-

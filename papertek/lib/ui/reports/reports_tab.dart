@@ -21,6 +21,7 @@ class _ReportsTabState extends ConsumerState<ReportsTab> {
   ReportTheme? _theme;
   bool _loading = true;
   Timer? _saveDebounce;
+  Future<void>? _pendingTemplateWrite;
   late final ValueNotifier<double> _pdfZoom;
 
   @override
@@ -57,17 +58,29 @@ class _ReportsTabState extends ConsumerState<ReportsTab> {
           final id = ref.read(activeReportTemplateIdProvider);
           final repo = ref.read(reportTemplateRepoProvider);
           if (id != null && repo != null) {
-            repo.updateTemplate(id, next);
+            _pendingTemplateWrite = ref
+                .read(showSessionProvider.notifier)
+                .pendingWrites
+                ?.track(repo.updateTemplate(id, next));
           }
         });
       }
     });
+    ref.read(showSessionProvider.notifier).pendingWrites?.registerFlusher(
+      'report-template',
+      () async {
+        _saveDebounce?.cancel();
+        final write = _pendingTemplateWrite;
+        if (write != null) await write;
+      },
+    );
     _pdfZoom = ValueNotifier<double>(1.0);
   }
 
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    ref.read(showSessionProvider.notifier).pendingWrites?.unregisterFlusher('report-template');
     _pdfZoom.dispose();
     super.dispose();
   }

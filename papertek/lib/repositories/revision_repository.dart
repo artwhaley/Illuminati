@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../database/database.dart';
+import '../services/revision_sql_guard.dart';
 
 /// A single revision enriched with a human-readable description for display.
 class RevisionView {
@@ -100,6 +101,51 @@ class RevisionRepository {
   RevisionRepository(this._db);
 
   final AppDatabase _db;
+
+  /// Atomically changes a supervisor's pending proposal and the live value it
+  /// represents. The revision remains pending and keeps its original history.
+  Future<void> editPendingProposal(int revisionId, dynamic value) async {
+    await _db.transaction(() async {
+      final revision = await (_db.select(_db.revisions)
+            ..where((r) => r.id.equals(revisionId)))
+          .getSingle();
+      if (revision.status != 'pending' ||
+          revision.operation != 'update' ||
+          revision.targetId == null ||
+          !revisionUpdateTargetIsSafe(
+            revision.targetTable,
+            revision.fieldName,
+          )) {
+        throw StateError('Only safe pending field proposals can be edited.');
+      }
+      final encoded = value == null ? null : (value is String ? value : jsonEncode(value));
+      await _db.customUpdate(
+        'UPDATE ${revision.targetTable} SET ${revision.fieldName} = ? WHERE id = ?',
+        variables: [Variable(encoded), Variable<int>(revision.targetId!)],
+        updates: _updatesFor(revision.targetTable),
+      );
+      await (_db.update(_db.revisions)..where((r) => r.id.equals(revisionId))).write(
+        RevisionsCompanion(newValue: Value(jsonEncode(value))),
+      );
+    });
+  }
+
+  Set<ResultSetImplementation> _updatesFor(String table) {
+    return {switch (table) {
+      'fixtures' => _db.fixtures,
+      'fixture_parts' => _db.fixtureParts,
+      'fixture_types' => _db.fixtureTypes,
+      'lighting_positions' => _db.lightingPositions,
+      'position_groups' => _db.positionGroups,
+      'channels' => _db.channels,
+      'addresses' => _db.addresses,
+      'dimmers' => _db.dimmers,
+      'circuits' => _db.circuits,
+      'role_contacts' => _db.roleContacts,
+      'show_meta' => _db.showMeta,
+      _ => throw StateError('Unsupported revision table: $table'),
+    }};
+  }
 
   // ── Fixture-level queries ─────────────────────────────────────────────────
 
