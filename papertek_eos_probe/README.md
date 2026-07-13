@@ -104,7 +104,7 @@ an unsigned release APK. In Codemagic, scan the branch for `codemagic.yaml` and
 select **Eos Probe Android Release** instead of the legacy Workflow Editor
 configuration.
 
-The workflow uses Codemagic's `linux_x2` Android worker and publishes
+The workflow uses Codemagic's default `mac_mini_m2` Android-capable worker and publishes
 `build/app/outputs/flutter-apk/app-release.apk`. Signing and store distribution
 are intentionally not configured; install the unsigned APK for device testing
 or add a Codemagic Android keystore when a signed release is required.
