@@ -36,7 +36,8 @@ final class _SetupTabState extends State<SetupTab> {
   void initState() {
     super.initState();
     final settings = widget.initialSettings;
-    _host = TextEditingController(text: settings?.host ?? '');
+    _host = TextEditingController(
+        text: settings?.host ?? const UdpSettings().host);
     _consolePort =
         TextEditingController(text: '${settings?.consoleRxPort ?? 8000}');
     _local = TextEditingController(text: settings?.localAddress ?? '');

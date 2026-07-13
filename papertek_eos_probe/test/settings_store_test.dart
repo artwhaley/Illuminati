@@ -6,6 +6,13 @@ import 'package:papertek_eos_probe/settings/udp_settings.dart';
 import 'package:papertek_eos_probe/settings/udp_settings_store.dart';
 
 void main() {
+  test('new settings default to the proven console UDP endpoint', () {
+    const settings = UdpSettings();
+    expect(settings.host, '10.101.50.100');
+    expect(settings.consoleRxPort, 8000);
+    expect(settings.feedbackRxPort, 8001);
+  });
+
   test('legacy settings migrate a missing feedback port to 8001', () {
     final settings = UdpSettings.fromJson(<String, dynamic>{
       'consoleHost': '127.0.0.1',

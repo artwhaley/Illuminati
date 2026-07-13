@@ -4,7 +4,7 @@ import 'package:eos_osc_client/eos_osc_client.dart';
 
 final class UdpSettings {
   const UdpSettings({
-    required this.host,
+    this.host = '10.101.50.100',
     this.consoleRxPort = 8000,
     this.localAddress = '',
     this.feedbackRxPort = 8001,
@@ -45,7 +45,9 @@ final class UdpSettings {
 
   static UdpSettings? fromJson(Map<String, dynamic> data) {
     final host =
-        data['consoleHost'] as String? ?? data['host'] as String? ?? '';
+        data['consoleHost'] as String? ??
+        data['host'] as String? ??
+        const UdpSettings().host;
     final consolePort =
         _asInt(data['consoleReceivePort'] ?? data['consoleRxPort']) ?? 8000;
     final feedbackPort =
