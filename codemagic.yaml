@@ -1,0 +1,63 @@
+workflows:
+  eos-probe-windows:
+    name: Eos Probe Windows Release
+    instance_type: windows_x2
+    max_build_duration: 60
+    working_directory: papertek_eos_probe
+    environment:
+      flutter: stable
+    scripts:
+      - name: Verify monorepo application path
+        script: |
+          if (-not (Test-Path -LiteralPath "pubspec.yaml")) {
+            throw "papertek_eos_probe/pubspec.yaml is missing from the checkout."
+          }
+          Write-Host "Building from $((Get-Location).Path)"
+
+      - name: Remove workstation-generated metadata from CI checkout
+        script: |
+          @(
+            ".dart-tool",
+            "Pub",
+            "packages/eos_osc_client/.dart-tool",
+            "packages/eos_osc_client/Pub"
+          ) | ForEach-Object {
+            if (Test-Path -LiteralPath $_) {
+              Remove-Item -LiteralPath $_ -Recurse -Force
+            }
+          }
+
+      - name: Install application dependencies
+        script: flutter pub get
+
+      - name: Install protocol package dependencies
+        script: |
+          Push-Location "packages/eos_osc_client"
+          dart pub get
+          Pop-Location
+
+      - name: Test protocol package
+        script: |
+          Push-Location "packages/eos_osc_client"
+          dart test
+          Pop-Location
+
+      - name: Test Flutter application
+        script: flutter test
+
+      - name: Analyze Flutter application
+        script: flutter analyze
+
+      - name: Build Windows Release
+        script: |
+          flutter config --enable-windows-desktop
+          flutter build windows --release
+
+      - name: Package Windows Release
+        script: |
+          Push-Location "build/windows/x64/runner/Release"
+          7z a -r "../papertek_eos_probe-windows.zip" "./*"
+          Pop-Location
+
+    artifacts:
+      - papertek_eos_probe/build/windows/x64/runner/papertek_eos_probe-windows.zip

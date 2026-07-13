@@ -8,3 +8,16 @@ papertek/test/fixtures/*.papertek
 # Flutter/Dart
 papertek/.dart_tool/
 papertek/.packages
+
+# PaperTek Eos probe generated files
+papertek_eos_probe/.dart-tool/
+papertek_eos_probe/.dart_tool/
+papertek_eos_probe/.packages
+papertek_eos_probe/.flutter-plugins
+papertek_eos_probe/.flutter-plugins-dependencies
+papertek_eos_probe/build/
+papertek_eos_probe/Pub/
+papertek_eos_probe/packages/eos_osc_client/.dart-tool/
+papertek_eos_probe/packages/eos_osc_client/.dart_tool/
+papertek_eos_probe/packages/eos_osc_client/.packages
+papertek_eos_probe/packages/eos_osc_client/Pub/

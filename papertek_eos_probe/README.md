@@ -90,6 +90,17 @@ The current checked-in runner targets Windows. Android support is part of the
 tabbed/mobile change specification and requires generating and validating the
 Android runner before it is considered supported.
 
+### Codemagic
+
+The repository-root `codemagic.yaml` defines the `eos-probe-windows` workflow.
+It uses a Windows worker and sets `papertek_eos_probe` as the monorepo working
+directory before dependency installation, testing, analysis, and the Release
+build. In Codemagic, scan the branch for `codemagic.yaml` and select **Eos Probe
+Windows Release** instead of the legacy Workflow Editor configuration.
+
+Codemagic's `windows_x2` worker requires a billing-enabled team. The generated
+artifact is `papertek_eos_probe-windows.zip`.
+
 ## Safety behavior
 
 - Sending does not depend on feedback reception or a handshake.
