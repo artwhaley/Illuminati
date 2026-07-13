@@ -84,22 +84,30 @@ Pop-Location
 flutter analyze
 flutter test
 flutter build windows --release
+flutter build apk --release
 ```
+
+The Android build requires a JDK/Android toolchain; the Codemagic Android
+workflow provides that environment. The Windows workstation build remains the
+validated desktop release path.
 
 The current checked-in runner targets Windows. Android support is part of the
 tabbed/mobile change specification and requires generating and validating the
 Android runner before it is considered supported.
 
-### Codemagic
+### Codemagic Android build
 
-The repository-root `codemagic.yaml` defines the `eos-probe-windows` workflow.
-It uses a Windows worker and sets `papertek_eos_probe` as the monorepo working
-directory before dependency installation, testing, analysis, and the Release
-build. In Codemagic, scan the branch for `codemagic.yaml` and select **Eos Probe
-Windows Release** instead of the legacy Workflow Editor configuration.
+The repository-root `codemagic.yaml` defines the Android-only
+`eos-probe-android` workflow. It uses `papertek_eos_probe` as the monorepo
+working directory, runs the protocol and Flutter tests plus analysis, and builds
+an unsigned release APK. In Codemagic, scan the branch for `codemagic.yaml` and
+select **Eos Probe Android Release** instead of the legacy Workflow Editor
+configuration.
 
-Codemagic's `windows_x2` worker requires a billing-enabled team. The generated
-artifact is `papertek_eos_probe-windows.zip`.
+The workflow uses Codemagic's `linux_x2` Android worker and publishes
+`build/app/outputs/flutter-apk/app-release.apk`. Signing and store distribution
+are intentionally not configured; install the unsigned APK for device testing
+or add a Codemagic Android keystore when a signed release is required.
 
 ## Safety behavior
 
