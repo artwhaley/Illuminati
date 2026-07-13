@@ -10,6 +10,9 @@ class SpreadsheetPresetsStrip extends StatelessWidget {
     required this.presets,
     required this.controller,
     required this.onCreatePressed,
+    required this.onApplyPreset,
+    required this.onUpdatePreset,
+    required this.onDeletePreset,
     required this.filterActive,
     required this.filterLabel,
     required this.onQuickFilter,
@@ -20,6 +23,9 @@ class SpreadsheetPresetsStrip extends StatelessWidget {
   final List<SpreadsheetViewPreset> presets;
   final SpreadsheetViewController controller;
   final VoidCallback onCreatePressed;
+  final void Function(SpreadsheetViewPreset preset) onApplyPreset;
+  final VoidCallback onUpdatePreset;
+  final void Function(SpreadsheetViewPreset preset) onDeletePreset;
   final bool filterActive;
   final String? filterLabel;
   final VoidCallback onQuickFilter;
@@ -31,7 +37,9 @@ class SpreadsheetPresetsStrip extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
-        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant)),
+        border: Border(
+          top: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -46,18 +54,24 @@ class SpreadsheetPresetsStrip extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('PRESETS',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5)),
+                Text(
+                  'PRESETS',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline, size: 18),
                   tooltip: 'Save current as preset',
                   onPressed: onCreatePressed,
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
                   color: theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
@@ -84,17 +98,23 @@ class SpreadsheetPresetsStrip extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.save, size: 18),
                       tooltip: 'Update active preset',
-                      onPressed: controller.updateActivePreset,
+                      onPressed: onUpdatePreset,
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
                       color: theme.colorScheme.primary,
                     ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 18),
                     tooltip: 'Delete active preset',
-                    onPressed: () => controller.deletePreset(controller.activePreset!.id),
+                    onPressed: () => onDeletePreset(controller.activePreset!),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                     color: theme.colorScheme.error,
                   ),
                 ],
@@ -124,19 +144,24 @@ class SpreadsheetPresetsStrip extends StatelessWidget {
     final color = isActive
         ? (isDirty ? Colors.yellow[800] : Colors.orange[800])
         : theme.colorScheme.surfaceContainerHighest;
-    final textColor = isActive ? Colors.white : theme.colorScheme.onSurfaceVariant;
+    final textColor = isActive
+        ? Colors.white
+        : theme.colorScheme.onSurfaceVariant;
 
     return ActionChip(
-      label: Text(preset.name,
-          style: TextStyle(
-              color: textColor,
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+      label: Text(
+        preset.name,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
       backgroundColor: color,
       padding: EdgeInsets.zero,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       side: BorderSide.none,
-      onPressed: () => controller.applyPreset(preset),
+      onPressed: () => onApplyPreset(preset),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
     );
   }
@@ -155,25 +180,36 @@ class SpreadsheetPresetsStrip extends StatelessWidget {
               : theme.colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-              color: active
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outlineVariant),
+            color: active
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.filter_alt_outlined, size: 12,
-                color: active
-                    ? theme.colorScheme.onPrimaryContainer // Darker font color when active
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+            Icon(
+              Icons.filter_alt_outlined,
+              size: 12,
+              color: active
+                  ? theme
+                        .colorScheme
+                        .onPrimaryContainer // Darker font color when active
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
             const SizedBox(width: 6),
-            Text('Quick Filter',
-                style: theme.textTheme.labelSmall?.copyWith(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: active
-                        ? theme.colorScheme.onPrimaryContainer // Darker font color when active
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+            Text(
+              'Quick Filter',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: active
+                    ? theme
+                          .colorScheme
+                          .onPrimaryContainer // Darker font color when active
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
           ],
         ),
       ),
@@ -181,28 +217,34 @@ class SpreadsheetPresetsStrip extends StatelessWidget {
   }
 
   Widget _filterBadge() => InkWell(
-        onTap: onClearFilter,
+    onTap: onClearFilter,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          height: 22,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            filterLabel ?? '',
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontSize: 10,
+              color: theme.colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(filterLabel ?? '',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                      color: theme.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w700)),
-              const SizedBox(width: 6),
-              Icon(Icons.close, size: 12,
-                  color: theme.colorScheme.onPrimaryContainer),
-            ],
+          const SizedBox(width: 6),
+          Icon(
+            Icons.close,
+            size: 12,
+            color: theme.colorScheme.onPrimaryContainer,
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }

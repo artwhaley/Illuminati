@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../column_spec.dart';
 import 'column_checkbox_list.dart';
-import 'custom_field_dialog.dart';
 
 class ColumnPickerMenuEntry extends PopupMenuEntry<Never> {
   const ColumnPickerMenuEntry({
@@ -9,11 +8,13 @@ class ColumnPickerMenuEntry extends PopupMenuEntry<Never> {
     required this.columns,
     required this.hidden,
     required this.onChanged,
+    required this.onManageCustomFields,
   });
 
   final List<ColumnSpec> columns;
   final Set<String> hidden;
   final void Function(Set<String>) onChanged;
+  final VoidCallback onManageCustomFields;
 
   @override
   double get height => columns.where((c) => !c.isAlwaysVisible).length * 40.0;
@@ -38,6 +39,7 @@ class _ColumnPickerMenuEntryState extends State<ColumnPickerMenuEntry> {
       mainAxisSize: MainAxisSize.min,
       children: [
         ColumnCheckboxList(
+          columns: widget.columns.where((c) => !c.isAlwaysVisible).toList(),
           selected: selected,
           onChanged: (newSelected) {
             // Convert back: hidden = all non-alwaysVisible columns NOT in newSelected.
@@ -54,10 +56,7 @@ class _ColumnPickerMenuEntryState extends State<ColumnPickerMenuEntry> {
           child: TextButton.icon(
             onPressed: () {
               Navigator.pop(context);
-              showDialog(
-                context: context,
-                builder: (context) => const CustomFieldManagerDialog(),
-              );
+              widget.onManageCustomFields();
             },
             icon: const Icon(Icons.settings, size: 16),
             label: const Text('Manage Custom Fields'),

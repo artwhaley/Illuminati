@@ -1,0 +1,20 @@
+name: papertek_eos_probe
+description: A lean ETC Eos OSC focus remote and show-data probe for PaperTek.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+flutter:
+  uses-material-design: true
+
+dependencies:
+  flutter:
+    sdk: flutter
+  eos_osc_client:
+    path: packages/eos_osc_client
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

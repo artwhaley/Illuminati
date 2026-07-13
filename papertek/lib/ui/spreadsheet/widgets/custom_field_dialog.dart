@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../repositories/custom_field_repository.dart';
 import '../../../providers/show_provider.dart';
+import '../../../services/app_logger.dart';
 
 class CustomFieldManagerDialog extends ConsumerStatefulWidget {
   const CustomFieldManagerDialog({super.key});
 
   @override
-  ConsumerState<CustomFieldManagerDialog> createState() => _CustomFieldManagerDialogState();
+  ConsumerState<CustomFieldManagerDialog> createState() =>
+      _CustomFieldManagerDialogState();
 }
 
-class _CustomFieldManagerDialogState extends ConsumerState<CustomFieldManagerDialog> {
+class _CustomFieldManagerDialogState
+    extends ConsumerState<CustomFieldManagerDialog> {
   final _nameController = TextEditingController();
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -26,8 +29,45 @@ class _CustomFieldManagerDialogState extends ConsumerState<CustomFieldManagerDia
     final repo = ref.read(customFieldRepoProvider);
     if (repo == null) return;
 
-    await repo.createField(name: name);
-    _nameController.clear();
+    final fields = ref.read(customFieldsProvider).valueOrNull ?? [];
+    if (fields.any((field) => field.name.toLowerCase() == name.toLowerCase())) {
+      _showError('A custom field named "$name" already exists.');
+      return;
+    }
+
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await repo.createField(name: name);
+      _nameController.clear();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Created custom column "$name".')));
+    } catch (error, stackTrace) {
+      appLogger.error('Create custom field "$name"', error, stackTrace);
+      if (mounted) _showError('Could not create custom column: $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _deleteField(int id, String name) async {
+    try {
+      await ref.read(customFieldRepoProvider)?.deleteField(id);
+    } catch (error, stackTrace) {
+      appLogger.error('Delete custom field "$name"', error, stackTrace);
+      if (mounted) _showError('Could not delete custom column: $error');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
   }
 
   @override
@@ -57,7 +97,7 @@ class _CustomFieldManagerDialogState extends ConsumerState<CustomFieldManagerDia
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  onPressed: _addField,
+                  onPressed: _saving ? null : _addField,
                   icon: const Icon(Icons.add_circle),
                   color: theme.colorScheme.primary,
                 ),
@@ -70,7 +110,10 @@ class _CustomFieldManagerDialogState extends ConsumerState<CustomFieldManagerDia
             if (fields.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('No custom fields yet.', style: TextStyle(fontStyle: FontStyle.italic)),
+                child: Text(
+                  'No custom fields yet.',
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
               )
             else
               ConstrainedBox(
@@ -83,8 +126,11 @@ class _CustomFieldManagerDialogState extends ConsumerState<CustomFieldManagerDia
                     return ListTile(
                       title: Text(f.name),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        onPressed: () => ref.read(customFieldRepoProvider)?.deleteField(f.id),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                        onPressed: () => _deleteField(f.id, f.name),
                       ),
                     );
                   },

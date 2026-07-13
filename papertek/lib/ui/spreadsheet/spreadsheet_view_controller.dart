@@ -1,24 +1,25 @@
 /// ── SPREADSHEET VIEW CONTROLLER ──────────────────────────────────────────
 ///
-/// This controller is the "Brain" of the spreadsheet tab. It manages all 
+/// This controller is the "Brain" of the spreadsheet tab. It manages all
 /// non-persistent view state that coordinates between multiple widgets.
 ///
 /// RESPONSIBILITIES:
 /// 1. Sorting & Filtering: Maintains multi-level sort specs and search state.
 /// 2. Column Management: Handles visibility, ordering, and resizing.
-/// 3. View Presets: Coordinates the loading, saving, and updating of 
+/// 3. View Presets: Coordinates the loading, saving, and updating of
 ///    [SpreadsheetViewPreset] objects.
-/// 4. Action Delegation: Routes CRUD actions (Add/Clone/Delete) and cell 
+/// 4. Action Delegation: Routes CRUD actions (Add/Clone/Delete) and cell
 ///    edits to the appropriate repository.
 ///
 /// DESIGN PATTERN:
-/// By using a [ChangeNotifier] controller, we avoid "Prop Drilling" and ensure 
-/// that the toolbar, sidebar, and grid always stay in sync without redundant 
+/// By using a [ChangeNotifier] controller, we avoid "Prop Drilling" and ensure
+/// that the toolbar, sidebar, and grid always stay in sync without redundant
 /// rebuilds of the entire page.
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import '../../../database/database.dart';
@@ -29,10 +30,7 @@ import 'column_spec.dart';
 import 'fixture_data_source.dart';
 import 'fixture_draft.dart';
 
-enum MultipartDisplayMode {
-  header,
-  headerless,
-}
+enum MultipartDisplayMode { header, headerless }
 
 class SpreadsheetViewController extends ChangeNotifier {
   SpreadsheetViewController({
@@ -49,7 +47,7 @@ class SpreadsheetViewController extends ChangeNotifier {
   final SpreadsheetViewPresetRepository? presetRepo;
   final FixtureDataSource dataSource;
   final CustomFieldRepository? customFieldRepo;
-  
+
   List<ColumnSpec> _columns;
 
   // ── Grid State ─────────────────────────────────────────────────────────────
@@ -117,10 +115,9 @@ class SpreadsheetViewController extends ChangeNotifier {
     if (groupBySort1 && sortSpecs.isNotEmpty) {
       final sort1 = sortSpecs.first.column;
       try {
-        dataSource.addColumnGroup(ColumnGroup(
-          name: sort1,
-          sortGroupRows: true,
-        ));
+        dataSource.addColumnGroup(
+          ColumnGroup(name: sort1, sortGroupRows: true),
+        );
         _groupingActive = true;
       } catch (_) {
         // Swallow if grid not ready
@@ -137,20 +134,26 @@ class SpreadsheetViewController extends ChangeNotifier {
     dataSource.onSortChanged = _onDataSourceSortChanged;
     // Initial sort sync
     _syncSortToDataSource();
-    
+
     // Initial grouping sync - delay to allow grid to mount and avoid null-check crashes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (gridController.hashCode != 0) { // Tiny check to see if we're still alive
+      if (gridController.hashCode != 0) {
+        // Tiny check to see if we're still alive
         _syncGridGrouping();
       }
     });
   }
 
   void updateColumns(List<ColumnSpec> columns) {
+    final previousIds = _columns.map((column) => column.id).toList();
+    final nextIds = columns.map((column) => column.id).toList();
+    final columnsChanged = !listEquals(previousIds, nextIds);
     _columns = columns;
-    // Sync order: keep existing order, append new ones.
-    final newOrder = List<String>.from(colOrder);
-    final existingIds = Set<String>.from(colOrder);
+    final knownIds = nextIds.toSet();
+    // Keep existing known columns in order, remove deleted custom columns,
+    // and append newly created custom columns.
+    final newOrder = colOrder.where(knownIds.contains).toList();
+    final existingIds = newOrder.toSet();
     for (final c in columns) {
       if (!existingIds.contains(c.id)) {
         newOrder.add(c.id);
@@ -158,17 +161,25 @@ class SpreadsheetViewController extends ChangeNotifier {
       }
     }
     colOrder = newOrder;
+    hiddenCols = hiddenCols.intersection(knownIds);
+    colWidths.removeWhere((id, _) => !knownIds.contains(id));
     dataSource.setColumns(columns);
+    dataSource.setVisibleCols(visibleColOrder);
+    if (columnsChanged) isPresetDirty = true;
     notifyListeners();
   }
 
   void _syncSortToDataSource() {
     dataSource.sortedColumns.clear();
     for (final spec in sortSpecs) {
-      dataSource.sortedColumns.add(SortColumnDetails(
-        name: spec.column,
-        sortDirection: spec.ascending ? DataGridSortDirection.ascending : DataGridSortDirection.descending,
-      ));
+      dataSource.sortedColumns.add(
+        SortColumnDetails(
+          name: spec.column,
+          sortDirection: spec.ascending
+              ? DataGridSortDirection.ascending
+              : DataGridSortDirection.descending,
+        ),
+      );
     }
   }
 
@@ -210,10 +221,19 @@ class SpreadsheetViewController extends ChangeNotifier {
     _onSearchChanged();
   }
 
-  bool get filterActive => _filterCol != null || searchController.text.isNotEmpty;
+  bool get filterActive =>
+      _filterCol != null || searchController.text.isNotEmpty;
   String? get filterLabel {
     if (_filterCol == null) return null;
-    final spec = _columns.firstWhere((c) => c.id == _filterCol, orElse: () => ColumnSpec(id: _filterCol!, defaultLabel: _filterCol!, defaultWidth: 100, getValue: (f) => null));
+    final spec = _columns.firstWhere(
+      (c) => c.id == _filterCol,
+      orElse: () => ColumnSpec(
+        id: _filterCol!,
+        defaultLabel: _filterCol!,
+        defaultWidth: 100,
+        getValue: (f) => null,
+      ),
+    );
     return '${spec.label}: $_filterValue';
   }
 
@@ -226,10 +246,14 @@ class SpreadsheetViewController extends ChangeNotifier {
     try {
       dataSource.sortedColumns.clear();
       for (final s in sortSpecs) {
-        dataSource.sortedColumns.add(SortColumnDetails(
-          name: s.column,
-          sortDirection: s.ascending ? DataGridSortDirection.ascending : DataGridSortDirection.descending,
-        ));
+        dataSource.sortedColumns.add(
+          SortColumnDetails(
+            name: s.column,
+            sortDirection: s.ascending
+                ? DataGridSortDirection.ascending
+                : DataGridSortDirection.descending,
+          ),
+        );
       }
     } finally {
       _isSyncingSort = false;
@@ -241,10 +265,14 @@ class SpreadsheetViewController extends ChangeNotifier {
     if (_isSyncingSort) return;
     _isSyncingSort = true;
     try {
-      sortSpecs = dataSource.sortedColumns.map((s) => SortSpec(
-        column: s.name,
-        ascending: s.sortDirection == DataGridSortDirection.ascending,
-      )).toList();
+      sortSpecs = dataSource.sortedColumns
+          .map(
+            (s) => SortSpec(
+              column: s.name,
+              ascending: s.sortDirection == DataGridSortDirection.ascending,
+            ),
+          )
+          .toList();
       _syncGridGrouping();
       isPresetDirty = true;
     } finally {
@@ -291,7 +319,8 @@ class SpreadsheetViewController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<String> get visibleColOrder => colOrder.where((c) => !hiddenCols.contains(c)).toList();
+  List<String> get visibleColOrder =>
+      colOrder.where((c) => !hiddenCols.contains(c)).toList();
 
   void updateColumnWidth(String colId, double width) {
     colWidths[colId] = width;
@@ -302,30 +331,33 @@ class SpreadsheetViewController extends ChangeNotifier {
   void reorderVisibleColumn(int fromIdx, int toIdx) {
     if (fromIdx == toIdx) return;
     final visible = visibleColOrder;
-    if (fromIdx >= 0 && fromIdx < visible.length && toIdx >= 0 && toIdx < visible.length) {
+    if (fromIdx >= 0 &&
+        fromIdx < visible.length &&
+        toIdx >= 0 &&
+        toIdx < visible.length) {
       final colId = visible[fromIdx];
-      
+
       // Move in the master colOrder
       final oldMasterIdx = colOrder.indexOf(colId);
       if (oldMasterIdx != -1) {
         colOrder.removeAt(oldMasterIdx);
-        
+
         // Find the new master index. We want it to be placed at the 'toIdx' position
         // among the visible columns.
         final targetColId = visible[toIdx];
         final newMasterIdx = colOrder.indexOf(targetColId);
-        
-        // If we moved right, we want to insert after the target. 
+
+        // If we moved right, we want to insert after the target.
         // If we moved left, we want to insert before the target.
         // Actually, List.insert inserts BEFORE the index.
         // If we removed the item, the indices of subsequent items shifted.
-        
+
         if (fromIdx < toIdx) {
           colOrder.insert(newMasterIdx + 1, colId);
         } else {
           colOrder.insert(newMasterIdx, colId);
         }
-        
+
         dataSource.setVisibleCols(visibleColOrder);
         isPresetDirty = true;
         notifyListeners();
@@ -342,8 +374,16 @@ class SpreadsheetViewController extends ChangeNotifier {
     'patch': 'patched',
   };
 
-  List<String> _migrateColumnIds(List<String> ids) =>
-      ids.map((id) => _columnIdMigrations[id] ?? id).toList();
+  List<String> _migrateColumnIds(List<String> ids) {
+    final seen = <String>{};
+    return ids
+        .map((id) => _columnIdMigrations[id] ?? id)
+        .where(seen.add)
+        .toList();
+  }
+
+  Set<String> get _knownColumnIds =>
+      _columns.map((column) => column.id).toSet();
 
   void applyPreset(SpreadsheetViewPreset preset) {
     final data = jsonDecode(preset.presetJson) as Map<String, dynamic>;
@@ -351,26 +391,40 @@ class SpreadsheetViewController extends ChangeNotifier {
     isPresetDirty = false;
 
     if (data.containsKey('columnOrder')) {
-      final storedOrder = _migrateColumnIds(List<String>.from(data['columnOrder']));
-      final validStored = storedOrder.where((c) => kColumnById.containsKey(c)).toList();
-      final implicitlyHidden = kDefaultColumnOrder.where((c) => !validStored.contains(c)).toList();
+      final storedOrder = _migrateColumnIds(
+        List<String>.from(data['columnOrder']),
+      );
+      final knownIds = _knownColumnIds;
+      final validStored = storedOrder.where(knownIds.contains).toList();
+      final implicitlyHidden = _columns
+          .map((column) => column.id)
+          .where((id) => !validStored.contains(id))
+          .toList();
       colOrder = [...validStored, ...implicitlyHidden];
       hiddenCols = implicitlyHidden.toSet();
     }
     if (data.containsKey('hiddenColumns')) {
-      hiddenCols = hiddenCols.union(Set<String>.from(_migrateColumnIds(List<String>.from(data['hiddenColumns'] as List))));
+      hiddenCols = hiddenCols.union(
+        Set<String>.from(
+          _migrateColumnIds(List<String>.from(data['hiddenColumns'] as List)),
+        ).intersection(_knownColumnIds),
+      );
     }
     if (data.containsKey('columnWidths')) {
       final widths = Map<String, dynamic>.from(data['columnWidths']);
       for (final e in widths.entries) {
-        if (kDefaultWidths.containsKey(e.key)) {
+        if (_knownColumnIds.contains(e.key)) {
           colWidths[e.key] = (e.value as num).toDouble();
         }
       }
     }
     if (data.containsKey('sorts')) {
-      final specs = (data['sorts'] as List).map((s) => SortSpec.fromJson(s as Map<String, dynamic>)).toList();
-      sortSpecs = specs.where((s) => kColumnById.containsKey(s.column)).toList();
+      final specs = (data['sorts'] as List)
+          .map((s) => SortSpec.fromJson(s as Map<String, dynamic>))
+          .toList();
+      sortSpecs = specs
+          .where((s) => _knownColumnIds.contains(s.column))
+          .toList();
     }
 
     if (data.containsKey('groupBySort1')) {
@@ -388,11 +442,12 @@ class SpreadsheetViewController extends ChangeNotifier {
     } else {
       multipartMode = MultipartDisplayMode.header;
     }
-    
+
     dataSource.setMultipartMode(multipartMode);
     dataSource.setVisibleCols(visibleColOrder);
     _syncGridSort();
     _syncGridGrouping();
+    notifyListeners();
   }
 
   Map<String, dynamic> captureCurrentState() {
@@ -409,13 +464,21 @@ class SpreadsheetViewController extends ChangeNotifier {
 
   Future<void> savePreset(String name) async {
     final data = captureCurrentState();
-    await presetRepo?.createPreset(name: name, presetData: data);
+    final created = await presetRepo?.createPreset(
+      name: name,
+      presetData: data,
+    );
+    if (created != null) {
+      activePreset = created;
+      isPresetDirty = false;
+      notifyListeners();
+    }
   }
 
   Future<void> updateActivePreset() async {
     if (activePreset == null) return;
     final data = captureCurrentState();
-    await presetRepo?.updatePreset(activePreset!.id, data);
+    activePreset = await presetRepo?.updatePreset(activePreset!.id, data);
     isPresetDirty = false;
     notifyListeners();
   }
@@ -462,8 +525,6 @@ class SpreadsheetViewController extends ChangeNotifier {
     notifyListeners();
   }
 
-
-
   void setContinueAdding(bool value) {
     continueAdding = value;
     notifyListeners();
@@ -476,7 +537,10 @@ class SpreadsheetViewController extends ChangeNotifier {
     final draft = addDraft;
     if (draft == null) return;
 
-    final newSort = await repo.addFixtureFromDraft(draft, afterSortOrder: _addDonorSortOrder);
+    final newSort = await repo.addFixtureFromDraft(
+      draft,
+      afterSortOrder: _addDonorSortOrder,
+    );
 
     if (continueAdding) {
       draft.advanceForContinue();
@@ -492,31 +556,60 @@ class SpreadsheetViewController extends ChangeNotifier {
     final d = addDraft;
     if (d == null) return;
     switch (colId) {
-      case 'chan':        d.channel     = val; break;
-      case 'dimmer':      d.dimmer      = val; break;
-      case 'circuit':     d.circuit     = val; break;
-      case 'position':    d.position    = val; break;
-      case 'unit':        d.unitNumber  = val; break;
-      case 'instrument':  d.fixtureType = val; break;
-      case 'purpose':     d.purpose     = val; break;
-      case 'area':        d.area        = val; break;
-      case 'accessories': d.accessories = val; break;
-      case 'ip':          d.ipAddress   = val; break;
-      case 'subnet':      d.subnet      = val; break;
-      case 'mac':         d.macAddress  = val; break;
-      case 'ipv6':        d.ipv6        = val; break;
+      case 'chan':
+        d.channel = val;
+        break;
+      case 'dimmer':
+        d.dimmer = val;
+        break;
+      case 'circuit':
+        d.circuit = val;
+        break;
+      case 'position':
+        d.position = val;
+        break;
+      case 'unit':
+        d.unitNumber = val;
+        break;
+      case 'instrument':
+        d.fixtureType = val;
+        break;
+      case 'purpose':
+        d.purpose = val;
+        break;
+      case 'area':
+        d.area = val;
+        break;
+      case 'accessories':
+        d.accessories = val;
+        break;
+      case 'ip':
+        d.ipAddress = val;
+        break;
+      case 'subnet':
+        d.subnet = val;
+        break;
+      case 'mac':
+        d.macAddress = val;
+        break;
+      case 'ipv6':
+        d.ipv6 = val;
+        break;
     }
     lastEditedAddField = colId;
     notifyListeners();
   }
 
-
-
   Future<void> deleteFixture(FixtureRow fixture) async {
     await repo.deleteFixture(fixture.id);
   }
 
-  Future<void> editCell(FixtureRow fixture, String col, String? value, int? partOrder) async {
+  Future<void> editCell(
+    FixtureRow fixture,
+    String col,
+    String? value,
+    int? partOrder,
+  ) async {
     final spec = kColumnById[col];
     if (spec != null && spec.onEdit != null) {
       await spec.onEdit!(fixture.id, value, repo, partOrder: partOrder);

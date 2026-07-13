@@ -5,6 +5,7 @@ import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 
 import '../../repositories/fixture_repository.dart';
+import '../../database/database.dart';
 import '../../providers/show_provider.dart';
 import 'column_spec.dart';
 import 'fixture_data_source.dart';
@@ -14,8 +15,9 @@ import 'widgets/toolbar.dart';
 import 'widgets/column_picker.dart';
 import 'widgets/presets_strip.dart';
 import 'widgets/collection_editor_dialog.dart';
+import 'widgets/custom_field_dialog.dart';
 import 'column_provider.dart';
-import '../../repositories/custom_field_repository.dart';
+import '../../services/app_logger.dart';
 import 'field_name_notifier.dart';
 
 // ── SPREADSHEET ARCHITECTURE ────────────────────────────────────────────────
@@ -34,30 +36,38 @@ class SpreadsheetTab extends ConsumerStatefulWidget {
 class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   late final FixtureDataSource _source;
   late final SpreadsheetViewController _controller;
-  
+
   // Track if the selection just changed to avoid triggering edit on the first click.
   bool _selectionJustChanged = false;
-  
+
   // Separate notifier for sidebar selection — never triggers a DataGrid rebuild.
   final ValueNotifier<FixtureRow?> _sidebarSelection = ValueNotifier(null);
-  
+  final Set<int> _deletingFixtureIds = <int>{};
+
   final ScrollController _horizontalScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize Data Source
     _source = FixtureDataSource(
       columns: ref.read(allColumnsProvider),
-      onCellEditCommit: (f, col, val, part) => _controller.editCell(f, col, val, part),
+      onCellEditCommit: (f, col, val, part) =>
+          _controller.editCell(f, col, val, part),
       onBooleanSet: (f, col, val) async {
         final repo = ref.read(fixtureRepoProvider);
         if (repo == null) return;
         switch (col) {
-          case 'patched': await repo.setPatched(f.id, value: val); break;
-          case 'hung':    await repo.setHung(f.id, value: val); break;
-          case 'focused': await repo.setFocused(f.id, value: val); break;
+          case 'patched':
+            await repo.setPatched(f.id, value: val);
+            break;
+          case 'hung':
+            await repo.setHung(f.id, value: val);
+            break;
+          case 'focused':
+            await repo.setFocused(f.id, value: val);
+            break;
         }
       },
       onNativeEditStart: (f, col) {
@@ -106,13 +116,27 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
 
     showMenu<Never>(
       context: context,
-      position: RelativeRect.fromLTRB(pos.dx, pos.dy + 40, pos.dx + 200, pos.dy + 400),
+      position: RelativeRect.fromLTRB(
+        pos.dx,
+        pos.dy + 40,
+        pos.dx + 200,
+        pos.dy + 400,
+      ),
       elevation: 8,
       items: [
         ColumnPickerMenuEntry(
           columns: ref.read(allColumnsProvider),
           hidden: _controller.hiddenCols,
           onChanged: (hidden) => _controller.setHiddenCols(hidden),
+          onManageCustomFields: () {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              showDialog<void>(
+                context: context,
+                builder: (_) => const CustomFieldManagerDialog(),
+              );
+            });
+          },
         ),
       ],
     );
@@ -130,24 +154,83 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
           decoration: const InputDecoration(labelText: 'Preset Name'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text('Save')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
 
-    if (name != null && name.isNotEmpty) {
-      await _controller.savePreset(name);
+    if (name != null && name.trim().isNotEmpty) {
+      try {
+        await _controller.savePreset(name.trim());
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Saved preset "${name.trim()}".')),
+        );
+      } catch (error, stackTrace) {
+        _showPresetError('Save preset', error, stackTrace);
+      }
     }
   }
 
-  void _showFixtureContextMenu(Offset pos, FixtureRow fixture) {
-    showMenu(
+  void _applyPreset(SpreadsheetViewPreset preset) {
+    try {
+      _controller.applyPreset(preset);
+    } catch (error, stackTrace) {
+      _showPresetError('Apply preset "${preset.name}"', error, stackTrace);
+    }
+  }
+
+  Future<void> _updateActivePreset() async {
+    final preset = _controller.activePreset;
+    if (preset == null) return;
+    try {
+      await _controller.updateActivePreset();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Updated preset "${preset.name}".')),
+      );
+    } catch (error, stackTrace) {
+      _showPresetError('Update preset "${preset.name}"', error, stackTrace);
+    }
+  }
+
+  Future<void> _deletePreset(SpreadsheetViewPreset preset) async {
+    try {
+      await _controller.deletePreset(preset.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Deleted preset "${preset.name}".')),
+      );
+    } catch (error, stackTrace) {
+      _showPresetError('Delete preset "${preset.name}"', error, stackTrace);
+    }
+  }
+
+  void _showPresetError(String operation, Object error, StackTrace stackTrace) {
+    appLogger.error(operation, error, stackTrace);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$operation failed: $error'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
+
+  Future<void> _showFixtureContextMenu(Offset pos, FixtureRow fixture) async {
+    final action = await showMenu<_FixtureContextAction>(
       context: context,
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx + 1, pos.dy + 1),
-      items: <PopupMenuEntry>[
+      items: <PopupMenuEntry<_FixtureContextAction>>[
         PopupMenuItem(
-          onTap: () => _showMaintenanceLogDialog(fixture),
+          value: _FixtureContextAction.maintenance,
           child: const ListTile(
             leading: Icon(Icons.flag_outlined),
             title: Text('Log Maintenance / Flag'),
@@ -156,7 +239,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
-          onTap: () => _controller.deleteFixture(fixture),
+          value: _FixtureContextAction.delete,
           child: const ListTile(
             leading: Icon(Icons.delete, color: Colors.red),
             title: Text('Delete Fixture', style: TextStyle(color: Colors.red)),
@@ -165,6 +248,49 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
         ),
       ],
     );
+
+    if (!mounted) return;
+    switch (action) {
+      case _FixtureContextAction.maintenance:
+        _showMaintenanceLogDialog(fixture);
+        return;
+      case _FixtureContextAction.delete:
+        await _deleteFixture(fixture);
+        return;
+      case null:
+        return;
+    }
+  }
+
+  Future<void> _deleteFixture(FixtureRow fixture) async {
+    if (!_deletingFixtureIds.add(fixture.id)) return;
+    try {
+      await _controller.deleteFixture(fixture);
+      if (!mounted) return;
+      _clearSelection();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deleted fixture ${fixture.channel ?? fixture.unitNumber ?? fixture.id}.',
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      appLogger.error(
+        'Delete fixture failed (id=${fixture.id}, channel=${fixture.channel})',
+        error,
+        stackTrace,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete fixture: $error'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      _deletingFixtureIds.remove(fixture.id);
+    }
   }
 
   void _showMaintenanceLogDialog(FixtureRow fixture) {
@@ -176,7 +302,9 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Describe the issue or work performed. This will flag the fixture for review.'),
+            const Text(
+              'Describe the issue or work performed. This will flag the fixture for review.',
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: ctrl,
@@ -190,7 +318,10 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () async {
               final repo = ref.read(operationalRepoProvider);
@@ -213,12 +344,12 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   void _clearSelection() {
     _source.setSelectedCell(null, null);
     _sidebarSelection.value = null;
-    
+
     // Using a microtask to avoid conflicts if this is called during a gesture/build cycle.
     Future.microtask(() {
       if (!mounted) return;
       try {
-        if (_controller.gridController.selectedRow != null || 
+        if (_controller.gridController.selectedRow != null ||
             _controller.gridController.selectedIndex != -1) {
           _controller.gridController.selectedRow = null;
           _controller.gridController.moveCurrentCellTo(RowColumnIndex(-1, -1));
@@ -250,9 +381,11 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Watch relevant providers
-    ref.watch(fieldNameNotifierProvider); // applies DB display-name overrides to kColumns
+    ref.watch(
+      fieldNameNotifierProvider,
+    ); // applies DB display-name overrides to kColumns
     final fixtures = ref.watch(fixtureRowsProvider).valueOrNull ?? [];
     final presets = ref.watch(spreadsheetViewPresetsProvider).valueOrNull ?? [];
     final pendingIds = ref.watch(pendingFixtureIdsProvider).valueOrNull ?? {};
@@ -264,7 +397,7 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     _source.updateData(fixtures);
     _source.updateRevisionState(pendingIds, conflictIds);
     _source.setTheme(theme);
-    
+
     _controller.updateColumns(columns);
 
     return Column(
@@ -277,7 +410,9 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
               Container(
                 width: 220,
                 decoration: BoxDecoration(
-                  border: Border(right: BorderSide(color: theme.colorScheme.outlineVariant)),
+                  border: Border(
+                    right: BorderSide(color: theme.colorScheme.outlineVariant),
+                  ),
                   color: theme.colorScheme.surfaceContainerLow,
                 ),
                 child: ListenableBuilder(
@@ -288,11 +423,14 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                       theme: theme,
                       selected: sel,
                       isAddMode: _controller.isAddMode,
-                      addDraft: _controller.isAddMode ? _controller.addDraft : null,
+                      addDraft: _controller.isAddMode
+                          ? _controller.addDraft
+                          : null,
                       continueAdding: _controller.continueAdding,
                       copySelected: _controller.copySelected,
                       lastEditedAddField: _controller.lastEditedAddField,
-                      onEnterAddMode: () => _controller.enterAddMode(donor: sel),
+                      onEnterAddMode: () =>
+                          _controller.enterAddMode(donor: sel),
                       onCancelAddMode: _controller.cancelAddMode,
                       onSubmitAdd: () => _controller.submitAddFixture(),
                       onContinueAddingChanged: _controller.setContinueAdding,
@@ -300,9 +438,12 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                       onDraftEdit: (colId, val) {
                         _controller.updateDraftField(colId, val);
                       },
-                      onDelete: () { if (sel != null) _controller.deleteFixture(sel); },
-                      onEdit: (col, val) =>
-                          sel != null ? _controller.editCell(sel, col, val, null) : Future.value(),
+                      onDelete: () {
+                        if (sel != null) unawaited(_deleteFixture(sel));
+                      },
+                      onEdit: (col, val) => sel != null
+                          ? _controller.editCell(sel, col, val, null)
+                          : Future.value(),
                       columns: columns,
                       repo: ref.read(fixtureRepoProvider)!,
                     );
@@ -321,12 +462,17 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                       Expanded(
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            final totalGridWidth = _controller.visibleColOrder.fold(0.0, (sum, id) {
-                              return sum + (_controller.colWidths[id] ?? kColumnById[id]?.defaultWidth ?? 100.0);
-                            });
+                            final totalGridWidth = _controller.visibleColOrder
+                                .fold(0.0, (sum, id) {
+                                  return sum +
+                                      (_controller.colWidths[id] ??
+                                          kColumnById[id]?.defaultWidth ??
+                                          100.0);
+                                });
 
-                            final contentWidth = totalGridWidth > constraints.maxWidth 
-                                ? totalGridWidth 
+                            final contentWidth =
+                                totalGridWidth > constraints.maxWidth
+                                ? totalGridWidth
                                 : constraints.maxWidth;
 
                             return Scrollbar(
@@ -336,42 +482,83 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                 controller: _horizontalScrollController,
                                 scrollDirection: Axis.horizontal,
                                 child: Container(
-                                  color: theme.colorScheme.surface, // Actual grid area color
+                                  color: theme
+                                      .colorScheme
+                                      .surface, // Actual grid area color
                                   width: contentWidth,
                                   child: Column(
                                     children: [
                                       Listener(
                                         onPointerDown: (e) {
-                                          if (e.buttons == 1 || e.buttons == 2) _clearSelection();
+                                          if (e.buttons == 1 || e.buttons == 2)
+                                            _clearSelection();
                                         },
                                         child: SpreadsheetToolbar(
                                           theme: theme,
-                                          searchCtrl: _controller.searchController,
+                                          searchCtrl:
+                                              _controller.searchController,
                                           sortSpecs: _controller.sortSpecs,
                                           onSortLevel: _controller.setSortLevel,
-                                          onToggleDirection: _controller.toggleSortDirection,
-                                          availableCols: kDefaultColumnOrder.where((c) => !_controller.hiddenCols.contains(c) && c != '#').toList(),
+                                          onToggleDirection:
+                                              _controller.toggleSortDirection,
+                                          availableCols: kDefaultColumnOrder
+                                              .where(
+                                                (c) =>
+                                                    !_controller.hiddenCols
+                                                        .contains(c) &&
+                                                    c != '#',
+                                              )
+                                              .toList(),
                                           onColumnsPressed: _showColumnPicker,
                                           onDeselect: _clearSelection,
-                                          groupBySort1: _controller.groupBySort1,
-                                          onGroupBySort1Changed: (val) => _controller.setGroupBySort1(val ?? false),
-                                          multipartMode: _controller.multipartMode,
-                                          onMultipartModeChanged: (val) => _controller.setMultipartMode(val ? MultipartDisplayMode.headerless : MultipartDisplayMode.header),
+                                          groupBySort1:
+                                              _controller.groupBySort1,
+                                          onGroupBySort1Changed: (val) =>
+                                              _controller.setGroupBySort1(
+                                                val ?? false,
+                                              ),
+                                          multipartMode:
+                                              _controller.multipartMode,
+                                          onMultipartModeChanged: (val) =>
+                                              _controller.setMultipartMode(
+                                                val
+                                                    ? MultipartDisplayMode
+                                                          .headerless
+                                                    : MultipartDisplayMode
+                                                          .header,
+                                              ),
                                         ),
                                       ),
                                       Expanded(
                                         child: SfDataGridTheme(
                                           data: SfDataGridThemeData(
-                                            headerColor: theme.colorScheme.surfaceContainerLow,
-                                            gridLineColor: theme.colorScheme.outlineVariant,
-                                            selectionColor: theme.brightness == Brightness.dark
-                                                ? const Color(0xFF42451A).withValues(alpha: 0.8)
-                                                : theme.colorScheme.primary.withValues(alpha: 0.1),
-                                            captionSummaryRowColor: theme.brightness == Brightness.dark
-                                                ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.85)
-                                                : theme.colorScheme.surfaceContainerHigh,
+                                            headerColor: theme
+                                                .colorScheme
+                                                .surfaceContainerLow,
+                                            gridLineColor: theme
+                                                .colorScheme
+                                                .outlineVariant,
+                                            selectionColor:
+                                                theme.brightness ==
+                                                    Brightness.dark
+                                                ? const Color(
+                                                    0xFF42451A,
+                                                  ).withValues(alpha: 0.8)
+                                                : theme.colorScheme.primary
+                                                      .withValues(alpha: 0.1),
+                                            captionSummaryRowColor:
+                                                theme.brightness ==
+                                                    Brightness.dark
+                                                ? theme
+                                                      .colorScheme
+                                                      .surfaceContainerHigh
+                                                      .withValues(alpha: 0.85)
+                                                : theme
+                                                      .colorScheme
+                                                      .surfaceContainerHigh,
                                             indentColumnWidth: 18,
-                                            indentColumnColor: theme.colorScheme.surface,
+                                            indentColumnColor:
+                                                theme.colorScheme.surface,
                                             groupExpanderIcon: Icon(
                                               Icons.keyboard_arrow_down_rounded,
                                               size: 18,
@@ -379,9 +566,10 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                             ),
                                           ),
                                           child: SfDataGrid(
-                                            controller: _controller.gridController,
+                                            controller:
+                                                _controller.gridController,
                                             source: _source,
-                                            allowSorting: true, 
+                                            allowSorting: true,
                                             allowMultiColumnSorting: true,
                                             allowExpandCollapseGroup: true,
                                             allowFiltering: false,
@@ -389,107 +577,204 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                             allowColumnsResizing: true,
                                             allowColumnsDragging: true,
                                             onColumnResizeUpdate: (args) {
-                                              _controller.updateColumnWidth(args.column.columnName, args.width);
+                                              _controller.updateColumnWidth(
+                                                args.column.columnName,
+                                                args.width,
+                                              );
                                               return true;
                                             },
-                                            onColumnSortChanged: (newCol, oldCol) {
-                                              _controller.syncFromGridSort();
-                                            },
+                                            onColumnSortChanged:
+                                                (newCol, oldCol) {
+                                                  _controller
+                                                      .syncFromGridSort();
+                                                },
                                             onColumnDragging: (args) {
-                                              if (args.action == DataGridColumnDragAction.dropped) {
+                                              if (args.action ==
+                                                  DataGridColumnDragAction
+                                                      .dropped) {
                                                 final from = args.from;
                                                 final to = args.to;
                                                 if (to != null) {
-                                                  _controller.reorderVisibleColumn(from, to);
+                                                  _controller
+                                                      .reorderVisibleColumn(
+                                                        from,
+                                                        to,
+                                                      );
                                                 }
                                               }
                                               return true;
                                             },
                                             selectionMode: SelectionMode.single,
-                                            navigationMode: GridNavigationMode.cell,
-                                            columnWidthMode: ColumnWidthMode.none,
+                                            navigationMode:
+                                                GridNavigationMode.cell,
+                                            columnWidthMode:
+                                                ColumnWidthMode.none,
                                             headerRowHeight: 32,
                                             rowHeight: 28,
-                                            gridLinesVisibility: GridLinesVisibility.both,
-                                            headerGridLinesVisibility: GridLinesVisibility.both,
-                                            columns: _controller.visibleColOrder.map((id) {
+                                            gridLinesVisibility:
+                                                GridLinesVisibility.both,
+                                            headerGridLinesVisibility:
+                                                GridLinesVisibility.both,
+                                            columns: _controller.visibleColOrder.map((
+                                              id,
+                                            ) {
                                               final spec = kColumnById[id]!;
                                               return GridColumn(
                                                 columnName: id,
-                                                width: _controller.colWidths[id] ?? spec.defaultWidth,
-                                                autoFitPadding: const EdgeInsets.symmetric(horizontal: 8),
+                                                width:
+                                                    _controller.colWidths[id] ??
+                                                    spec.defaultWidth,
+                                                autoFitPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                    ),
                                                 label: Container(
-                                                  alignment: Alignment.centerLeft,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                  alignment:
+                                                      Alignment.centerLeft,
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                      ),
                                                   child: Text(
                                                     spec.label,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: theme
+                                                        .textTheme
+                                                        .labelSmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
                                                   ),
                                                 ),
                                               );
                                             }).toList(),
                                             onCellTap: (details) {
-                                              final rci = details.rowColumnIndex;
-                                              
+                                              final rci =
+                                                  details.rowColumnIndex;
+
                                               // Capture previous selection to detect "click again to edit"
-                                              final prevFixtureId = _source.selectedFixture?.id;
-                                              final prevColName = _source.selectedColName;
-                                              final selectionJustChangedNow = _selectionJustChanged;
+                                              final prevFixtureId =
+                                                  _source.selectedFixture?.id;
+                                              final prevColName =
+                                                  _source.selectedColName;
+                                              final selectionJustChangedNow =
+                                                  _selectionJustChanged;
 
                                               _syncSelectionFromRowCol(rci);
-                                              
+
                                               final rowIdx = rci.rowIndex - 1;
-                                              final fixture = rowIdx >= 0 && rowIdx < _source.rows.length
-                                                  ? _source.fixtureForRow(_source.rows[rowIdx])
+                                              final fixture =
+                                                  rowIdx >= 0 &&
+                                                      rowIdx <
+                                                          _source.rows.length
+                                                  ? _source.fixtureForRow(
+                                                      _source.rows[rowIdx],
+                                                    )
                                                   : null;
                                               final colIdx = rci.columnIndex;
-                                              final colName = colIdx >= 0 && colIdx < _controller.visibleColOrder.length
-                                                  ? _controller.visibleColOrder[colIdx]
+                                              final colName =
+                                                  colIdx >= 0 &&
+                                                      colIdx <
+                                                          _controller
+                                                              .visibleColOrder
+                                                              .length
+                                                  ? _controller
+                                                        .visibleColOrder[colIdx]
                                                   : null;
 
-                                              final wasAlreadySelected = !selectionJustChangedNow &&
+                                              final wasAlreadySelected =
+                                                  !selectionJustChangedNow &&
                                                   fixture != null &&
                                                   prevFixtureId == fixture.id &&
                                                   prevColName == colName;
-                                              
+
                                               _selectionJustChanged = false;
 
                                               if (wasAlreadySelected) {
-                                                final colById = ref.read(columnByIdProvider);
+                                                final colById = ref.read(
+                                                  columnByIdProvider,
+                                                );
                                                 final spec = colById[colName];
-                                                if (spec?.isCollection ?? false) {
+                                                if (spec?.isCollection ??
+                                                    false) {
                                                   // Launch collection editor
-                                                  final kind = _getCollectionKind(colName!);
+                                                  final kind =
+                                                      _getCollectionKind(
+                                                        colName!,
+                                                      );
                                                   if (kind != null) {
                                                     // partOrder check for child rows
-                                                    final partOrder = _source.partOrderByRow(_source.rows[rowIdx]);
-                                                    final partId = partOrder != null 
-                                                        ? fixture.parts.firstWhere((p) => p.partOrder == partOrder).id
+                                                    final partOrder = _source
+                                                        .partOrderByRow(
+                                                          _source.rows[rowIdx],
+                                                        );
+                                                    final partId =
+                                                        partOrder != null
+                                                        ? fixture.parts
+                                                              .firstWhere(
+                                                                (p) =>
+                                                                    p.partOrder ==
+                                                                    partOrder,
+                                                              )
+                                                              .id
                                                         : null;
 
                                                     showDialog(
                                                       context: context,
-                                                      builder: (context) => CollectionEditorDialog(
-                                                        fixtureId: fixture.id,
-                                                        kind: kind,
-                                                        partId: partId,
-                                                        repo: ref.read(fixtureRepoProvider)!,
-                                                      ),
+                                                      builder: (context) =>
+                                                          CollectionEditorDialog(
+                                                            fixtureId:
+                                                                fixture.id,
+                                                            kind: kind,
+                                                            partId: partId,
+                                                            repo: ref.read(
+                                                              fixtureRepoProvider,
+                                                            )!,
+                                                          ),
                                                     );
                                                   }
                                                 } else {
-                                                  _controller.gridController.beginEdit(RowColumnIndex(rci.rowIndex - 1, rci.columnIndex));
+                                                  _controller.gridController
+                                                      .beginEdit(
+                                                        RowColumnIndex(
+                                                          rci.rowIndex - 1,
+                                                          rci.columnIndex,
+                                                        ),
+                                                      );
                                                 }
                                               }
                                             },
-                                            onCurrentCellActivated: (_, current) => _syncSelectionFromRowCol(current),
+                                            onCurrentCellActivated:
+                                                (_, current) =>
+                                                    _syncSelectionFromRowCol(
+                                                      current,
+                                                    ),
                                             onCellSecondaryTap: (details) {
-                                              _syncSelectionFromRowCol(details.rowColumnIndex);
-                                              final rowIdx = details.rowColumnIndex.rowIndex - 1;
-                                              if (rowIdx < 0 || rowIdx >= _source.rows.length) return;
-                                              final fixture = _source.fixtureForRow(_source.rows[rowIdx]);
-                                              if (fixture != null) _showFixtureContextMenu(details.globalPosition, fixture);
+                                              _syncSelectionFromRowCol(
+                                                details.rowColumnIndex,
+                                              );
+                                              final rowIdx =
+                                                  details
+                                                      .rowColumnIndex
+                                                      .rowIndex -
+                                                  1;
+                                              if (rowIdx < 0 ||
+                                                  rowIdx >= _source.rows.length)
+                                                return;
+                                              final fixture = _source
+                                                  .fixtureForRow(
+                                                    _source.rows[rowIdx],
+                                                  );
+                                              if (fixture != null) {
+                                                unawaited(
+                                                  _showFixtureContextMenu(
+                                                    details.globalPosition,
+                                                    fixture,
+                                                  ),
+                                                );
+                                              }
                                             },
                                           ),
                                         ),
@@ -497,7 +782,10 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                                       // ── SEMI-TRANSPARENT SCROLLBAR TRACK ─────────
                                       Container(
                                         height: 11, // 1px less than 12
-                                        color: theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.8),
+                                        color: theme
+                                            .colorScheme
+                                            .surfaceContainerLowest
+                                            .withValues(alpha: 0.8),
                                       ),
                                     ],
                                   ),
@@ -507,21 +795,25 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
                           },
                         ),
                       ),
-                      
+
                       // Fixed Presets & Status Bars
                       SpreadsheetPresetsStrip(
                         theme: theme,
                         presets: presets,
                         controller: _controller,
                         onCreatePressed: _showCreatePresetDialog,
+                        onApplyPreset: _applyPreset,
+                        onUpdatePreset: () => unawaited(_updateActivePreset()),
+                        onDeletePreset: (preset) =>
+                            unawaited(_deletePreset(preset)),
                         filterActive: _controller.filterActive,
                         filterLabel: _controller.filterLabel,
                         onQuickFilter: () {
-                           final selCol = _source.selectedColName;
-                           final selVal = _source.selectedCellValue;
-                           if (selCol != null && selVal != null) {
-                             _controller.applyQuickFilter(selCol, selVal);
-                           }
+                          final selCol = _source.selectedColName;
+                          final selVal = _source.selectedCellValue;
+                          if (selCol != null && selVal != null) {
+                            _controller.applyQuickFilter(selCol, selVal);
+                          }
                         },
                         onClearFilter: _controller.clearFilter,
                       ),
@@ -543,3 +835,5 @@ class _SpreadsheetTabState extends ConsumerState<SpreadsheetTab> {
     return null;
   }
 }
+
+enum _FixtureContextAction { maintenance, delete }
