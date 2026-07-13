@@ -22,9 +22,14 @@ final class EosUdpDatagramEvent {
 
 /// Optional OSC feedback listener. It owns only the receive socket.
 final class EosUdpReceiver {
-  EosUdpReceiver({OscCodec codec = const OscCodec()}) : _codec = codec;
+  EosUdpReceiver({
+    OscCodec codec = const OscCodec(),
+    InternetAddress? bindAddress,
+  })  : _codec = codec,
+        _bindAddress = bindAddress;
 
   final OscCodec _codec;
+  final InternetAddress? _bindAddress;
   final StreamController<OscMessage> _messages =
       StreamController<OscMessage>.broadcast(sync: true);
   final StreamController<EosUdpDatagramEvent> _datagrams =
@@ -65,7 +70,7 @@ final class EosUdpReceiver {
       // must listen on every local IPv4 interface so a stale or unavailable
       // send/source address cannot prevent subscription.
       final socket = await RawDatagramSocket.bind(
-        InternetAddress.anyIPv4,
+        _bindAddress ?? InternetAddress.anyIPv4,
         config.receivePort,
       );
       _socket = socket;

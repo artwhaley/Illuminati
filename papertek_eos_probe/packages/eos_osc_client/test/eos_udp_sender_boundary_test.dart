@@ -101,7 +101,9 @@ void main() {
         await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
     final port = reservation.port;
     reservation.close();
-    final receiver = EosUdpReceiver();
+    final receiver = EosUdpReceiver(
+      bindAddress: InternetAddress.loopbackIPv4,
+    );
     final received = Completer<OscMessage>();
     final wireEvent = Completer<EosUdpDatagramEvent>();
     final subscription = receiver.messages.listen((message) {
