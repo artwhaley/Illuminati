@@ -28,9 +28,11 @@ void main() {
     await tester.tap(find.text('Full').last);
     await tester.pump();
     expect(client.commands, ['Chan 1 Full Enter']);
+    await tester.ensureVisible(find.text('Next').last);
     await tester.tap(find.text('Next').last);
     await tester.pump();
     expect(client.channelOperations, ['release:1', 'level:2:100.0']);
+    expect(find.text('Selected channel: 2'), findsOneWidget);
   });
 
   testWidgets('bare channel actions reuse the last successful channel',
@@ -74,6 +76,7 @@ void main() {
     expectSameRow(['4', '5', '6']);
     expectSameRow(['7', '8', '9']);
     expectSameRow(['@', 'Full', 'Out', 'Release', 'Enter']);
+    expect(find.text('Thru'), findsOneWidget);
     expectSameRow(['Clear', 'Backspace']);
     expectSameRow(['Previous', 'Next']);
     expectSameRow(['Position', 'Color', 'Beam']);

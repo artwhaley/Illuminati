@@ -5,6 +5,8 @@ void main() {
   test('compiles every Phase 1 grammar row', () {
     final cases = <List<String>, String>{
       ['1', '@', '55', 'Enter']: 'Chan 1 At 55 Enter',
+      ['1', 'Thru', '10', '@', '55', 'Enter']:
+          'Chan 1 Thru 10 At 55 Enter',
       ['1', 'Full']: 'Chan 1 Full Enter',
       ['1', 'Out']: 'Chan 1 Out Enter',
       ['1', 'Release']: 'Chan 1 Sneak Time 0 Enter',

@@ -2,6 +2,7 @@ import 'package:eos_osc_client/eos_osc_client.dart';
 
 enum FocusSemanticToken {
   at,
+  thru,
   full,
   out,
   release,
@@ -29,11 +30,10 @@ final class FocusCommandCompiler {
         .toList();
     if (tokens.isEmpty)
       throw const EosValidationException('Enter a command first.');
-    if (tokens.contains('Thru') ||
-        tokens.contains('+') ||
+    if (tokens.contains('+') ||
         tokens.contains('-')) {
       throw const EosValidationException(
-          'Ranges, groups, Thru, +, and - are not supported.');
+          'Groups, +, and - are not supported.');
     }
     if (tokens.last == 'Enter') {
       return _compileEntered(tokens.sublist(0, tokens.length - 1));
@@ -88,6 +88,19 @@ final class FocusCommandCompiler {
     if (tokens.length == 3 && tokens[1] == '@' && _isLevel(tokens[2])) {
       return FocusCompiledCommand(
           'Chan $channel At ${_normalizeNumber(tokens[2])} Enter');
+    }
+    if (tokens.length == 5 &&
+        tokens[1] == 'Thru' &&
+        _isPositiveWhole(tokens[2]) &&
+        tokens[3] == '@' &&
+        _isLevel(tokens[4])) {
+      final endChannel = _channel(tokens[2]);
+      if (endChannel < channel) {
+        throw const EosValidationException(
+            'Thru range must end at or after its first channel.');
+      }
+      return FocusCompiledCommand(
+          'Chan $channel Thru $endChannel At ${_normalizeNumber(tokens[4])} Enter');
     }
     if (tokens.length == 3 &&
         const {'Color', 'Position', 'Beam'}.contains(tokens[1]) &&
@@ -161,6 +174,7 @@ final class FocusCommandBuffer {
   void appendSemantic(FocusSemanticToken token) {
     _tokens.add(switch (token) {
       FocusSemanticToken.at => '@',
+      FocusSemanticToken.thru => 'Thru',
       FocusSemanticToken.full => 'Full',
       FocusSemanticToken.out => 'Out',
       FocusSemanticToken.release => 'Release',

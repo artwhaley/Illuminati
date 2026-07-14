@@ -239,6 +239,14 @@ final class _FocusRemoteTabState extends State<FocusRemoteTab> {
                                 key: const Key('last_transmitted'),
                               ),
                             ),
+                          if (_lastChannel != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                'Selected channel: $_lastChannel',
+                                key: const Key('selected_channel'),
+                              ),
+                            ),
                           if (!_canSend)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -299,6 +307,8 @@ final class _FocusRemoteTabState extends State<FocusRemoteTab> {
         _row([
           _button('Clear', _clear),
           _button('Backspace', _backspace),
+          _button('Thru', () => _append(FocusSemanticToken.thru),
+              filled: true, compact: true),
         ]),
         _row([
           OutlinedButton.icon(
