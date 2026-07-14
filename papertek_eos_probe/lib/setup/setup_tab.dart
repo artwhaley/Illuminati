@@ -11,12 +11,14 @@ final class SetupTab extends StatefulWidget {
       required this.store,
       required this.initialSettings,
       required this.logs,
+      this.beforeUdp,
       this.onSaved,
       super.key});
   final EosClient client;
   final UdpSettingsStore store;
   final UdpSettings? initialSettings;
   final List<UiLogEntry> logs;
+  final Future<String?> Function()? beforeUdp;
   final ValueChanged<UdpSettings>? onSaved;
 
   @override
@@ -36,8 +38,8 @@ final class _SetupTabState extends State<SetupTab> {
   void initState() {
     super.initState();
     final settings = widget.initialSettings;
-    _host = TextEditingController(
-        text: settings?.host ?? const UdpSettings().host);
+    _host =
+        TextEditingController(text: settings?.host ?? const UdpSettings().host);
     _consolePort =
         TextEditingController(text: '${settings?.consoleRxPort ?? 8000}');
     _local = TextEditingController(text: settings?.localAddress ?? '');
@@ -77,13 +79,16 @@ final class _SetupTabState extends State<SetupTab> {
       _message = null;
     });
     try {
+      final binding = await widget.beforeUdp?.call();
       await widget.store.save(settings);
       if (widget.client is EosOscClient)
         await (widget.client as EosOscClient)
             .connect(settings.toConnectionConfig());
       widget.onSaved?.call(settings);
       if (mounted)
-        setState(() => _message = 'Settings saved. No datagram was sent.');
+        setState(() => _message = binding == null
+            ? 'Settings saved. No datagram was sent.'
+            : 'Settings saved. $binding No datagram was sent.');
     } on Object catch (error) {
       if (mounted) setState(() => _message = 'Could not save settings: $error');
     } finally {
@@ -98,6 +103,7 @@ final class _SetupTabState extends State<SetupTab> {
     }
     try {
       final client = widget.client as EosOscClient;
+      await widget.beforeUdp?.call();
       await client.startFeedback();
       if (mounted) {
         setState(() => _message =

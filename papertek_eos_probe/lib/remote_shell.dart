@@ -6,6 +6,7 @@ import 'focus/focus_remote_tab.dart';
 import 'osc_log_view.dart';
 import 'settings/udp_settings.dart';
 import 'settings/udp_settings_store.dart';
+import 'settings/android_wifi_binding.dart';
 import 'setup/setup_tab.dart';
 
 final class RemoteShell extends StatefulWidget {
@@ -40,6 +41,8 @@ final class _RemoteShellState extends State<RemoteShell> {
     final settings = await _store.load();
     if (settings != null && _client is EosOscClient) {
       try {
+        final binding = await AndroidWifiBinding.ensureBound();
+        if (binding != null) _log('INFO', 'android-network', binding);
         await _client.connect(settings.toConnectionConfig());
       } on Object catch (error) {
         _log('ERROR', 'settings', '$error');
@@ -150,6 +153,7 @@ final class _RemoteShellState extends State<RemoteShell> {
           store: _store,
           initialSettings: _settings,
           logs: _logs,
+          beforeUdp: AndroidWifiBinding.ensureBound,
           onSaved: (value) => setState(() {
                 _settings = value;
                 _index = 1;

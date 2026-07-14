@@ -27,6 +27,13 @@ Receiving is separate and optional. Live cue feedback and query responses requir
 3. the Eos OSC UDP TX destination IP set to this device; and
 4. the Eos OSC UDP TX port matching the app's feedback-listen port.
 
+On Android, the app binds its process to the active Wi-Fi `Network` before it
+opens UDP sockets. This is required when Android keeps cellular as the default
+network because the console Wi-Fi has no internet access. Setup and feedback
+startup fail clearly when no Wi-Fi network is available. Commands are not
+broadcast across interfaces; each Eos command is still sent exactly once to the
+configured console endpoint.
+
 A feedback-listener failure must never disable send-only focus or playback controls.
 UDP is fire-and-forget: successful local transmission does not acknowledge that Eos
 received or executed a command, and packets can be dropped or arrive out of order.
