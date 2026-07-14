@@ -57,6 +57,19 @@ void main() {
     ]);
   });
 
+  testWidgets('touch keypad sends a Thru channel range', (tester) async {
+    final client = _FakeClient();
+    await tester
+        .pumpWidget(MaterialApp(home: FocusRemoteScreen(client: client)));
+    for (final key in <String>['1', 'Thru', '1', '0', '@', '5', '5', 'Enter']) {
+      await tester.ensureVisible(find.text(key).last);
+      await tester.tap(find.text(key).last);
+      await tester.pump();
+    }
+    expect(client.commands, ['Chan 1 Thru 10 At 55 Enter']);
+    expect(find.byKey(const Key('command_error')), findsNothing);
+  });
+
   testWidgets('portrait keypad keeps each requested control row together',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1100));

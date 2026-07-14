@@ -334,6 +334,11 @@ final class EosOscClient implements EosClient, EosPlaybackClient {
         await _legacyTransport.send(message);
       } else {
         await _sender.send(message);
+        final source = _sender.sourceAddress?.address ?? 'OS-selected';
+        final destination = _sender.destinationAddress?.address ??
+            _config!.host.trim();
+        _emitDiagnostic(EosDiagnosticLevel.info,
+            'UDP route $source -> $destination:${_config!.port}.');
       }
       _events.add(EosOscMessageEvent(
           direction: EosOscDirection.transmit, message: message));

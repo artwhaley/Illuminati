@@ -9,16 +9,24 @@ import 'osc_codec.dart';
 /// The socket is opened lazily by [send]. It is retained for subsequent
 /// datagrams and discarded when the endpoint changes or a send fails.
 final class EosUdpSender {
-  EosUdpSender({OscCodec codec = const OscCodec()}) : _codec = codec;
+  EosUdpSender({
+    OscCodec codec = const OscCodec(),
+    Future<List<InternetAddress>> Function()? localAddresses,
+  })  : _codec = codec,
+        _localAddresses = localAddresses ?? _systemLocalAddresses;
 
   final OscCodec _codec;
+  final Future<List<InternetAddress>> Function() _localAddresses;
   RawDatagramSocket? _socket;
   InternetAddress? _destination;
+  InternetAddress? _source;
   int? _destinationPort;
   EosConnectionConfig? _config;
   bool _disposed = false;
 
   bool get hasSocket => _socket != null;
+  InternetAddress? get sourceAddress => _source;
+  InternetAddress? get destinationAddress => _destination;
 
   Future<void> configure(EosConnectionConfig config) async {
     _ensureNotDisposed();
@@ -67,10 +75,11 @@ final class EosUdpSender {
     }
     final localText = config.localAddress?.trim();
     final localAddress = localText == null || localText.isEmpty
-        ? InternetAddress.anyIPv4
+        ? await _automaticSourceAddress(addresses.first)
         : InternetAddress(localText);
     final socket = await RawDatagramSocket.bind(localAddress, 0);
     _socket = socket;
+    _source = localAddress;
     _destination = addresses.first;
     _destinationPort = config.port;
     return socket;
@@ -80,6 +89,7 @@ final class EosUdpSender {
     _socket?.close();
     _socket = null;
     _destination = null;
+    _source = null;
     _destinationPort = null;
   }
 
@@ -113,6 +123,44 @@ final class EosUdpSender {
       left.host.trim() == right.host.trim() &&
       left.port == right.port &&
       (left.localAddress ?? '').trim() == (right.localAddress ?? '').trim();
+
+  Future<InternetAddress> _automaticSourceAddress(
+      InternetAddress destination) async {
+    try {
+      final candidates = await _localAddresses();
+      for (final candidate in candidates) {
+        if (candidate.type == InternetAddressType.IPv4 &&
+            _sameIpv4Subnet24(candidate, destination)) {
+          return candidate;
+        }
+      }
+    } on Object {
+      // Interface discovery is an optimization. Normal OS routing remains the
+      // fallback when a platform cannot enumerate its local addresses.
+    }
+    return InternetAddress.anyIPv4;
+  }
+
+  static bool _sameIpv4Subnet24(
+      InternetAddress left, InternetAddress right) {
+    final a = left.rawAddress;
+    final b = right.rawAddress;
+    return a.length == 4 &&
+        b.length == 4 &&
+        a[0] == b[0] &&
+        a[1] == b[1] &&
+        a[2] == b[2];
+  }
+
+  static Future<List<InternetAddress>> _systemLocalAddresses() async {
+    final interfaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLoopback: false,
+    );
+    return <InternetAddress>[
+      for (final interface in interfaces) ...interface.addresses,
+    ];
+  }
 
   void _ensureNotDisposed() {
     if (_disposed) {

@@ -31,6 +31,33 @@ void main() {
     }
   });
 
+  test('blank source prefers an address on the destination subnet', () async {
+    final receiver =
+        await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final packet = Completer<Datagram>();
+    final subscription = receiver.listen((event) {
+      if (event != RawSocketEvent.read) return;
+      final datagram = receiver.receive();
+      if (datagram != null && !packet.isCompleted) packet.complete(datagram);
+    });
+    final sender = EosUdpSender(localAddresses: () async => <InternetAddress>[
+          InternetAddress('192.0.2.20'),
+          InternetAddress.loopbackIPv4,
+        ]);
+    try {
+      await sender.configure(
+          EosConnectionConfig(host: '127.0.0.1', port: receiver.port));
+      await sender.send(EosProtocol.getVersion());
+      final datagram = await packet.future.timeout(const Duration(seconds: 2));
+      expect(datagram.address.address, '127.0.0.1');
+      expect(sender.sourceAddress?.address, '127.0.0.1');
+    } finally {
+      await sender.dispose();
+      await subscription.cancel();
+      receiver.close();
+    }
+  });
+
   test('endpoint changes route next packet and disposal does not replay',
       () async {
     final first = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);

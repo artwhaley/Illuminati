@@ -121,7 +121,8 @@ final class _FocusRemoteTabState extends State<FocusRemoteTab> {
     try {
       compiled = FocusCommandCompiler.compile(_buffer.tokens);
     } on EosClientException catch (error) {
-      setState(() => _error = error.message);
+      final entered = _buffer.display;
+      setState(() => _error = '${error.message} Entered: "$entered".');
       return;
     }
     if (!_canSend) {
